@@ -1,54 +1,46 @@
-# sv
+# Stoa
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+An interactive 3D library web app for browsing classic literature on a bookcase and reading directly on turning 3D pages.
 
-## Creating a project
+## Prerequisites
 
-If you're seeing this, you've probably already done this step. Congrats!
+Install these tools before running the project:
 
-```sh
-# create a new project
-npx sv create my-app
-```
+1. **Git** — https://git-scm.com/downloads
+2. **Node.js** (v22 or newer, LTS recommended) — https://nodejs.org/
+3. **pnpm** (package manager) — install via Corepack (included with Node.js) or standalone:
+   ```bash
+   corepack enable
+   corepack prepare pnpm@latest --activate
+   ```
+   Or see https://pnpm.io/installation.
 
-To recreate this project with the same configuration:
+> **Note about Svelte & 3D libraries:** You do **not** need to install Svelte, SvelteKit, Three.js, Threlte, or Tailwind globally. They are declared in `package.json` and installed automatically in the next step.
 
-```sh
-# recreate this project
-pnpm dlx sv@1.7.0 create --template minimal --types ts --add tailwindcss="plugins:none" sveltekit-adapter="adapter:static" --install pnpm .
-```
+## Getting Started
 
-## Adding features
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/ochlzo/stoa.git
+   cd stoa
+   ```
 
-Add features to your project with `sv add`:
+2. **Install dependencies** (Svelte, SvelteKit, Threlte, Three.js, Tailwind CSS, TypeScript)
+   ```bash
+   pnpm install
+   ```
 
-```sh
-npx sv add
-```
+3. **Start the development server**
+   ```bash
+   pnpm dev
+   ```
+   Open the local URL printed in your terminal (by default `http://localhost:5173`).
 
-For example, to add Tailwind CSS:
+## Available Commands
 
-```sh
-npx sv add tailwindcss
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
+| Command | Description |
+| :--- | :--- |
+| `pnpm dev` | Start the local dev server with Hot Module Replacement (HMR). |
+| `pnpm check` | Run `svelte-check` and TypeScript diagnostics. |
+| `pnpm build` | Build the static production site into `build/`. |
+| `pnpm preview` | Serve the production `build/` output locally to test it. |
