@@ -30,11 +30,28 @@ Install these tools before running the project:
    pnpm install
    ```
 
-3. **Start the development server**
+3. **Enable contributor Git hooks** (blocks accidental pushes to `main`)
+   ```bash
+   pnpm setup:hooks
+   ```
+
+4. **Start the development server**
    ```bash
    pnpm dev
    ```
    Open the local URL printed in your terminal (by default `http://localhost:5173`).
+
+## Contributing Rules
+
+- **Never push directly to `main`.** All changes must go through a feature branch and a Pull Request.
+- **Run `pnpm setup:hooks` once after cloning.** This configures Git to use the repository's `.githooks/` directory, which installs a `pre-push` hook that blocks pushes targeting `main`.
+- **Standard branch workflow:**
+  ```bash
+  git checkout -b feat/your-branch-name
+  # make changes and commit
+  git push -u origin feat/your-branch-name
+  ```
+  Then open a Pull Request into `main`.
 
 ## Available Commands
 
@@ -44,3 +61,4 @@ Install these tools before running the project:
 | `pnpm check` | Run `svelte-check` and TypeScript diagnostics. |
 | `pnpm build` | Build the static production site into `build/`. |
 | `pnpm preview` | Serve the production `build/` output locally to test it. |
+| `pnpm setup:hooks` | Configure local Git hooks (blocks direct pushes to `main`). |
