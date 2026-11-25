@@ -72,5 +72,5 @@ src/lib/
 
 Before considering any slice or ticket complete:
 
-1. Run `pnpm check` and `pnpm build` — both must pass with zero errors.
+1. Run `pnpm verify` (`pnpm check && pnpm lint && pnpm test && pnpm build`) — all checks must pass with zero errors.
 2. Visually inspect the running app (`pnpm dev`) in the browser to verify proportions, zero clipping/Z-fighting, camera framing, and interaction feel.

@@ -14,6 +14,9 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"lint": "node scripts/lint-architecture.mjs",
+		"test": "node --test \"src/lib/**/*.test.ts\"",
+		"verify": "pnpm check && pnpm lint && pnpm test && pnpm build",
 		"setup:hooks": "node scripts/setup-hooks.mjs"
 	},
 	"devDependencies": {
@@ -21,6 +24,7 @@
 		"@sveltejs/kit": "^3.2.0",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@tailwindcss/vite": "^4.3.5",
+		"@types/node": "^26.6.6",
 		"@types/three": "^0.187.0",
 		"svelte": "^5.57.3",
 		"svelte-check": "^4.7.8",
