@@ -2,7 +2,7 @@
 	import { T } from '@threlte/core';
 	import { layoutCatalogOnBookcase } from '#lib/catalog/layout.ts';
 	import { hasBookmark } from '#lib/state/bookmarks.svelte.ts';
-	import { getPeekedVolumeId } from '#lib/state/library.svelte.ts';
+	import { getInspectedVolumeId, getPeekedVolumeId } from '#lib/state/library.svelte.ts';
 	import Volume from '#lib/components/scene/Volume.svelte';
 
 	const placedVolumes = layoutCatalogOnBookcase();
@@ -14,6 +14,7 @@
 			{placed}
 			hasBookmark={hasBookmark(placed.volume.id)}
 			isPeeked={getPeekedVolumeId() === placed.volume.id}
+			isInspected={getInspectedVolumeId() === placed.volume.id}
 		/>
 	{/each}
 </T.Group>

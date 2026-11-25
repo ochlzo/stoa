@@ -15,8 +15,10 @@
 
 	import { createShelfGestures } from '#lib/physics/shelf-gestures.ts';
 	import {
+		getIsInspectOrbiting,
 		getIsShelfPanning,
 		getPeekedVolume,
+		getSceneMode,
 		setShelfPanning
 	} from '#lib/state/library.svelte.ts';
 
@@ -48,8 +50,12 @@
 		syncCameraTransform();
 	});
 
-	// Keep the canvas cursor aligned with panning state and the hovered Volume type.
+	// Keep the canvas cursor aligned with the active SceneMode, panning/orbiting state, and hovered Volume.
 	$effect(() => {
+		if (getSceneMode() === 'inspect') {
+			canvas.style.cursor = getIsInspectOrbiting() ? 'grabbing' : 'grab';
+			return;
+		}
 		if (getIsShelfPanning()) {
 			canvas.style.cursor = 'grabbing';
 			return;
@@ -69,11 +75,13 @@
 		const gestures = createShelfGestures(cameraState);
 
 		function onPointerDown(event: PointerEvent): void {
+			if (getSceneMode() !== 'shelf') return;
 			if (event.pointerType === 'mouse' && event.button !== 0) return;
 			gestures.start(event.pointerId, event.clientX, event.clientY, event.timeStamp);
 		}
 
 		function onPointerMove(event: PointerEvent): void {
+			if (getSceneMode() !== 'shelf') return;
 			if (!cameraState.isDragging) return;
 			const viewport = size.current;
 			const gesture = gestures.move(event.pointerId, event.clientX, event.clientY,
@@ -90,6 +98,7 @@
 		}
 
 		function onWheel(event: WheelEvent): void {
+			if (getSceneMode() !== 'shelf') return;
 			event.preventDefault();
 			const viewport = size.current;
 			const bounds = readBounds(viewport, cameraState.z);
