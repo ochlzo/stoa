@@ -84,6 +84,52 @@ export interface PlacedVolume {
 	readonly rotationZ: number;
 }
 
+export interface BindingStylePreset {
+	readonly id: BindingStyleId;
+	/** Hardcover board thickness (meters). */
+	readonly boardThickness: number;
+	/** Vertical overhang of cover boards above and below the page block (meters). */
+	readonly pageBlockVerticalInset: number;
+	/** Horizontal recess of the page block behind the fore-edge of the covers (meters). */
+	readonly pageBlockForeEdgeInset: number;
+	/** Normalized Y positions (0..1) of raised horizontal bands along the spine. */
+	readonly spineBandFractions: readonly number[];
+	/** Vertical thickness of each raised spine band (meters). */
+	readonly spineBandHeight: number;
+	/** Forward +Z protrusion of each raised spine band past the spine face (meters). */
+	readonly spineBandProtrusion: number;
+	/** Whether to include woven headbands at the top and bottom of the page block. */
+	readonly hasHeadbands: boolean;
+}
+
+export interface SpineBandSpec {
+	readonly id: string;
+	readonly shape: 'rounded' | 'flat';
+	readonly radius: number;
+	readonly height: number;
+	readonly position: readonly [x: number, y: number, z: number];
+	readonly scaleZ: number;
+	readonly size: readonly [width: number, height: number, depth: number];
+}
+
+export interface HeadbandSpec {
+	readonly id: 'headband-top' | 'headband-bottom';
+	readonly radius: number;
+	readonly width: number;
+	readonly position: readonly [x: number, y: number, z: number];
+}
+
+export interface BookmarkRibbonSpec {
+	/** Width of the woven ribbon strip across X (meters). */
+	readonly width: number;
+	/** Thickness of the ribbon strip (meters). */
+	readonly thickness: number;
+	/** Depth of the swallowtail V-notch at the ribbon tip (meters). */
+	readonly notchDepth: number;
+	/** Centerline points in Volume-local [x, y, z] coordinates from page block to Shelf surface. */
+	readonly points: readonly (readonly [x: number, y: number, z: number])[];
+}
+
 export interface VolumeGeometryParts {
 	readonly spine: {
 		readonly shape: 'rounded' | 'flat';
@@ -110,4 +156,7 @@ export interface VolumeGeometryParts {
 		readonly size: readonly [width: number, height: number, depth: number];
 		readonly position: readonly [x: number, y: number, z: number];
 	};
+	readonly spineBands: readonly SpineBandSpec[];
+	readonly headbands: readonly HeadbandSpec[];
+	readonly bookmarkRibbon: BookmarkRibbonSpec;
 }

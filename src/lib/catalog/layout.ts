@@ -1,7 +1,12 @@
 import { getBookcaseStructure, type ShelfSpec } from '#lib/catalog/bookcase.ts';
 import { CATALOG } from '#lib/catalog/volumes.ts';
 import type {
+	BindingStyleId,
+	BindingStylePreset,
+	BookmarkRibbonSpec,
+	HeadbandSpec,
 	PlacedVolume,
+	SpineBandSpec,
 	SpineProfile,
 	VolumeDimensions,
 	Volume,
@@ -60,8 +65,56 @@ function getSpineDepth(profile: SpineProfile, thickness: number): number {
 }
 
 /**
+ * Reusable Binding Style structural presets driven purely from Catalog data (ADR 0006).
+ * Every Volume uses these shared presets for board overhang, raised spine bands, and headbands.
+ */
+export const BINDING_STYLE_PRESETS: Record<BindingStyleId, BindingStylePreset> = {
+	'raised-band-leather': {
+		id: 'raised-band-leather',
+		boardThickness: 0.0036,
+		pageBlockVerticalInset: 0.0055,
+		pageBlockForeEdgeInset: 0.006,
+		spineBandFractions: [0.16, 0.33, 0.5, 0.67, 0.84],
+		spineBandHeight: 0.0038,
+		spineBandProtrusion: 0.0018,
+		hasHeadbands: true
+	},
+	'blind-tooled-calf': {
+		id: 'blind-tooled-calf',
+		boardThickness: 0.0033,
+		pageBlockVerticalInset: 0.0048,
+		pageBlockForeEdgeInset: 0.0052,
+		spineBandFractions: [0.14, 0.86],
+		spineBandHeight: 0.0026,
+		spineBandProtrusion: 0.0012,
+		hasHeadbands: true
+	},
+	'quarter-vellum': {
+		id: 'quarter-vellum',
+		boardThickness: 0.0028,
+		pageBlockVerticalInset: 0.0042,
+		pageBlockForeEdgeInset: 0.0046,
+		spineBandFractions: [],
+		spineBandHeight: 0,
+		spineBandProtrusion: 0,
+		hasHeadbands: true
+	},
+	'linen-cloth': {
+		id: 'linen-cloth',
+		boardThickness: 0.003,
+		pageBlockVerticalInset: 0.0036,
+		pageBlockForeEdgeInset: 0.0042,
+		spineBandFractions: [],
+		spineBandHeight: 0,
+		spineBandProtrusion: 0,
+		hasHeadbands: false
+	}
+};
+
+/**
  * Computes non-overlapping local geometry specs for a parametric clay Volume silhouette:
- * front board, back board, spine (rounded, shallow, or flat), and slightly recessed page block.
+ * front board, back board, spine (rounded, shallow, or flat), recessed page block,
+ * Binding Style raised spine bands and headbands, and procedural Bookmark Ribbon path.
  *
  * Local pivot convention:
  * - x = 0: horizontal center of the Volume
@@ -70,26 +123,86 @@ function getSpineDepth(profile: SpineProfile, thickness: number): number {
  */
 export function getVolumeGeometryParts(
 	dimensions: VolumeDimensions,
-	spineProfile: SpineProfile = 'rounded'
+	spineProfile: SpineProfile = 'rounded',
+	bindingStyle: BindingStyleId = 'linen-cloth'
 ): VolumeGeometryParts {
 	const { height, depth, thickness } = dimensions;
 	const c = VOLUME_LAYOUT_CONSTANTS;
+	const preset = BINDING_STYLE_PRESETS[bindingStyle];
 
 	const spineRadius = thickness / 2;
 	const spineDepth = getSpineDepth(spineProfile, thickness);
 	const boardDepth = Math.max(0.02, depth - spineDepth);
 	const boardCenterZ = -(spineDepth + boardDepth / 2);
-	const boardOffsetX = thickness / 2 - c.boardThickness / 2;
+	const boardOffsetX = thickness / 2 - preset.boardThickness / 2;
 
-	const pageWidth = Math.max(0.004, thickness - c.boardThickness * 2 - c.innerClearance * 2);
-	const pageHeight = Math.max(0.02, height - c.pageBlockVerticalInset * 2);
+	const pageWidth = Math.max(0.004, thickness - preset.boardThickness * 2 - c.innerClearance * 2);
+	const pageHeight = Math.max(0.02, height - preset.pageBlockVerticalInset * 2);
 	const pageDepth = Math.max(
 		0.015,
-		depth - spineDepth - c.pageBlockForeEdgeInset - c.innerClearance
+		depth - spineDepth - preset.pageBlockForeEdgeInset - c.innerClearance
 	);
 	const pageCenterZ = -(spineDepth + c.innerClearance + pageDepth / 2);
 
 	const isFlat = spineProfile === 'flat';
+
+	// Raised horizontal bands wrapping cleanly over the spine without widening X beyond thickness.
+	const spineBands: SpineBandSpec[] = preset.spineBandFractions.map((fraction, idx) => {
+		const y = height * fraction;
+		const bandDepth = spineDepth + preset.spineBandProtrusion;
+		return {
+			id: `spine-band-${idx}`,
+			shape: isFlat ? 'flat' : 'rounded',
+			radius: spineRadius,
+			height: preset.spineBandHeight,
+			position: isFlat ? [0, y, -(spineDepth - preset.spineBandProtrusion) / 2] : [0, y, -spineDepth],
+			scaleZ: bandDepth / spineRadius,
+			size: [thickness, preset.spineBandHeight, bandDepth]
+		};
+	});
+
+	// Woven headbands tucked neatly at the top and bottom of the page block behind the spine.
+	const headbands: HeadbandSpec[] = [];
+	if (preset.hasHeadbands) {
+		const headbandRadius = Math.min(0.0022, preset.pageBlockVerticalInset * 0.45);
+		const headbandWidth = Math.max(0.003, pageWidth * 0.96);
+		const headbandZ = -(spineDepth + c.innerClearance + headbandRadius);
+		const pageTopY = height / 2 + pageHeight / 2;
+		const pageBottomY = height / 2 - pageHeight / 2;
+		headbands.push(
+			{
+				id: 'headband-top',
+				radius: headbandRadius,
+				width: headbandWidth,
+				position: [0, pageTopY + headbandRadius * 0.65, headbandZ]
+			},
+			{
+				id: 'headband-bottom',
+				radius: headbandRadius,
+				width: headbandWidth,
+				position: [0, pageBottomY - headbandRadius * 0.65, headbandZ]
+			}
+		);
+	}
+
+	// Procedural Bookmark Ribbon tail emerging from the bottom edge of the page block
+	// and resting gently on the Shelf surface in front of the spine.
+	const pageBottomY = height / 2 - pageHeight / 2;
+	const ribbonWidth = Math.min(0.0075, Math.max(0.005, pageWidth * 0.28));
+	const ribbonThickness = 0.0008;
+	const ribbonFloorY = ribbonThickness / 2 + 0.0004;
+	const bookmarkRibbon: BookmarkRibbonSpec = {
+		width: ribbonWidth,
+		thickness: ribbonThickness,
+		notchDepth: 0.0045,
+		points: [
+			[0, pageBottomY + 0.002, -(spineDepth + 0.012)],
+			[0.0004, Math.max(ribbonFloorY + 0.001, pageBottomY * 0.55), -(spineDepth * 0.35)],
+			[0.0012, ribbonFloorY + 0.0008, 0.008],
+			[0.0018, ribbonFloorY + 0.0003, 0.018],
+			[0.0012, ribbonFloorY, 0.027]
+		]
+	};
 
 	return {
 		spine: {
@@ -102,17 +215,20 @@ export function getVolumeGeometryParts(
 			size: [thickness, height, spineDepth]
 		},
 		frontBoard: {
-			size: [c.boardThickness, height, boardDepth],
+			size: [preset.boardThickness, height, boardDepth],
 			position: [-boardOffsetX, height / 2, boardCenterZ]
 		},
 		backBoard: {
-			size: [c.boardThickness, height, boardDepth],
+			size: [preset.boardThickness, height, boardDepth],
 			position: [boardOffsetX, height / 2, boardCenterZ]
 		},
 		pageBlock: {
 			size: [pageWidth, pageHeight, pageDepth],
 			position: [0, height / 2, pageCenterZ]
-		}
+		},
+		spineBands,
+		headbands,
+		bookmarkRibbon
 	};
 }
 

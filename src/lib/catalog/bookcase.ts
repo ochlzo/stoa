@@ -28,6 +28,8 @@ export interface BookcaseStructure {
 	readonly shelves: readonly ShelfSpec[];
 	readonly topBoard: BoxSpec;
 	readonly crown: BoxSpec;
+	/** Architectural trim moldings (stepped crown, plinth cap, shelf front lips, side stiles). */
+	readonly trimParts: readonly BoxSpec[];
 	readonly bounds: {
 		readonly minX: number;
 		readonly maxX: number;
@@ -122,11 +124,31 @@ export function getBookcaseStructure(): BookcaseStructure {
 	const bodyTopY = d.plinthHeight + bodyInteriorHeight;
 	const totalHeight = bodyTopY + d.crownHeight;
 
-	const plinthDepth = d.depth + d.plinthOverhang;
+	const plinthBodyHeight = d.plinthHeight - 0.022;
+	const plinthBodyOverhang = d.plinthOverhang * 0.5;
+	const plinthBodyDepth = d.depth + plinthBodyOverhang;
 	const plinth: BoxSpec = {
 		id: 'plinth',
-		size: [outerWidth + d.plinthOverhang * 2, d.plinthHeight, plinthDepth],
-		position: [0, d.plinthHeight / 2, d.plinthOverhang - plinthDepth / 2],
+		size: [outerWidth + plinthBodyOverhang * 2, plinthBodyHeight, plinthBodyDepth],
+		position: [0, plinthBodyHeight / 2, plinthBodyOverhang - plinthBodyDepth / 2],
+		tone: 'trim'
+	};
+
+	const plinthShoeHeight = 0.016;
+	const plinthShoeProtrusion = d.plinthOverhang * 0.35;
+	const plinthShoe: BoxSpec = {
+		id: 'plinth-shoe',
+		size: [outerWidth + plinthBodyOverhang * 2, plinthShoeHeight, plinthShoeProtrusion],
+		position: [0, plinthShoeHeight / 2, plinthBodyOverhang + plinthShoeProtrusion / 2],
+		tone: 'trim'
+	};
+
+	const plinthCapHeight = 0.022;
+	const plinthCapDepth = d.depth + d.plinthOverhang;
+	const plinthCap: BoxSpec = {
+		id: 'plinth-cap',
+		size: [outerWidth + d.plinthOverhang * 2, plinthCapHeight, plinthCapDepth],
+		position: [0, plinthBodyHeight + plinthCapHeight / 2, d.plinthOverhang - plinthCapDepth / 2],
 		tone: 'trim'
 	};
 
@@ -181,6 +203,7 @@ export function getBookcaseStructure(): BookcaseStructure {
 		tone: 'structure'
 	};
 
+	// Crown bounding box spec (rendered via smooth mitered profile geometry in Bookcase.svelte)
 	const crownDepth = d.depth + d.crownOverhang;
 	const crown: BoxSpec = {
 		id: 'crown',
@@ -188,6 +211,42 @@ export function getBookcaseStructure(): BookcaseStructure {
 		position: [0, bodyTopY + d.crownHeight / 2, d.crownOverhang - crownDepth / 2],
 		tone: 'trim'
 	};
+
+	// Subtle front face-frame stile trim on left and right side panels
+	const stileDepth = 0.006;
+	const stileWidth = d.sidePanelThickness - 0.006;
+	const leftStile: BoxSpec = {
+		id: 'left-stile-trim',
+		size: [stileWidth, bodyInteriorHeight, stileDepth],
+		position: [-sideCenterX, sideCenterY, stileDepth / 2],
+		tone: 'trim'
+	};
+	const rightStile: BoxSpec = {
+		id: 'right-stile-trim',
+		size: [stileWidth, bodyInteriorHeight, stileDepth],
+		position: [sideCenterX, sideCenterY, stileDepth / 2],
+		tone: 'trim'
+	};
+
+	// Crisp front bullnose / beveled edge lip on every Shelf board and the closing top board
+	const lipDepth = 0.004;
+	const lipHeight = d.shelfThickness - 0.006;
+	const shelfLips: BoxSpec[] = [
+		...shelves.map((shelf) => ({
+			id: `shelf-lip-${shelf.index}`,
+			size: [d.innerWidth, lipHeight, lipDepth] as const,
+			position: [0, shelf.board.position[1], lipDepth / 2] as const,
+			tone: 'trim' as const
+		})),
+		{
+			id: 'top-board-lip',
+			size: [d.innerWidth, lipHeight, lipDepth] as const,
+			position: [0, topBoard.position[1], lipDepth / 2] as const,
+			tone: 'trim' as const
+		}
+	];
+
+	const trimParts: BoxSpec[] = [plinthShoe, plinthCap, leftStile, rightStile, ...shelfLips];
 
 	return {
 		plinth,
@@ -197,6 +256,7 @@ export function getBookcaseStructure(): BookcaseStructure {
 		shelves,
 		topBoard,
 		crown,
+		trimParts,
 		bounds: {
 			minX: -(outerWidth / 2 + d.crownOverhang),
 			maxX: outerWidth / 2 + d.crownOverhang,

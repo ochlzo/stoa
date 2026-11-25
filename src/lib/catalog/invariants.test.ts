@@ -74,6 +74,36 @@ describe('Bookcase & RoomBackdrop structural invariants', () => {
 			`Baseboard front (${baseboardFrontZ}) clips into Bookcase back (${bookcase.bounds.minZ})`
 		);
 	});
+
+	it('keeps all Bookcase architectural trim within bounds and flush with structural joints', () => {
+		assert.ok(bookcase.trimParts.length > 0, 'Expected Bookcase trimParts to be populated');
+		const crownTopY = bookcase.crown.position[1] + bookcase.crown.size[1] / 2;
+		assert.ok(
+			Math.abs(crownTopY - bookcase.bounds.maxY) < EPS,
+			`Crown top (${crownTopY}) != bounds.maxY (${bookcase.bounds.maxY})`
+		);
+		for (const part of bookcase.trimParts) {
+			const minX = part.position[0] - part.size[0] / 2;
+			const maxX = part.position[0] + part.size[0] / 2;
+			const minY = part.position[1] - part.size[1] / 2;
+			const maxY = part.position[1] + part.size[1] / 2;
+			const minZ = part.position[2] - part.size[2] / 2;
+			const maxZ = part.position[2] + part.size[2] / 2;
+
+			assert.ok(
+				minX >= bookcase.bounds.minX - EPS && maxX <= bookcase.bounds.maxX + EPS,
+				`${part.id} X [${minX}, ${maxX}] escapes Bookcase bounds`
+			);
+			assert.ok(
+				minY >= bookcase.bounds.minY - EPS && maxY <= bookcase.bounds.maxY + EPS,
+				`${part.id} Y [${minY}, ${maxY}] escapes Bookcase bounds`
+			);
+			assert.ok(
+				minZ >= bookcase.bounds.minZ - EPS && maxZ <= bookcase.bounds.maxZ + EPS,
+				`${part.id} Z [${minZ}, ${maxZ}] escapes Bookcase bounds`
+			);
+		}
+	});
 });
 
 describe('Catalog & Volume placement invariants', () => {
@@ -193,13 +223,49 @@ describe('Catalog & Volume placement invariants', () => {
 		}
 	});
 
-	it('builds valid non-overlapping Volume geometry parts for every Catalog entry', () => {
+	it('builds valid non-overlapping Volume geometry, Binding Style trim, and Bookmark Ribbon for every Catalog entry', () => {
 		for (const volume of CATALOG) {
-			const parts = getVolumeGeometryParts(volume.dimensions, volume.spineProfile);
+			const parts = getVolumeGeometryParts(
+				volume.dimensions,
+				volume.spineProfile,
+				volume.bindingStyle
+			);
 			assert.ok(parts.pageBlock.size[0] > 0, `${volume.id} pageWidth <= 0`);
 			assert.ok(parts.pageBlock.size[1] > 0, `${volume.id} pageHeight <= 0`);
 			assert.ok(parts.pageBlock.size[2] > 0, `${volume.id} pageDepth <= 0`);
 			assert.ok(parts.frontBoard.size[2] > 0, `${volume.id} boardDepth <= 0`);
+
+			for (const band of parts.spineBands) {
+				assert.ok(
+					band.position[1] - band.height / 2 >= 0 &&
+						band.position[1] + band.height / 2 <= volume.dimensions.height,
+					`${volume.id} ${band.id} escapes Volume height`
+				);
+				assert.ok(
+					band.size[0] <= volume.dimensions.thickness + EPS,
+					`${volume.id} ${band.id} widens past Volume thickness`
+				);
+			}
+
+			for (const headband of parts.headbands) {
+				assert.ok(
+					headband.position[1] - headband.radius >= -EPS &&
+						headband.position[1] + headband.radius <= volume.dimensions.height + EPS,
+					`${volume.id} ${headband.id} pokes outside Volume cover height`
+				);
+				assert.ok(
+					headband.width <= parts.pageBlock.size[0] + EPS,
+					`${volume.id} ${headband.id} clips cover boards`
+				);
+			}
+
+			const ribbonHalfT = parts.bookmarkRibbon.thickness / 2;
+			for (const [, y] of parts.bookmarkRibbon.points) {
+				assert.ok(
+					y - ribbonHalfT >= -EPS,
+					`${volume.id} Bookmark Ribbon dips below Shelf surface (y=${y})`
+				);
+			}
 		}
 	});
 });

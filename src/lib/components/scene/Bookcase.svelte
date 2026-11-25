@@ -1,8 +1,13 @@
 <script lang="ts">
 	import { T } from '@threlte/core';
 	import { CLAY_COLORS, getBookcaseStructure, type BoxSpec } from '#lib/catalog/bookcase.ts';
+	import { createBookcaseCrownGeometry } from '#lib/components/scene/bookcase-trim-geometry.ts';
 
 	const structure = getBookcaseStructure();
+	const crownBundle = createBookcaseCrownGeometry();
+	const crownBaseY = structure.crown.position[1] - structure.crown.size[1] / 2;
+
+	$effect(() => () => crownBundle.dispose());
 
 	const parts: BoxSpec[] = [
 		structure.plinth,
@@ -11,7 +16,7 @@
 		structure.rightSide,
 		...structure.shelves.map((shelf) => shelf.board),
 		structure.topBoard,
-		structure.crown
+		...structure.trimParts
 	];
 </script>
 
@@ -26,4 +31,9 @@
 			/>
 		</T.Mesh>
 	{/each}
+
+	<!-- Classical mitered ogee crown molding -->
+	<T.Mesh name="crown" geometry={crownBundle.geometry} position={[0, crownBaseY, 0]}>
+		<T.MeshStandardMaterial color={CLAY_COLORS.trim} roughness={0.9} metalness={0} />
+	</T.Mesh>
 </T.Group>
