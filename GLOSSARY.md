@@ -27,6 +27,10 @@ _Avoid_: Hero book, playable book, active book
 A named classic volume on the bookcase that can be peeked on the shelf (displaying a floating "Coming Soon" label), but cannot be pulled into Inspect Mode or Reading Mode.
 _Avoid_: Stub, dummy book, coming-soon item
 
+**Shelf Prop**:
+A non-interactive decorative object placed on a shelf to balance the composition—such as ceramics, bowls, framed prints, planters, bookends, sculptures, or horizontal decorative book stacks.
+_Avoid_: Decor item, ornament, filler, clutter
+
 **Binding Style**:
 A reusable physical bookmaking preset (such as raised-band leather or linen cloth) that governs a volume's structural details, including spine bands, headbands, and cover trim.
 _Avoid_: Skin, theme, book template

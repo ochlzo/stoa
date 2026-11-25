@@ -1,0 +1,13 @@
+<script lang="ts">
+	import { T } from '@threlte/core';
+	import { layoutCatalogOnBookcase } from '#lib/catalog/layout.ts';
+	import Volume from './Volume.svelte';
+
+	const placedVolumes = layoutCatalogOnBookcase();
+</script>
+
+<T.Group name="shelf-volumes">
+	{#each placedVolumes as placed (placed.volume.id)}
+		<Volume {placed} />
+	{/each}
+</T.Group>

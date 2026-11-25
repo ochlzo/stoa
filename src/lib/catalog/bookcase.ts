@@ -50,7 +50,7 @@ export interface BookcaseStructure {
  * - z = 0: front plane of the Shelves and side panels (Bookcase extends into -Z)
  */
 export const BOOKCASE_DIMENSIONS = {
-	innerWidth: 2.2,
+	innerWidth: 1.25,
 	sidePanelThickness: 0.04,
 	depth: 0.34,
 	backPanelThickness: 0.018,
@@ -68,20 +68,35 @@ export const BOOKCASE_DIMENSIONS = {
  * Subtle value shifts keep structural joints legible without lookdev styling.
  */
 export const CLAY_COLORS = {
-	background: '#e5e3de',
+	background: '#eae8e3',
+	wall: '#e6e4df',
+	floor: '#d8d5ce',
+	baseboard: '#efede8',
 	structure: '#d4d1cc',
-	back: '#b8b5b0',
-	trim: '#c6c3be'
+	back: '#bcb9b3',
+	trim: '#c8c5bf'
 } as const;
 
 /**
- * Default close-up Shelf Mode camera settings in meters and degrees.
+ * Neutral clay room backdrop dimensions framing the Bookcase (meters).
+ */
+export const ROOM_BACKDROP_DIMENSIONS = {
+	wallWidth: 6.0,
+	wallHeight: 4.0,
+	wallOffsetBehindBookcase: 0.004,
+	floorDepth: 4.0,
+	baseboardHeight: 0.11,
+	baseboardDepth: 0.018
+} as const;
+
+/**
+ * Default Shelf Mode camera settings in meters and degrees (Option B: framed Bookcase with room wall margin).
  */
 export const SHELF_CAMERA_DEFAULTS = {
 	fov: 38,
 	near: 0.05,
-	far: 8,
-	distance: 1.25,
+	far: 10,
+	distance: 1.52,
 	initialShelfIndex: 2
 } as const;
 
