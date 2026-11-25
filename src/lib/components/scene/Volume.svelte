@@ -17,6 +17,12 @@
 		startInspectReturn,
 		stepInspectVolume
 	} from '#lib/physics/inspect-volume.ts';
+	import {
+		createLeaningNeighborState,
+		evaluateLeaningTransform,
+		stepLeaningNeighbor,
+		type LeaningNeighborSupport
+	} from '#lib/physics/leaning-neighbor.ts';
 	import { SHELF_CAMERA_CONFIG, clampDelta, getShelfCameraFov } from '#lib/physics/shelf-camera.ts';
 	import { createVolumePeekState, stepVolumePeek } from '#lib/physics/volume-peek.ts';
 	import {
@@ -39,9 +45,18 @@
 		hasBookmark?: boolean;
 		isPeeked?: boolean;
 		isInspected?: boolean;
+		leaningSupport?: LeaningNeighborSupport | null;
+		isSupportRemoved?: boolean;
 	}
 
-	let { placed, hasBookmark = false, isPeeked = false, isInspected = false }: Props = $props();
+	let {
+		placed,
+		hasBookmark = false,
+		isPeeked = false,
+		isInspected = false,
+		leaningSupport = null,
+		isSupportRemoved = false
+	}: Props = $props();
 
 	const { camera, canvas, size } = useThrelte();
 
@@ -77,12 +92,24 @@
 
 	const peekState = createVolumePeekState();
 	const inspectState = createInspectVolumeState();
+	const leaningState = createLeaningNeighborState(0);
+	let leaningInitialized = false;
 	const anchorPoint = new Vector3();
 	let motionGroupRef: Group | undefined;
 	let peekGroupRef: Group | undefined;
 	let backdropMeshRef: Mesh | undefined;
 	let backdropMaterialRef: MeshBasicMaterial | undefined;
 	let lastPointerType = 'mouse';
+
+	// Seed the leaning neighbor's angular state from its exact resting lean angle.
+	$effect(() => {
+		if (leaningSupport && !leaningInitialized) {
+			leaningState.angle = leaningSupport.restingAngle;
+			leaningState.angularVelocity = 0;
+			leaningState.atCatch = false;
+			leaningInitialized = true;
+		}
+	});
 
 	function applyRestingTransform(): void {
 		if (!motionGroupRef) return;
@@ -207,6 +234,26 @@
 				completeReturnToShelf();
 			}
 			return;
+		}
+
+		if (leaningSupport && leaningInitialized) {
+			const tipped = stepLeaningNeighbor(leaningState, leaningSupport, isSupportRemoved, dt);
+			if (tipped && motionGroupRef) {
+				const leanTransform = evaluateLeaningTransform(
+					placed,
+					leaningSupport.footX,
+					leaningSupport.surfaceY,
+					leaningSupport.sign,
+					leaningState.angle
+				);
+				motionGroupRef.position.set(
+					leanTransform.center[0],
+					leanTransform.center[1],
+					leanTransform.center[2]
+				);
+				motionGroupRef.rotation.order = 'YXZ';
+				motionGroupRef.rotation.set(0, 0, leanTransform.rotationZ);
+			}
 		}
 
 		const moved = stepVolumePeek(peekState, isPeeked, dt);
