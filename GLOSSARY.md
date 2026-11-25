@@ -11,13 +11,25 @@ _Avoid_: Rack, shelf container
 **Shelf**:
 A single horizontal row of volumes inside the bookcase.
 
+**Catalog**:
+The curated registry of volumes in the library, defining each work's metadata, physical dimensions, binding style, and shelf order.
+_Avoid_: Book list, inventory, manifest
+
 **Volume**:
 A single physical book in the library representing a literary work, with its own spine, cover, thickness, and bound leaves.
 _Avoid_: Book item, asset, entry
 
+**Readable Volume**:
+A volume with full literary content and interactive physical features (such as a bookmark ribbon, openable covers, and turning leaves) that can enter Inspect Mode and Reading Mode.
+_Avoid_: Hero book, playable book, active book
+
 **Placeholder Volume**:
 A named classic volume on the bookcase that can be peeked on the shelf (displaying a floating "Coming Soon" label), but cannot be pulled into Inspect Mode or Reading Mode.
 _Avoid_: Stub, dummy book, coming-soon item
+
+**Binding Style**:
+A reusable physical bookmaking preset (such as raised-band leather or linen cloth) that governs a volume's structural details, including spine bands, headbands, and cover trim.
+_Avoid_: Skin, theme, book template
 
 **Peek**:
 The shelf interaction state where a hovered (desktop) or first-tapped (mobile) volume slides slightly forward out of its slot prior to selection.
