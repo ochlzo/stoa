@@ -1,4 +1,4 @@
-# Great Books
+# Stoa
 
 An interactive 3D library where readers browse a bookcase, pull down classic works of literature, inspect them in their hands, and read them by turning physical-feeling pages.
 

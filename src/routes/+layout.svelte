@@ -7,6 +7,7 @@
 </script>
 
 <svelte:head>
+	<title>Stoa</title>
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
