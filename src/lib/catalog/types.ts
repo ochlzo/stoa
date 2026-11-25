@@ -37,14 +37,7 @@ export interface VolumeDimensions {
  * Placement cluster and tilt directive for asymmetric, editorial Shelf arrangements.
  */
 export interface VolumePlacementRule {
-	/** Which side or anchor point of the Shelf this Volume belongs to. */
-	readonly anchor: 'left' | 'right' | 'inset';
-	/**
-	 * Left edge (meters, bookcase-centered X) where an 'inset' cluster starts packing toward +X;
-	 * ignored for other anchors. Clusters read left-to-right in the Catalog: outermost to
-	 * innermost for left/inset, innermost to outermost for right.
-	 */
-	readonly startX?: number;
+	readonly anchor: 'left' | 'right';
 	/**
 	 * Optional tilt angle in radians around the Z-axis.
 	 * Positive leans the top toward -X (resting against the neighbor on its left).
@@ -53,7 +46,7 @@ export interface VolumePlacementRule {
 	readonly leanRadians?: number;
 }
 
-interface VolumeEntryBase {
+interface VolumeBase {
 	readonly id: string;
 	readonly title: string;
 	readonly author: string;
@@ -66,18 +59,18 @@ interface VolumeEntryBase {
 	readonly placement: VolumePlacementRule;
 }
 
-export interface ReadableVolumeEntry extends VolumeEntryBase {
+export interface ReadableVolume extends VolumeBase {
 	readonly kind: 'readable';
 }
 
-export interface PlaceholderVolumeEntry extends VolumeEntryBase {
+export interface PlaceholderVolume extends VolumeBase {
 	readonly kind: 'placeholder';
 }
 
-export type VolumeEntry = ReadableVolumeEntry | PlaceholderVolumeEntry;
+export type Volume = ReadableVolume | PlaceholderVolume;
 
 export interface PlacedVolume {
-	readonly volume: VolumeEntry;
+	readonly volume: Volume;
 	readonly shelfIndex: number;
 	readonly slotIndex: number;
 	/**

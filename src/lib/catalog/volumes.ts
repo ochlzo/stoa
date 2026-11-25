@@ -2,9 +2,9 @@ import type {
 	BindingStyleId,
 	SpineProfile,
 	VolumeClayTone,
-	VolumeEntry,
+	Volume,
 	VolumePlacementRule
-} from './types.ts';
+} from '#lib/catalog/types.ts';
 
 /**
  * Neutral matte clay palette for Volumes during the Clay geometry pass (ADR 0005).
@@ -48,7 +48,7 @@ interface VolumeSpec {
 	readonly readable?: boolean;
 }
 
-function volume(spec: VolumeSpec): VolumeEntry {
+function volume(spec: VolumeSpec): Volume {
 	const [height, thickness, depth] = spec.size;
 	return {
 		id: spec.id,
@@ -75,7 +75,7 @@ function volume(spec: VolumeSpec): VolumeEntry {
  * - No two neighbors share a clay tone, and tall/short and thick/thin volumes alternate.
  * - Each Catalog list reads left-to-right as seen from the front of the Bookcase.
  */
-export const CATALOG: readonly VolumeEntry[] = [
+export const CATALOG: readonly Volume[] = [
 	// --- Shelf 0 (bottom): History & Biography. Short left run (supported by bookend), right run with leaning end ---
 	volume({ id: 'lives-of-the-artists', title: 'Lives of the Artists', author: 'Giorgio Vasari', shelf: 0, size: [0.258, 0.052, 0.182], binding: 'blind-tooled-calf', tone: 'charcoal', spine: 'flat', placement: LEFT }),
 	volume({ id: 'confessions', title: 'Confessions', author: 'Augustine of Hippo', shelf: 0, size: [0.214, 0.03, 0.148], binding: 'quarter-vellum', tone: 'bone', spine: 'shallow', placement: LEFT }),

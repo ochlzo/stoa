@@ -1,12 +1,12 @@
-import { getBookcaseStructure, type ShelfSpec } from './bookcase.ts';
-import { CATALOG } from './volumes.ts';
+import { getBookcaseStructure, type ShelfSpec } from '#lib/catalog/bookcase.ts';
+import { CATALOG } from '#lib/catalog/volumes.ts';
 import type {
 	PlacedVolume,
 	SpineProfile,
 	VolumeDimensions,
-	VolumeEntry,
+	Volume,
 	VolumeGeometryParts
-} from './types.ts';
+} from '#lib/catalog/types.ts';
 
 /**
  * Shared physical tolerances for deterministic Shelf packing and parametric Volume construction (meters).
@@ -18,8 +18,6 @@ export const VOLUME_LAYOUT_CONSTANTS = {
 	minGap: 0.004,
 	/** Additional deterministic micro-gap variation between adjacent upright Volumes. */
 	maxExtraGap: 0.004,
-	/** Tiny contact clearance where a leaning Volume meets its upright neighbor. */
-	leanContactGap: 0.0025,
 	/** Base recess behind the front edge of the Shelf (z = 0) so spines sit naturally on the Shelf. */
 	baseSpineRecess: 0.028,
 	/** Maximum deterministic forward/back stagger for organic spine alignment. */
@@ -124,128 +122,52 @@ interface PackContext {
 	slotCounter: number;
 }
 
-function spineZFor(volume: VolumeEntry): number {
+function spineZFor(volume: Volume): number {
 	const c = VOLUME_LAYOUT_CONSTANTS;
 	return -(c.baseSpineRecess + deterministicUnit(`${volume.id}:recess`) * c.maxSpineStagger);
 }
 
-function gapFor(volume: VolumeEntry): number {
+function gapFor(volume: Volume): number {
 	const c = VOLUME_LAYOUT_CONSTANTS;
 	return c.minGap + deterministicUnit(`${volume.id}:gap`) * c.maxExtraGap;
 }
 
-/**
- * Packs a cluster from `startX` toward +X (visual left-to-right).
- * A positively leaning Volume tilts its top toward -X and rests on the previous neighbor.
- */
-function packTowardRight(ctx: PackContext, volumes: readonly VolumeEntry[], startX: number): void {
-	const c = VOLUME_LAYOUT_CONSTANTS;
-	let cursorX = startX;
+/** Place Volumes from the side panel inward. The cursor tracks the last cover edge. */
+function packCluster(ctx: PackContext, volumes: readonly Volume[], direction: 1 | -1): void {
+	let edge = -direction * (ctx.shelf.innerWidth / 2 - VOLUME_LAYOUT_CONSTANTS.shelfEndMargin);
+	let uprightGap = 0;
+	let supportHeight = 0;
 
 	for (const volume of volumes) {
-		const { thickness, height } = volume.dimensions;
+		const { height, thickness } = volume.dimensions;
 		const lean = volume.placement.leanRadians ?? 0;
-		const spineZ = spineZFor(volume);
+		const angle = Math.abs(lean);
+		const halfWidth = (thickness / 2) * Math.cos(angle);
+		const lift = (thickness / 2) * Math.sin(angle);
+		// A shorter support meets the leaning cover below its top corner.
+		const reach = Math.min(height * Math.sin(angle), supportHeight * Math.tan(angle));
+		const pivotX = edge + direction * (halfWidth + (lean === 0 ? uprightGap : reach));
 
-		if (lean > 0) {
-			const pivotY = ctx.shelf.surfaceY + (thickness / 2) * Math.sin(lean);
-			const pivotX =
-				cursorX + c.leanContactGap + (thickness / 2) * Math.cos(lean) + height * Math.sin(lean);
-
-			ctx.placed.push({
-				volume,
-				shelfIndex: ctx.shelf.index,
-				slotIndex: ctx.slotCounter++,
-				position: [pivotX, pivotY, spineZ],
-				rotationZ: lean
-			});
-			cursorX = pivotX + (thickness / 2) * Math.cos(lean);
-		} else {
-			ctx.placed.push({
-				volume,
-				shelfIndex: ctx.shelf.index,
-				slotIndex: ctx.slotCounter++,
-				position: [cursorX + thickness / 2, ctx.shelf.surfaceY, spineZ],
-				rotationZ: 0
-			});
-			cursorX += thickness + gapFor(volume);
-		}
+		ctx.placed.push({
+			volume,
+			shelfIndex: ctx.shelf.index,
+			slotIndex: ctx.slotCounter++,
+			position: [pivotX, ctx.shelf.surfaceY + lift, spineZFor(volume)],
+			rotationZ: lean
+		});
+		edge = pivotX + direction * halfWidth;
+		uprightGap = gapFor(volume);
+		supportHeight = height;
 	}
 }
 
-/**
- * Packs a cluster from `startX` toward -X. `volumes` are listed visually left-to-right,
- * so the loop walks them from the outer (right) end inward. A negatively leaning Volume
- * tilts its top toward +X and rests on the neighbor on its right.
- */
-function packTowardLeft(ctx: PackContext, volumes: readonly VolumeEntry[], startX: number): void {
-	const c = VOLUME_LAYOUT_CONSTANTS;
-	let cursorX = startX;
-
-	for (let i = volumes.length - 1; i >= 0; i -= 1) {
-		const volume = volumes[i];
-		const { thickness, height } = volume.dimensions;
-		const lean = volume.placement.leanRadians ?? 0;
-		const spineZ = spineZFor(volume);
-
-		if (lean < 0) {
-			const alpha = Math.abs(lean);
-			const pivotY = ctx.shelf.surfaceY + (thickness / 2) * Math.sin(alpha);
-			const pivotX =
-				cursorX - c.leanContactGap - (thickness / 2) * Math.cos(alpha) - height * Math.sin(alpha);
-
-			ctx.placed.push({
-				volume,
-				shelfIndex: ctx.shelf.index,
-				slotIndex: ctx.slotCounter++,
-				position: [pivotX, pivotY, spineZ],
-				rotationZ: lean
-			});
-			cursorX = pivotX - (thickness / 2) * Math.cos(alpha);
-		} else {
-			ctx.placed.push({
-				volume,
-				shelfIndex: ctx.shelf.index,
-				slotIndex: ctx.slotCounter++,
-				position: [cursorX - thickness / 2, ctx.shelf.surfaceY, spineZ],
-				rotationZ: 0
-			});
-			cursorX -= thickness + gapFor(volume);
-		}
-	}
-}
-
-/**
- * Deterministically places all Catalog Volumes onto their assigned Bookcase Shelves in
- * asymmetric left, inset, and right clusters with exact trigonometry for leaning end Volumes.
- */
-export function layoutCatalogOnBookcase(
-	catalog: readonly VolumeEntry[] = CATALOG
-): readonly PlacedVolume[] {
-	const bookcase = getBookcaseStructure();
-	const c = VOLUME_LAYOUT_CONSTANTS;
+export function layoutCatalogOnBookcase(catalog: readonly Volume[] = CATALOG): readonly PlacedVolume[] {
 	const placed: PlacedVolume[] = [];
-
-	for (const shelf of bookcase.shelves) {
-		const shelfVolumes = catalog.filter((entry) => entry.shelfIndex === shelf.index);
-		if (shelfVolumes.length === 0) continue;
-
-		const ctx: PackContext = { shelf, placed, slotCounter: 0 };
-
-		const leftCluster = shelfVolumes.filter((v) => v.placement.anchor === 'left');
-		packTowardRight(ctx, leftCluster, -shelf.innerWidth / 2 + c.shelfEndMargin);
-
-		// Inset clusters are grouped by their declared start X (one run per distinct start).
-		const insetVolumes = shelfVolumes.filter((v) => v.placement.anchor === 'inset');
-		const insetStarts = [...new Set(insetVolumes.map((v) => v.placement.startX ?? 0))];
-		for (const startX of insetStarts) {
-			const run = insetVolumes.filter((v) => (v.placement.startX ?? 0) === startX);
-			packTowardRight(ctx, run, startX);
-		}
-
-		const rightCluster = shelfVolumes.filter((v) => v.placement.anchor === 'right');
-		packTowardLeft(ctx, rightCluster, shelf.innerWidth / 2 - c.shelfEndMargin);
+	for (const shelf of getBookcaseStructure().shelves) {
+		const volumes = catalog.filter((volume) => volume.shelfIndex === shelf.index);
+		const ctx = { shelf, placed, slotCounter: 0 };
+		packCluster(ctx, volumes.filter((v) => v.placement.anchor === 'left'), 1);
+		packCluster(ctx, volumes.filter((v) => v.placement.anchor === 'right').reverse(), -1);
 	}
-
 	return placed;
 }

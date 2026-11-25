@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { T } from '@threlte/core';
 	import { layoutCatalogOnBookcase } from '#lib/catalog/layout.ts';
-	import Volume from './Volume.svelte';
+	import Volume from '#lib/components/scene/Volume.svelte';
 
 	const placedVolumes = layoutCatalogOnBookcase();
 </script>

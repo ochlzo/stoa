@@ -1,5 +1,5 @@
-import { getShelfSurfaceY } from './bookcase.ts';
-import type { VolumeClayTone } from './types.ts';
+import { getShelfSurfaceY } from '#lib/catalog/bookcase.ts';
+import type { VolumeClayTone } from '#lib/catalog/types.ts';
 
 export type VaseProfile = 'amphora' | 'belly' | 'bowl';
 
@@ -67,16 +67,6 @@ export interface GlobePropSpec {
 	readonly clayTone: VolumeClayTone;
 }
 
-export interface HourglassPropSpec {
-	readonly kind: 'hourglass';
-	readonly id: string;
-	readonly shelfIndex: number;
-	readonly height: number;
-	readonly radius: number;
-	readonly position: readonly [x: number, y: number, z: number];
-	readonly clayTone: VolumeClayTone;
-}
-
 export interface CandlestickPropSpec {
 	readonly kind: 'candlestick';
 	readonly id: string;
@@ -128,7 +118,6 @@ export type ShelfPropSpec =
 	| BookendPropSpec
 	| SculpturePropSpec
 	| GlobePropSpec
-	| HourglassPropSpec
 	| CandlestickPropSpec
 	| KeepsakeBoxPropSpec
 	| BookStackPropSpec;

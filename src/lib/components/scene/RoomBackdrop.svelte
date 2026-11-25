@@ -7,7 +7,7 @@
 	} from '#lib/catalog/bookcase.ts';
 
 	const r = ROOM_BACKDROP_DIMENSIONS;
-	const wallZ = -(BOOKCASE_DIMENSIONS.depth + r.wallOffsetBehindBookcase);
+	const wallZ = -(BOOKCASE_DIMENSIONS.depth + r.baseboardDepth + r.wallOffsetBehindBookcase);
 </script>
 
 <T.Group name="room-backdrop">
@@ -20,7 +20,7 @@
 	<!-- Floor plane flush at y = 0 -->
 	<T.Mesh
 		name="room-floor"
-		position={[0, -0.001, wallZ + r.floorDepth / 2]}
+		position={[0, 0, wallZ + r.floorDepth / 2]}
 		rotation={[-Math.PI / 2, 0, 0]}
 	>
 		<T.PlaneGeometry args={[r.wallWidth, r.floorDepth]} />
