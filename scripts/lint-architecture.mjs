@@ -1,3 +1,5 @@
+import ts from 'typescript';
+import { parse } from 'svelte/compiler';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -26,6 +28,87 @@ function lineOf(text, index) {
 	return text.slice(0, index).split('\n').length;
 }
 
+// Inspect script syntax so comments, strings and clamps in other callbacks cannot satisfy a rule.
+function visit(node, inspect) {
+	inspect(node);
+	ts.forEachChild(node, child => visit(child, inspect));
+}
+
+const gestureArithmetic = new Set([
+	'+', '-', '*', '/', '%', '**', '+=', '-=', '*=', '/=', '%=', '**='
+]);
+
+function checkCameraGestureHandlers(source, callbacks, report) {
+	const checked = new Set();
+	function checkHandler(handler) {
+		const fn = callbacks.get(handler.getText()) ?? handler;
+		if (!fn.body || checked.has(fn)) return;
+		checked.add(fn);
+		visit(fn.body, node => {
+			if (ts.isBinaryExpression(node) && gestureArithmetic.has(node.operatorToken.getText())) {
+				report(node, 'camera-gesture-math', 'Move gesture calculations into the camera physics module.');
+			}
+			if (ts.isCallExpression(node)) {
+				const callee = node.expression;
+				if (ts.isPropertyAccessExpression(callee) && callee.expression.getText() === 'Math') {
+					report(node, 'camera-gesture-math', 'Calculate gesture distances and thresholds in the camera physics module.');
+				}
+				if (ts.isIdentifier(callee) && callbacks.has(callee.text)) checkHandler(callee);
+			}
+		});
+	}
+	visit(source, node => {
+		if (!ts.isCallExpression(node) || !ts.isPropertyAccessExpression(node.expression)) return;
+		const [event, handler] = node.arguments;
+		if (node.expression.name.text === 'addEventListener' && handler &&
+			ts.isStringLiteral(event) && /^(pointer|touch|wheel)/.test(event.text)) checkHandler(handler);
+	});
+}
+
+function checkScripts(file, content, isPureLayer) {
+	let sections = [{ start: 0, end: content.length }];
+	if (file.endsWith('.svelte')) {
+		const component = parse(content, { modern: true });
+		sections = [component.instance, component.module].filter(Boolean).map(script => script.content);
+	}
+	for (const section of sections) {
+		const source = ts.createSourceFile(file, content.slice(section.start, section.end), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+		const report = (node, rule, message) => violations.push({
+			file, line: lineOf(content, section.start + node.getStart(source)), rule, message
+		});
+		const callbacks = new Map();
+		const tasks = [];
+		visit(source, node => {
+			if (isPureLayer && (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier) {
+				const spec = node.moduleSpecifier.text;
+				if (/^(?:three|svelte)(?:$|\/)|^@threlte\/|^#lib\/(?:components|state)\//.test(spec)) {
+					report(node, 'pure-ts-layer', `"${spec}" is forbidden in the pure TypeScript layer.`);
+				}
+			}
+			if (ts.isFunctionDeclaration(node) && node.name) callbacks.set(node.name.text, node);
+			if (ts.isVariableDeclaration(node) && node.initializer) callbacks.set(node.name.getText(), node.initializer);
+			if (ts.isCallExpression(node) && node.expression.getText() === 'useTask') tasks.push(node);
+		});
+		if (file === 'src/lib/components/scene/ShelfCamera.svelte') {
+			checkCameraGestureHandlers(source, callbacks, report);
+		}
+		for (const task of tasks) {
+			// Threlte accepts an optional key before the callback.
+			const callback = task.arguments.map(arg => callbacks.get(arg.getText()) ?? arg)
+				.find(arg => ts.isArrowFunction(arg) || ts.isFunctionExpression(arg) || ts.isFunctionDeclaration(arg));
+			if (callback && !callback.parameters.length) continue;
+			const delta = callback?.parameters[0]?.name.getText();
+			let clamped = false;
+			if (callback?.body) visit(callback.body, node => {
+				if (!ts.isCallExpression(node) || node.arguments[0]?.getText() !== delta) return;
+				const callee = node.expression.getText();
+				if (callee === 'clampDelta' || (callee === 'Math.min' && node.arguments.length >= 2)) clamped = true;
+			});
+			if (!clamped) report(task, 'clamp-usetask-delta', 'Clamp the elapsed time inside this useTask callback.');
+		}
+	}
+}
+
 /** @type {Violation[]} */
 const violations = [];
 
@@ -52,28 +135,7 @@ for (const absPath of walk(SRC_DIR)) {
 		}
 	}
 
-	// 2. Enforce pure TypeScript layers (`catalog/` and `physics/`)
-	if (isPureLayer) {
-		for (const match of content.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
-			const spec = match[1];
-			if (
-				spec === 'three' ||
-				spec.startsWith('three/') ||
-				spec === 'svelte' ||
-				spec.startsWith('svelte/') ||
-				spec.startsWith('@threlte/') ||
-				spec.startsWith('#lib/components/') ||
-				spec.startsWith('#lib/state/')
-			) {
-				violations.push({
-					file: relPath,
-					line: lineOf(content, match.index ?? 0),
-					rule: 'pure-ts-layer',
-					message: `"${spec}" is forbidden in ${relPath}. Keep src/lib/catalog/ and src/lib/physics/ pure TypeScript (no Three.js, Svelte, Threlte, or UI state).`
-				});
-			}
-		}
-	}
+	checkScripts(relPath, content, isPureLayer);
 
 	// 3. Keep scene .svelte components thin: no manual THREE.*Geometry or THREE.*Material allocations
 	if (isSceneSvelte) {
@@ -97,21 +159,6 @@ for (const absPath of walk(SRC_DIR)) {
 				line: 1,
 				rule: 'geometry-helper-dispose',
 				message: `Geometry helper allocates Three.js resources without calling .dispose(). Expose a dispose() function that disposes every created geometry/material.`
-			});
-		}
-	}
-
-	// 5. Enforce clamped delta in Threlte useTask()
-	if (/\buseTask\s*\(/.test(content)) {
-		const clampsDelta =
-			/Math\.min\s*\(\s*delta\s*,/.test(content) || /\bclampDelta\s*\(/.test(content);
-		if (!clampsDelta) {
-			const idx = content.search(/\buseTask\s*\(/);
-			violations.push({
-				file: relPath,
-				line: lineOf(content, idx),
-				rule: 'clamp-usetask-delta',
-				message: `useTask() must clamp delta (e.g. "Math.min(delta, 0.05)") so tab switches never cause physics jumps.`
 			});
 		}
 	}

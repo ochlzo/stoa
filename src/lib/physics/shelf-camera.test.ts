@@ -1,3 +1,4 @@
+import { createShelfGestures } from '#lib/physics/shelf-gestures.ts';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
@@ -17,6 +18,7 @@ import {
 	computeShelfCameraBounds,
 	createShelfCameraState,
 	getVisibleHeightAtDistance,
+	getShelfCameraFov,
 	stepShelfCamera
 } from '#lib/physics/shelf-camera.ts';
 
@@ -25,6 +27,7 @@ const VIEWPORTS = [
 	{ name: 'desktop 16:9 (1920x1080)', width: 1920, height: 1080 },
 	{ name: 'ultrawide 21:9 (2560x1080)', width: 2560, height: 1080 },
 	{ name: 'tablet portrait (768x1024)', width: 768, height: 1024 },
+	{ name: 'short desktop', width: 1920, height: 250 },
 	{ name: 'mobile portrait (390x844)', width: 390, height: 844 }
 ] as const;
 
@@ -46,7 +49,7 @@ describe('Shelf Mode camera bounds (ADR 0007)', () => {
 			for (const z of testZooms) {
 				const bounds = computeShelfCameraBounds(viewport, z);
 				const distanceToWall = z - wallZ;
-				const halfWallH = getVisibleHeightAtDistance(distanceToWall) / 2;
+				const halfWallH = getVisibleHeightAtDistance(distanceToWall, getShelfCameraFov(viewport)) / 2;
 				const halfWallW = halfWallH * aspect;
 
 				assert.ok(bounds.minX <= bounds.maxX, 'minX must be <= maxX');
@@ -74,7 +77,8 @@ describe('Shelf Mode camera bounds (ADR 0007)', () => {
 		it(`allows vertical panning across all 5 Shelves on ${viewport.name}`, () => {
 			const z = computeDefaultCameraZ(viewport);
 			const bounds = computeShelfCameraBounds(viewport, z);
-			const halfFrontH = getVisibleHeightAtDistance(z) / 2;
+			const halfFrontH = getVisibleHeightAtDistance(z, getShelfCameraFov(viewport)) / 2;
+			assert.ok(bounds.maxY > bounds.minY, 'vertical drag must move the camera at default zoom');
 			const bottomShelfSurface = getShelfSurfaceY(0);
 			const topShelfTop =
 				getShelfSurfaceY(BOOKCASE_DIMENSIONS.shelfCount - 1) + BOOKCASE_DIMENSIONS.shelfClearance;
@@ -100,10 +104,10 @@ describe('Shelf Mode camera bounds (ADR 0007)', () => {
 		assert.equal(desktopZ, SHELF_CAMERA_DEFAULTS.distance, 'desktop default Z should remain 1.52 m');
 		assert.ok(mobileZ > desktopZ, 'mobile default Z should pull back to fit the full Bookcase width');
 
-		const mobileHalfFrontW = (getVisibleHeightAtDistance(mobileZ) / 2) * (mobile.width / mobile.height);
+		const mobileHalfFrontW = (getVisibleHeightAtDistance(mobileZ - bookcaseBounds.maxZ) / 2) * (mobile.width / mobile.height);
 		assert.ok(
-			mobileHalfFrontW >= bookcaseBounds.innerMaxX - 1e-6,
-			`mobile default half-width (${mobileHalfFrontW.toFixed(3)}m) must cover interior Shelf half-width (${bookcaseBounds.innerMaxX.toFixed(3)}m)`
+			mobileHalfFrontW >= bookcaseBounds.maxX - 1e-6,
+			`mobile default half-width (${mobileHalfFrontW.toFixed(3)}m) must cover outer Bookcase half-width (${bookcaseBounds.maxX.toFixed(3)}m)`
 		);
 	});
 
@@ -196,4 +200,29 @@ describe('Shelf Mode camera inertia, pinch zoom, and clamping', () => {
 		}
 		assert.equal(state.z, bounds.maxZ, 'pinch-out should clamp at maxZ');
 	});
+});
+
+
+it('moves on the first drag event, preserves release inertia and resumes after a pinch', () => {
+	const viewport = { width: 390, height: 844 };
+	const state = createShelfCameraState(viewport);
+	const gestures = createShelfGestures(state);
+	const bounds = computeShelfCameraBounds(viewport, state.z);
+	const move = (id: number, y: number, time: number) =>
+		gestures.move(id, 100, y, time, viewport.height, bounds, getShelfCameraFov(viewport));
+	const initialY = state.y;
+	gestures.start(1, 100, 100, 0);
+	assert.equal(move(1, 102, 5), undefined);
+	assert.equal(state.y, initialY);
+	assert.equal(move(1, 170, 16), 'pan');
+	gestures.end(1, 17, false);
+	assert.ok(state.y > initialY && state.vy > 0);
+	gestures.start(1, 100, 170, 20);
+	gestures.start(2, 100, 220, 21);
+	assert.equal(move(2, 240, 24), 'pinch');
+	assert.ok(state.targetZ < state.z);
+	gestures.end(2, 25, false);
+	assert.equal(move(1, 165, 28), 'pan');
+	gestures.end(1, 30, true);
+	assert.equal(state.vy, 0);
 });

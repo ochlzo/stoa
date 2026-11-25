@@ -3,8 +3,17 @@ import {
 	ROOM_BACKDROP_DIMENSIONS,
 	SHELF_CAMERA_DEFAULTS,
 	getBookcaseStructure,
-	getInitialShelfCameraY
+	getInitialShelfCameraY,
+	getShelfSurfaceY
 } from '#lib/catalog/bookcase.ts';
+
+const { bounds: bookcaseBounds } = getBookcaseStructure();
+const room = ROOM_BACKDROP_DIMENSIONS;
+const wallZ = -(BOOKCASE_DIMENSIONS.depth + room.baseboardDepth + room.wallOffsetBehindBookcase);
+const halfShelfHeight = BOOKCASE_DIMENSIONS.shelfClearance / 2;
+const bottomShelfCenter = getShelfSurfaceY(0) + halfShelfHeight;
+const topShelfCenter = getShelfSurfaceY(BOOKCASE_DIMENSIONS.shelfCount - 1) + halfShelfHeight;
+const defaultTanHalfFov = Math.tan(SHELF_CAMERA_DEFAULTS.fov * Math.PI / 360);
 
 export interface ShelfCameraBounds {
 	readonly minX: number;
@@ -42,7 +51,7 @@ export interface ShelfCameraConfig {
 	readonly maxZoomDistance: number;
 	/** Horizontal wall margin outside the Bookcase crown at z = 0 (meters). */
 	readonly horizontalMargin: number;
-	/** Horizontal margin outside the interior Shelf span when auto-fitting mobile width (meters). */
+	/** Horizontal margin outside the Bookcase crown when auto-fitting mobile width (meters). */
 	readonly mobileFitMargin: number;
 	/** Minimum horizontal pan give (meters) on wide desktop viewports. */
 	readonly desktopHorizontalGive: number;
@@ -70,7 +79,7 @@ export const SHELF_CAMERA_CONFIG: ShelfCameraConfig = {
 	minZoomDistance: 1.0,
 	maxZoomDistance: 2.6,
 	horizontalMargin: 0.14,
-	mobileFitMargin: 0,
+	mobileFitMargin: 0.012,
 	desktopHorizontalGive: 0.16,
 	bottomMargin: 0.08,
 	topMargin: 0.14,
@@ -108,7 +117,7 @@ export function clampDelta(delta: number, maxDelta = SHELF_CAMERA_CONFIG.maxDelt
  */
 export function getVisibleHeightAtDistance(
 	distance: number,
-	fovDegrees = SHELF_CAMERA_DEFAULTS.fov
+	fovDegrees: number = SHELF_CAMERA_DEFAULTS.fov
 ): number {
 	const halfFovRadians = (fovDegrees * Math.PI) / 360;
 	return 2 * distance * Math.tan(halfFovRadians);
@@ -118,16 +127,17 @@ export function getVisibleHeightAtDistance(
  * Computes the maximum camera Z distance that keeps the RoomBackdrop wall covering
  * the entire viewport without exposing void.
  */
-function computeMaxWallSafeZ(aspect: number): number {
-	const room = ROOM_BACKDROP_DIMENSIONS;
-	const wallZ = -(BOOKCASE_DIMENSIONS.depth + room.baseboardDepth + room.wallOffsetBehindBookcase);
-	const tanHalfFov = Math.tan((SHELF_CAMERA_DEFAULTS.fov * Math.PI) / 360);
+function getProjection(viewport: ViewportSize) {
+	const aspect = Math.max(1, viewport.width) / Math.max(1, viewport.height);
+	// In a shallow window, narrow the vertical angle before the wall edges enter view.
+	const widthLimit = room.wallWidth / (2 * aspect * (SHELF_CAMERA_DEFAULTS.distance - wallZ));
+	const tanHalfFov = Math.min(defaultTanHalfFov, widthLimit);
+	const maxWallSafeZ = wallZ + Math.min(room.wallHeight, room.wallWidth / aspect) / (2 * tanHalfFov);
+	return { aspect, tanHalfFov, maxWallSafeZ };
+}
 
-	const maxDistanceForHeight = room.wallHeight / (2 * tanHalfFov);
-	const maxDistanceForWidth = room.wallWidth / (2 * tanHalfFov * aspect);
-	const maxDistanceToWall = Math.min(maxDistanceForHeight, maxDistanceForWidth);
-
-	return Math.max(SHELF_CAMERA_CONFIG.minZoomDistance, maxDistanceToWall + wallZ - 0.05);
+export function getShelfCameraFov(viewport: ViewportSize): number {
+	return Math.atan(getProjection(viewport).tanHalfFov) * 360 / Math.PI;
 }
 
 /**
@@ -141,16 +151,9 @@ export function computeDefaultCameraZ(
 	viewport: ViewportSize,
 	config: ShelfCameraConfig = SHELF_CAMERA_CONFIG
 ): number {
-	const safeWidth = Math.max(1, viewport.width);
-	const safeHeight = Math.max(1, viewport.height);
-	const aspect = safeWidth / safeHeight;
-
-	const { bounds: bookcaseBounds } = getBookcaseStructure();
-	const tanHalfFov = Math.tan((SHELF_CAMERA_DEFAULTS.fov * Math.PI) / 360);
-	const fitHalfW = bookcaseBounds.innerMaxX + config.mobileFitMargin;
-	const fitWidthDistance = fitHalfW / (aspect * tanHalfFov);
-
-	const maxWallSafeZ = computeMaxWallSafeZ(aspect);
+	const { aspect, tanHalfFov, maxWallSafeZ } = getProjection(viewport);
+	const fitHalfW = bookcaseBounds.maxX + config.mobileFitMargin;
+	const fitWidthDistance = bookcaseBounds.maxZ + fitHalfW / (aspect * tanHalfFov);
 	return Math.min(Math.max(SHELF_CAMERA_DEFAULTS.distance, fitWidthDistance), maxWallSafeZ);
 }
 
@@ -170,15 +173,7 @@ export function computeShelfCameraBounds(
 	cameraZ?: number,
 	config: ShelfCameraConfig = SHELF_CAMERA_CONFIG
 ): ShelfCameraBounds {
-	const safeWidth = Math.max(1, viewport.width);
-	const safeHeight = Math.max(1, viewport.height);
-	const aspect = safeWidth / safeHeight;
-
-	const { bounds: bookcaseBounds } = getBookcaseStructure();
-	const room = ROOM_BACKDROP_DIMENSIONS;
-	const wallZ = -(BOOKCASE_DIMENSIONS.depth + room.baseboardDepth + room.wallOffsetBehindBookcase);
-
-	const maxWallSafeZ = computeMaxWallSafeZ(aspect);
+	const { aspect, tanHalfFov, maxWallSafeZ } = getProjection(viewport);
 	const defaultZ = computeDefaultCameraZ(viewport, config);
 	const minZ = Math.min(config.minZoomDistance, maxWallSafeZ);
 	const maxZ = Math.min(Math.max(defaultZ, config.maxZoomDistance), maxWallSafeZ);
@@ -186,10 +181,10 @@ export function computeShelfCameraBounds(
 
 	const distanceToWall = effectiveZ - wallZ;
 
-	const halfVisibleHFront = getVisibleHeightAtDistance(effectiveZ) / 2;
+	const halfVisibleHFront = effectiveZ * tanHalfFov;
 	const halfVisibleWFront = halfVisibleHFront * aspect;
 
-	const halfVisibleHWall = getVisibleHeightAtDistance(distanceToWall) / 2;
+	const halfVisibleHWall = distanceToWall * tanHalfFov;
 	const halfVisibleWWall = halfVisibleHWall * aspect;
 
 	// Never expose empty void beyond the left/right edges of the room wall at wallZ.
@@ -201,25 +196,36 @@ export function computeShelfCameraBounds(
 
 	// Vertical framing: show plinth + floor margin at bottom, crown + wall margin at top,
 	// while never exposing void above the room wall at wallZ.
-	const maxWallSafeY = Math.max(config.minFloorClearance, room.wallHeight - halfVisibleHWall);
-	const desiredMinY = Math.max(config.minFloorClearance, halfVisibleHFront - config.bottomMargin);
-	const desiredMaxY = Math.min(
-		bookcaseBounds.maxY + config.topMargin - halfVisibleHFront,
-		maxWallSafeY
-	);
-
-	if (desiredMinY > desiredMaxY) {
-		const midY = Math.min(Math.max((desiredMinY + desiredMaxY) / 2, config.minFloorClearance), maxWallSafeY);
-		return { minX: -maxX, maxX, minY: midY, maxY: midY, minZ, maxZ };
-	}
+	const maxWallSafeY = room.wallHeight - halfVisibleHWall;
+	// At large portrait zoom distances the floor's front edge can also enter view.
+	const floorSafeY = Math.max(config.minFloorClearance, (distanceToWall - room.floorDepth) * tanHalfFov);
+	const bottomLimit = halfVisibleHFront - config.bottomMargin;
+	const minY = Math.max(floorSafeY, aspect < 1 ? Math.min(bottomLimit, bottomShelfCenter) : bottomLimit);
+	const topLimit = bookcaseBounds.maxY + config.topMargin - halfVisibleHFront;
+	const maxY = Math.min(maxWallSafeY, aspect < 1 ? Math.max(topLimit, topShelfCenter) : topLimit);
 
 	return {
 		minX: -maxX,
 		maxX,
-		minY: desiredMinY,
-		maxY: desiredMaxY,
+		minY,
+		maxY,
 		minZ,
 		maxZ
+	};
+}
+
+/** Keep a camera's last projection bounds across frames and pointer events. */
+export function createCameraBoundsReader() {
+	let cached: ShelfCameraBounds | undefined;
+	let width: number, height: number, distance: number;
+	return (viewport: ViewportSize, z: number) => {
+		if (!cached || viewport.width !== width || viewport.height !== height || z !== distance) {
+			cached = computeShelfCameraBounds(viewport, z);
+			width = viewport.width;
+			height = viewport.height;
+			distance = z;
+		}
+		return cached;
 	};
 }
 
@@ -262,10 +268,11 @@ export function pixelsToWorldPan(
 	dxPixels: number,
 	dyPixels: number,
 	viewportHeight: number,
-	cameraZ: number = SHELF_CAMERA_DEFAULTS.distance
+	cameraZ: number = SHELF_CAMERA_DEFAULTS.distance,
+	fov: number = SHELF_CAMERA_DEFAULTS.fov
 ): { dx: number; dy: number } {
 	const safeHeight = Math.max(1, viewportHeight);
-	const metersPerPixel = getVisibleHeightAtDistance(cameraZ) / safeHeight;
+	const metersPerPixel = getVisibleHeightAtDistance(cameraZ, fov) / safeHeight;
 	return {
 		dx: -dxPixels * metersPerPixel,
 		dy: dyPixels * metersPerPixel
@@ -301,9 +308,10 @@ export function applyDragPan(
 	dtSeconds: number,
 	viewportHeight: number,
 	bounds: ShelfCameraBounds,
-	config: ShelfCameraConfig = SHELF_CAMERA_CONFIG
+	config: ShelfCameraConfig = SHELF_CAMERA_CONFIG,
+	fov: number = SHELF_CAMERA_DEFAULTS.fov
 ): void {
-	const { dx, dy } = pixelsToWorldPan(dxPixels, dyPixels, viewportHeight, state.z);
+	const { dx, dy } = pixelsToWorldPan(dxPixels, dyPixels, viewportHeight, state.z, fov);
 	state.x += dx;
 	state.y += dy;
 
@@ -346,7 +354,8 @@ export function applyWheelImpulse(
 	viewportHeight: number,
 	bounds?: ShelfCameraBounds,
 	isPinchGesture = false,
-	config: ShelfCameraConfig = SHELF_CAMERA_CONFIG
+	config: ShelfCameraConfig = SHELF_CAMERA_CONFIG,
+	fov: number = SHELF_CAMERA_DEFAULTS.fov
 ): void {
 	const safeHeight = Math.max(1, viewportHeight);
 	const pxY = normalizeWheelDelta(deltaY, deltaMode, safeHeight);
@@ -358,7 +367,7 @@ export function applyWheelImpulse(
 	}
 
 	const pxX = normalizeWheelDelta(deltaX, deltaMode, safeHeight);
-	const metersPerPixel = getVisibleHeightAtDistance(state.z) / safeHeight;
+	const metersPerPixel = getVisibleHeightAtDistance(state.z, fov) / safeHeight;
 
 	state.vx += pxX * metersPerPixel * config.wheelImpulseScale;
 	state.vy -= pxY * metersPerPixel * config.wheelImpulseScale;
@@ -376,15 +385,16 @@ export function stepShelfCamera(
 	state: ShelfCameraState,
 	viewport: ViewportSize,
 	rawDelta: number,
-	config: ShelfCameraConfig = SHELF_CAMERA_CONFIG
+	config: ShelfCameraConfig = SHELF_CAMERA_CONFIG,
+	readBounds: (viewport: ViewportSize, z: number, config: ShelfCameraConfig) => ShelfCameraBounds = computeShelfCameraBounds
 ): boolean {
 	const dt = clampDelta(rawDelta, config.maxDelta);
 	const prevX = state.x;
 	const prevY = state.y;
 	const prevZ = state.z;
 
-	const initialBounds = computeShelfCameraBounds(viewport, state.z, config);
-	state.targetZ = Math.min(Math.max(state.targetZ, initialBounds.minZ), initialBounds.maxZ);
+	const currentBounds = readBounds(viewport, state.z, config);
+	state.targetZ = Math.min(Math.max(state.targetZ, currentBounds.minZ), currentBounds.maxZ);
 
 	if (dt > 0) {
 		const zDiff = state.targetZ - state.z;
@@ -409,7 +419,7 @@ export function stepShelfCamera(
 		}
 	}
 
-	const finalBounds = computeShelfCameraBounds(viewport, state.z, config);
+	const finalBounds = state.z === prevZ ? currentBounds : readBounds(viewport, state.z, config);
 	clampCameraPosition(state, finalBounds);
 	return state.x !== prevX || state.y !== prevY || state.z !== prevZ;
 }
