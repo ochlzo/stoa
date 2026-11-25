@@ -1,2 +1,10 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<script lang="ts">
+	import { Canvas } from '@threlte/core';
+	import LibraryScene from '#lib/components/scene/LibraryScene.svelte';
+</script>
+
+<main class="h-dvh w-dvw overflow-hidden select-none touch-none">
+	<Canvas>
+		<LibraryScene />
+	</Canvas>
+</main>
