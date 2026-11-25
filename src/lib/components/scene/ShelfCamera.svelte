@@ -14,6 +14,11 @@
 	} from '#lib/physics/shelf-camera.ts';
 
 	import { createShelfGestures } from '#lib/physics/shelf-gestures.ts';
+	import {
+		getIsShelfPanning,
+		getPeekedVolume,
+		setShelfPanning
+	} from '#lib/state/library.svelte.ts';
 
 	const { canvas, size } = useThrelte();
 
@@ -43,10 +48,25 @@
 		syncCameraTransform();
 	});
 
+	// Keep the canvas cursor aligned with panning state and the hovered Volume type.
+	$effect(() => {
+		if (getIsShelfPanning()) {
+			canvas.style.cursor = 'grabbing';
+			return;
+		}
+		const peeked = getPeekedVolume();
+		if (peeked?.kind === 'readable') {
+			canvas.style.cursor = 'pointer';
+		} else if (peeked?.kind === 'placeholder') {
+			canvas.style.cursor = 'default';
+		} else {
+			canvas.style.cursor = 'grab';
+		}
+	});
+
 	// Attach single-pointer drag, two-finger pinch zoom, and wheel listeners to the WebGL canvas.
 	$effect(() => {
 		const gestures = createShelfGestures(cameraState);
-		canvas.style.cursor = 'grab';
 
 		function onPointerDown(event: PointerEvent): void {
 			if (event.pointerType === 'mouse' && event.button !== 0) return;
@@ -60,13 +80,13 @@
 				event.timeStamp, viewport.height, readBounds(viewport, cameraState.z), fov);
 			if (!gesture) return;
 			if (gesture === 'pinch') hasUserZoomed = true;
-			canvas.style.cursor = 'grabbing';
+			setShelfPanning(true);
 			syncCameraTransform();
 		}
 
 		function onPointerEnd(event: PointerEvent): void {
 			gestures.end(event.pointerId, event.timeStamp, event.type === 'pointercancel');
-			if (!cameraState.isDragging) canvas.style.cursor = 'grab';
+			if (!cameraState.isDragging) setShelfPanning(false);
 		}
 
 		function onWheel(event: WheelEvent): void {
@@ -96,6 +116,7 @@
 		window.addEventListener('pointercancel', onPointerEnd);
 
 		return () => {
+			setShelfPanning(false);
 			canvas.style.cursor = '';
 			canvas.removeEventListener('pointerdown', onPointerDown);
 			canvas.removeEventListener('wheel', onWheel);
