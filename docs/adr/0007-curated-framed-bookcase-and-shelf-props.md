@@ -4,11 +4,11 @@ status: accepted
 
 # Curated Framed Bookcase, Shelf Props, and Procedural Leaning Physics
 
-Stoa uses a narrower, architectural `Bookcase` (~`1.25 m` inner width, 5 `Shelves`) framed against a room backdrop (wall, floor, and baseboard) rather than an edge-to-edge wall of 150+ filler books. Each `Shelf` holds an asymmetric cluster of ~12–15 registered `Catalog` `Volumes` (upright and leaning) balanced with non-interactive procedural `Shelf Props` (ceramics, bowls, framed prints, planters, bookends, sculptures, and decorative horizontal book stacks).
+Stoa uses a narrower, architectural `Bookcase` (~`1.25 m` inner width, 5 `Shelves`) framed against a room backdrop (wall, floor, and baseboard) rather than an edge-to-edge wall of 150+ filler books. Each `Shelf` holds asymmetric clusters of registered `Catalog` `Volumes` (~7–11 per `Shelf`, ~45 total; upright and leaning, with varied heights, spine widths, spine profiles, and clay tones so no two neighbors read alike) balanced with non-interactive procedural `Shelf Props` (ceramics, bowls, framed prints, planters, bookends, sculptures, and decorative horizontal book stacks).
 
 ## Considered Options
 
-- **Curated framed `Bookcase` + `Shelf Props` + lightweight procedural topple physics (chosen)**: Keeps the `Catalog` intentional (~12–15 iconic works), gives every `Shelf` an editorial, lived-in composition matching warm architectural bookcases, and allows a leaning neighbor resting on a `Readable Volume` to topple naturally on pull-out (and smoothly right itself on return) using lightweight angular physics in `src/lib/physics/` without adding a rigid-body engine.
+- **Curated framed `Bookcase` + `Shelf Props` + lightweight procedural topple physics (chosen)**: Keeps the `Catalog` intentional (~45 curated classics, not generic filler), gives every `Shelf` an editorial, lived-in composition matching warm architectural bookcases, and allows a leaning neighbor resting on a `Readable Volume` to topple naturally on pull-out (and smoothly right itself on return) using lightweight angular physics in `src/lib/physics/` without adding a rigid-body engine.
 - **Wide edge-to-edge `Bookcase` packed with 150+ `Placeholder Volumes`**: Avoids rendering a room backdrop, but dilutes the `Catalog` with repetitive filler spines and produces a rigid, uniform silhouette.
 - **Full rigid-body physics engine (e.g., Rapier)**: Handles arbitrary collisions automatically, but adds significant bundle weight and nondeterministic jitter for an interaction that only needs deterministic tipping and settling.
 

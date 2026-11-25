@@ -10,7 +10,7 @@
 
 	let { placed }: Props = $props();
 
-	const parts = $derived(getVolumeGeometryParts(placed.volume.dimensions));
+	const parts = $derived(getVolumeGeometryParts(placed.volume.dimensions, placed.volume.spineProfile));
 	const coverColor = $derived(VOLUME_CLAY_COLORS[placed.volume.clayTone]);
 </script>
 
@@ -19,26 +19,37 @@
 	position={[placed.position[0], placed.position[1], placed.position[2]]}
 	rotation={[0, 0, placed.rotationZ]}
 >
-	<!-- Rounded spine curving forward to local z = 0 -->
-	<T.Mesh
-		name="spine"
-		position={[parts.spine.position[0], parts.spine.position[1], parts.spine.position[2]]}
-		scale={[1, 1, parts.spine.scaleZ]}
-	>
-		<T.CylinderGeometry
-			args={[
-				parts.spine.radius,
-				parts.spine.radius,
-				parts.spine.height,
-				12,
-				1,
-				false,
-				-Math.PI / 2,
-				Math.PI
-			]}
-		/>
-		<T.MeshStandardMaterial color={coverColor} roughness={0.9} metalness={0} />
-	</T.Mesh>
+	{#if parts.spine.shape === 'flat'}
+		<!-- Squared-off spine: a thin box whose front face sits at local z = 0 -->
+		<T.Mesh
+			name="spine"
+			position={[parts.spine.position[0], parts.spine.position[1], parts.spine.position[2]]}
+		>
+			<T.BoxGeometry args={[parts.spine.size[0], parts.spine.size[1], parts.spine.size[2]]} />
+			<T.MeshStandardMaterial color={coverColor} roughness={0.9} metalness={0} />
+		</T.Mesh>
+	{:else}
+		<!-- Rounded (or shallow) spine: half-cylinder squashed to curve forward to local z = 0 -->
+		<T.Mesh
+			name="spine"
+			position={[parts.spine.position[0], parts.spine.position[1], parts.spine.position[2]]}
+			scale={[1, 1, parts.spine.scaleZ]}
+		>
+			<T.CylinderGeometry
+				args={[
+					parts.spine.radius,
+					parts.spine.radius,
+					parts.spine.height,
+					16,
+					1,
+					false,
+					-Math.PI / 2,
+					Math.PI
+				]}
+			/>
+			<T.MeshStandardMaterial color={coverColor} roughness={0.9} metalness={0} />
+		</T.Mesh>
+	{/if}
 
 	<!-- Front cover board -->
 	<T.Mesh

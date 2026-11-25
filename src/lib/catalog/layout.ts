@@ -1,6 +1,12 @@
-import { getBookcaseStructure } from './bookcase.ts';
+import { getBookcaseStructure, type ShelfSpec } from './bookcase.ts';
 import { CATALOG } from './volumes.ts';
-import type { PlacedVolume, VolumeDimensions, VolumeEntry, VolumeGeometryParts } from './types.ts';
+import type {
+	PlacedVolume,
+	SpineProfile,
+	VolumeDimensions,
+	VolumeEntry,
+	VolumeGeometryParts
+} from './types.ts';
 
 /**
  * Shared physical tolerances for deterministic Shelf packing and parametric Volume construction (meters).
@@ -11,13 +17,13 @@ export const VOLUME_LAYOUT_CONSTANTS = {
 	/** Minimum horizontal gap between adjacent upright Volumes so covers never clip or Z-fight. */
 	minGap: 0.004,
 	/** Additional deterministic micro-gap variation between adjacent upright Volumes. */
-	maxExtraGap: 0.003,
+	maxExtraGap: 0.004,
 	/** Tiny contact clearance where a leaning Volume meets its upright neighbor. */
 	leanContactGap: 0.0025,
 	/** Base recess behind the front edge of the Shelf (z = 0) so spines sit naturally on the Shelf. */
-	baseSpineRecess: 0.03,
+	baseSpineRecess: 0.028,
 	/** Maximum deterministic forward/back stagger for organic spine alignment. */
-	maxSpineStagger: 0.012,
+	maxSpineStagger: 0.022,
 	/** Hardcover board thickness. */
 	boardThickness: 0.0032,
 	/** Vertical overhang of cover boards above and below the page block. */
@@ -42,20 +48,37 @@ function deterministicUnit(seed: string): number {
 }
 
 /**
+ * How far each spine profile protrudes in front of the cover boards (meters).
+ */
+function getSpineDepth(profile: SpineProfile, thickness: number): number {
+	switch (profile) {
+		case 'flat':
+			return 0.004;
+		case 'shallow':
+			return Math.min(0.005, thickness * 0.14);
+		case 'rounded':
+			return Math.min(0.012, thickness * 0.28);
+	}
+}
+
+/**
  * Computes non-overlapping local geometry specs for a parametric clay Volume silhouette:
- * front board, back board, rounded spine, and slightly recessed page block.
+ * front board, back board, spine (rounded, shallow, or flat), and slightly recessed page block.
  *
  * Local pivot convention:
  * - x = 0: horizontal center of the Volume
  * - y = 0: flush at the bottom of the cover boards
- * - z = 0: outermost front edge of the rounded spine (Volume extends into -Z)
+ * - z = 0: outermost front edge of the spine (Volume extends into -Z)
  */
-export function getVolumeGeometryParts(dimensions: VolumeDimensions): VolumeGeometryParts {
+export function getVolumeGeometryParts(
+	dimensions: VolumeDimensions,
+	spineProfile: SpineProfile = 'rounded'
+): VolumeGeometryParts {
 	const { height, depth, thickness } = dimensions;
 	const c = VOLUME_LAYOUT_CONSTANTS;
 
 	const spineRadius = thickness / 2;
-	const spineDepth = Math.min(0.012, thickness * 0.28);
+	const spineDepth = getSpineDepth(spineProfile, thickness);
 	const boardDepth = Math.max(0.02, depth - spineDepth);
 	const boardCenterZ = -(spineDepth + boardDepth / 2);
 	const boardOffsetX = thickness / 2 - c.boardThickness / 2;
@@ -68,13 +91,17 @@ export function getVolumeGeometryParts(dimensions: VolumeDimensions): VolumeGeom
 	);
 	const pageCenterZ = -(spineDepth + c.innerClearance + pageDepth / 2);
 
+	const isFlat = spineProfile === 'flat';
+
 	return {
 		spine: {
+			shape: isFlat ? 'flat' : 'rounded',
 			radius: spineRadius,
 			depth: spineDepth,
 			height,
-			position: [0, height / 2, -spineDepth],
-			scaleZ: spineDepth / spineRadius
+			position: isFlat ? [0, height / 2, -spineDepth / 2] : [0, height / 2, -spineDepth],
+			scaleZ: spineDepth / spineRadius,
+			size: [thickness, height, spineDepth]
 		},
 		frontBoard: {
 			size: [c.boardThickness, height, boardDepth],
@@ -91,9 +118,106 @@ export function getVolumeGeometryParts(dimensions: VolumeDimensions): VolumeGeom
 	};
 }
 
+interface PackContext {
+	readonly shelf: ShelfSpec;
+	readonly placed: PlacedVolume[];
+	slotCounter: number;
+}
+
+function spineZFor(volume: VolumeEntry): number {
+	const c = VOLUME_LAYOUT_CONSTANTS;
+	return -(c.baseSpineRecess + deterministicUnit(`${volume.id}:recess`) * c.maxSpineStagger);
+}
+
+function gapFor(volume: VolumeEntry): number {
+	const c = VOLUME_LAYOUT_CONSTANTS;
+	return c.minGap + deterministicUnit(`${volume.id}:gap`) * c.maxExtraGap;
+}
+
 /**
- * Deterministically places all Catalog Volumes onto their assigned Bookcase Shelves
- * in asymmetric left/right clusters with exact trigonometry for leaning end Volumes.
+ * Packs a cluster from `startX` toward +X (visual left-to-right).
+ * A positively leaning Volume tilts its top toward -X and rests on the previous neighbor.
+ */
+function packTowardRight(ctx: PackContext, volumes: readonly VolumeEntry[], startX: number): void {
+	const c = VOLUME_LAYOUT_CONSTANTS;
+	let cursorX = startX;
+
+	for (const volume of volumes) {
+		const { thickness, height } = volume.dimensions;
+		const lean = volume.placement.leanRadians ?? 0;
+		const spineZ = spineZFor(volume);
+
+		if (lean > 0) {
+			const pivotY = ctx.shelf.surfaceY + (thickness / 2) * Math.sin(lean);
+			const pivotX =
+				cursorX + c.leanContactGap + (thickness / 2) * Math.cos(lean) + height * Math.sin(lean);
+
+			ctx.placed.push({
+				volume,
+				shelfIndex: ctx.shelf.index,
+				slotIndex: ctx.slotCounter++,
+				position: [pivotX, pivotY, spineZ],
+				rotationZ: lean
+			});
+			cursorX = pivotX + (thickness / 2) * Math.cos(lean);
+		} else {
+			ctx.placed.push({
+				volume,
+				shelfIndex: ctx.shelf.index,
+				slotIndex: ctx.slotCounter++,
+				position: [cursorX + thickness / 2, ctx.shelf.surfaceY, spineZ],
+				rotationZ: 0
+			});
+			cursorX += thickness + gapFor(volume);
+		}
+	}
+}
+
+/**
+ * Packs a cluster from `startX` toward -X. `volumes` are listed visually left-to-right,
+ * so the loop walks them from the outer (right) end inward. A negatively leaning Volume
+ * tilts its top toward +X and rests on the neighbor on its right.
+ */
+function packTowardLeft(ctx: PackContext, volumes: readonly VolumeEntry[], startX: number): void {
+	const c = VOLUME_LAYOUT_CONSTANTS;
+	let cursorX = startX;
+
+	for (let i = volumes.length - 1; i >= 0; i -= 1) {
+		const volume = volumes[i];
+		const { thickness, height } = volume.dimensions;
+		const lean = volume.placement.leanRadians ?? 0;
+		const spineZ = spineZFor(volume);
+
+		if (lean < 0) {
+			const alpha = Math.abs(lean);
+			const pivotY = ctx.shelf.surfaceY + (thickness / 2) * Math.sin(alpha);
+			const pivotX =
+				cursorX - c.leanContactGap - (thickness / 2) * Math.cos(alpha) - height * Math.sin(alpha);
+
+			ctx.placed.push({
+				volume,
+				shelfIndex: ctx.shelf.index,
+				slotIndex: ctx.slotCounter++,
+				position: [pivotX, pivotY, spineZ],
+				rotationZ: lean
+			});
+			cursorX = pivotX - (thickness / 2) * Math.cos(alpha);
+		} else {
+			ctx.placed.push({
+				volume,
+				shelfIndex: ctx.shelf.index,
+				slotIndex: ctx.slotCounter++,
+				position: [cursorX - thickness / 2, ctx.shelf.surfaceY, spineZ],
+				rotationZ: 0
+			});
+			cursorX -= thickness + gapFor(volume);
+		}
+	}
+}
+
+/**
+ * Deterministically places all Catalog Volumes onto their assigned Bookcase Shelves in
+ * asymmetric left, inset, and right clusters with exact trigonometry for leaning end Volumes.
  */
 export function layoutCatalogOnBookcase(
 	catalog: readonly VolumeEntry[] = CATALOG
@@ -106,93 +230,21 @@ export function layoutCatalogOnBookcase(
 		const shelfVolumes = catalog.filter((entry) => entry.shelfIndex === shelf.index);
 		if (shelfVolumes.length === 0) continue;
 
-		let slotCounter = 0;
+		const ctx: PackContext = { shelf, placed, slotCounter: 0 };
 
-		// Left-anchored cluster: pack from left side panel toward center (+X)
 		const leftCluster = shelfVolumes.filter((v) => v.placement.anchor === 'left');
-		let leftCursorX = -shelf.innerWidth / 2 + c.shelfEndMargin;
+		packTowardRight(ctx, leftCluster, -shelf.innerWidth / 2 + c.shelfEndMargin);
 
-		for (const volume of leftCluster) {
-			const { thickness, height } = volume.dimensions;
-			const lean = volume.placement.leanRadians ?? 0;
-			const stagger = deterministicUnit(`${volume.id}:recess`) * c.maxSpineStagger;
-			const spineZ = -(c.baseSpineRecess + stagger);
-
-			if (lean > 0) {
-				// Top tilts left (-X) to kiss the previous Volume's right face at leftCursorX
-				const pivotY = shelf.surfaceY + (thickness / 2) * Math.sin(lean);
-				const pivotX =
-					leftCursorX + c.leanContactGap + (thickness / 2) * Math.cos(lean) + height * Math.sin(lean);
-
-				placed.push({
-					volume,
-					shelfIndex: shelf.index,
-					slotIndex: slotCounter++,
-					position: [pivotX, pivotY, spineZ],
-					rotationZ: lean
-				});
-
-				leftCursorX = pivotX + (thickness / 2) * Math.cos(lean);
-			} else {
-				const centerX = leftCursorX + thickness / 2;
-				placed.push({
-					volume,
-					shelfIndex: shelf.index,
-					slotIndex: slotCounter++,
-					position: [centerX, shelf.surfaceY, spineZ],
-					rotationZ: 0
-				});
-
-				const gap = c.minGap + deterministicUnit(`${volume.id}:gap`) * c.maxExtraGap;
-				leftCursorX += thickness + gap;
-			}
+		// Inset clusters are grouped by their declared start X (one run per distinct start).
+		const insetVolumes = shelfVolumes.filter((v) => v.placement.anchor === 'inset');
+		const insetStarts = [...new Set(insetVolumes.map((v) => v.placement.startX ?? 0))];
+		for (const startX of insetStarts) {
+			const run = insetVolumes.filter((v) => (v.placement.startX ?? 0) === startX);
+			packTowardRight(ctx, run, startX);
 		}
 
-		// Right-anchored cluster: pack from right side panel toward center (-X)
 		const rightCluster = shelfVolumes.filter((v) => v.placement.anchor === 'right');
-		let rightCursorX = shelf.innerWidth / 2 - c.shelfEndMargin;
-
-		// Place from rightmost to leftmost so a leaning Volume at the inner edge rests against its right neighbor
-		for (let i = rightCluster.length - 1; i >= 0; i -= 1) {
-			const volume = rightCluster[i];
-			const { thickness, height } = volume.dimensions;
-			const lean = volume.placement.leanRadians ?? 0;
-			const stagger = deterministicUnit(`${volume.id}:recess`) * c.maxSpineStagger;
-			const spineZ = -(c.baseSpineRecess + stagger);
-
-			if (lean < 0) {
-				// Top tilts right (+X) to kiss the neighbor on its right at rightCursorX
-				const alpha = Math.abs(lean);
-				const pivotY = shelf.surfaceY + (thickness / 2) * Math.sin(alpha);
-				const pivotX =
-					rightCursorX -
-					c.leanContactGap -
-					(thickness / 2) * Math.cos(alpha) -
-					height * Math.sin(alpha);
-
-				placed.push({
-					volume,
-					shelfIndex: shelf.index,
-					slotIndex: slotCounter++,
-					position: [pivotX, pivotY, spineZ],
-					rotationZ: lean
-				});
-
-				rightCursorX = pivotX - (thickness / 2) * Math.cos(alpha);
-			} else {
-				const centerX = rightCursorX - thickness / 2;
-				placed.push({
-					volume,
-					shelfIndex: shelf.index,
-					slotIndex: slotCounter++,
-					position: [centerX, shelf.surfaceY, spineZ],
-					rotationZ: 0
-				});
-
-				const gap = c.minGap + deterministicUnit(`${volume.id}:gap`) * c.maxExtraGap;
-				rightCursorX -= thickness + gap;
-			}
-		}
+		packTowardLeft(ctx, rightCluster, shelf.innerWidth / 2 - c.shelfEndMargin);
 	}
 
 	return placed;

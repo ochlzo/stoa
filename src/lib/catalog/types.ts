@@ -4,7 +4,22 @@ export type BindingStyleId =
 	| 'quarter-vellum'
 	| 'blind-tooled-calf';
 
-export type VolumeClayTone = 'alabaster' | 'stone' | 'ash' | 'warmClay' | 'slateClay';
+export type VolumeClayTone =
+	| 'bone'
+	| 'alabaster'
+	| 'stone'
+	| 'warmClay'
+	| 'ash'
+	| 'slateClay'
+	| 'charcoal';
+
+/**
+ * Spine silhouette of a Volume (geometry only; Binding Style trim is a later pass):
+ * - "rounded": full half-cylinder spine (classic hardcover)
+ * - "shallow": barely domed spine (thin volumes, vellum)
+ * - "flat": squared-off box spine (cloth-bound reference volumes)
+ */
+export type SpineProfile = 'rounded' | 'shallow' | 'flat';
 
 /**
  * Physical dimensions of a Volume in real-world meters (1 unit = 1 meter).
@@ -23,7 +38,13 @@ export interface VolumeDimensions {
  */
 export interface VolumePlacementRule {
 	/** Which side or anchor point of the Shelf this Volume belongs to. */
-	readonly anchor: 'left' | 'right' | 'center-left' | 'center-right';
+	readonly anchor: 'left' | 'right' | 'inset';
+	/**
+	 * Left edge (meters, bookcase-centered X) where an 'inset' cluster starts packing toward +X;
+	 * ignored for other anchors. Clusters read left-to-right in the Catalog: outermost to
+	 * innermost for left/inset, innermost to outermost for right.
+	 */
+	readonly startX?: number;
 	/**
 	 * Optional tilt angle in radians around the Z-axis.
 	 * Positive leans the top toward -X (resting against the neighbor on its left).
@@ -41,6 +62,7 @@ interface VolumeEntryBase {
 	readonly dimensions: VolumeDimensions;
 	readonly bindingStyle: BindingStyleId;
 	readonly clayTone: VolumeClayTone;
+	readonly spineProfile: SpineProfile;
 	readonly placement: VolumePlacementRule;
 }
 
@@ -62,7 +84,7 @@ export interface PlacedVolume {
 	 * World position of the Volume's local pivot (meters):
 	 * - x: horizontal center of the Volume
 	 * - y: flush on the top surface of its Shelf (adjusted automatically when leaning)
-	 * - z: aligned to the outermost edge of the rounded spine
+	 * - z: aligned to the outermost edge of the spine
 	 */
 	readonly position: readonly [x: number, y: number, z: number];
 	/** Z-axis tilt in radians (0 for upright Volumes). */
@@ -71,11 +93,17 @@ export interface PlacedVolume {
 
 export interface VolumeGeometryParts {
 	readonly spine: {
+		readonly shape: 'rounded' | 'flat';
+		/** Half-cylinder radius (rounded/shallow spines). */
 		readonly radius: number;
+		/** How far the spine protrudes in front of the boards along +Z (meters). */
 		readonly depth: number;
 		readonly height: number;
 		readonly position: readonly [x: number, y: number, z: number];
+		/** Z squash applied to the half-cylinder so it protrudes exactly `depth`. */
 		readonly scaleZ: number;
+		/** Box size for flat spines [width, height, depth]. */
+		readonly size: readonly [width: number, height: number, depth: number];
 	};
 	readonly frontBoard: {
 		readonly size: readonly [width: number, height: number, depth: number];

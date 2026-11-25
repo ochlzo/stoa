@@ -1,7 +1,7 @@
 import { getShelfSurfaceY } from './bookcase.ts';
 import type { VolumeClayTone } from './types.ts';
 
-export type VaseProfile = 'amphora' | 'belly' | 'tall' | 'bud' | 'bowl';
+export type VaseProfile = 'amphora' | 'belly' | 'bowl';
 
 export interface VasePropSpec {
 	readonly kind: 'vase';
@@ -58,6 +58,47 @@ export interface SculpturePropSpec {
 	readonly clayTone: VolumeClayTone;
 }
 
+export interface GlobePropSpec {
+	readonly kind: 'globe';
+	readonly id: string;
+	readonly shelfIndex: number;
+	readonly radius: number;
+	readonly position: readonly [x: number, y: number, z: number];
+	readonly clayTone: VolumeClayTone;
+}
+
+export interface HourglassPropSpec {
+	readonly kind: 'hourglass';
+	readonly id: string;
+	readonly shelfIndex: number;
+	readonly height: number;
+	readonly radius: number;
+	readonly position: readonly [x: number, y: number, z: number];
+	readonly clayTone: VolumeClayTone;
+}
+
+export interface CandlestickPropSpec {
+	readonly kind: 'candlestick';
+	readonly id: string;
+	readonly shelfIndex: number;
+	readonly height: number;
+	readonly baseRadius: number;
+	readonly position: readonly [x: number, y: number, z: number];
+	readonly clayTone: VolumeClayTone;
+}
+
+export interface KeepsakeBoxPropSpec {
+	readonly kind: 'keepsake-box';
+	readonly id: string;
+	readonly shelfIndex: number;
+	readonly width: number;
+	readonly height: number;
+	readonly depth: number;
+	readonly yaw: number;
+	readonly position: readonly [x: number, y: number, z: number];
+	readonly clayTone: VolumeClayTone;
+}
+
 export interface StackedBookSpec {
 	readonly width: number;
 	readonly depth: number;
@@ -74,7 +115,7 @@ export interface BookStackPropSpec {
 	readonly position: readonly [x: number, y: number, z: number];
 	readonly books: readonly StackedBookSpec[];
 	readonly topper?: {
-		readonly profile: 'bowl' | 'bud' | 'sculpture';
+		readonly profile: 'bowl' | 'hourglass' | 'sculpture';
 		readonly scale: number;
 		readonly clayTone: VolumeClayTone;
 	};
@@ -86,12 +127,17 @@ export type ShelfPropSpec =
 	| PlanterPropSpec
 	| BookendPropSpec
 	| SculpturePropSpec
+	| GlobePropSpec
+	| HourglassPropSpec
+	| CandlestickPropSpec
+	| KeepsakeBoxPropSpec
 	| BookStackPropSpec;
 
 /**
  * Returns deterministic, non-overlapping Shelf Prop placements across all 5 Shelves (meters).
- * Every prop rests flush on its Shelf surface (or atop a decorative horizontal book stack)
- * and leaves generous breathing room around Catalog Volumes.
+ * Keeps ceramic vases restrained (2 total across the Bookcase) and mixes in classical study
+ * props: tabletop globe, hourglass, taper candlesticks, keepsake boxes, frames, planters,
+ * bookends, geometric sculptures, and horizontal book stacks.
  */
 export function getShelfProps(): readonly ShelfPropSpec[] {
 	const y0 = getShelfSurfaceY(0);
@@ -101,81 +147,81 @@ export function getShelfProps(): readonly ShelfPropSpec[] {
 	const y4 = getShelfSurfaceY(4);
 
 	return [
-		// --- Shelf 0 (bottom): Left folio stack + bowl, center belly vase, arch bookend supporting right Volumes ---
+		// --- Shelf 0 (bottom): Arch bookend supporting left run, folio stack + stoneware bowl, belly vase ---
+		{
+			kind: 'bookend',
+			id: 'shelf0-arch-bookend',
+			shelfIndex: 0,
+			width: 0.048,
+			height: 0.145,
+			depth: 0.11,
+			position: [-0.435, y0, -0.11],
+			clayTone: 'slateClay'
+		},
 		{
 			kind: 'book-stack',
 			id: 'shelf0-folio-stack',
 			shelfIndex: 0,
-			position: [-0.36, y0, -0.14],
+			position: [-0.21, y0, -0.14],
 			books: [
-				{ width: 0.29, depth: 0.21, thickness: 0.032, yaw: 0.02, offsetX: 0, clayTone: 'stone' },
-				{ width: 0.275, depth: 0.2, thickness: 0.028, yaw: -0.03, offsetX: 0.005, clayTone: 'alabaster' },
-				{ width: 0.26, depth: 0.19, thickness: 0.026, yaw: 0.04, offsetX: -0.004, clayTone: 'warmClay' },
-				{ width: 0.24, depth: 0.18, thickness: 0.024, yaw: -0.015, offsetX: 0.003, clayTone: 'ash' }
+				{ width: 0.28, depth: 0.2, thickness: 0.032, yaw: 0.02, offsetX: 0, clayTone: 'stone' },
+				{ width: 0.265, depth: 0.19, thickness: 0.028, yaw: -0.03, offsetX: 0.005, clayTone: 'alabaster' },
+				{ width: 0.25, depth: 0.18, thickness: 0.026, yaw: 0.04, offsetX: -0.004, clayTone: 'warmClay' },
+				{ width: 0.23, depth: 0.17, thickness: 0.024, yaw: -0.015, offsetX: 0.003, clayTone: 'ash' }
 			],
-			topper: { profile: 'bowl', scale: 1.0, clayTone: 'alabaster' }
+			topper: { profile: 'bowl', scale: 0.96, clayTone: 'alabaster' }
 		},
 		{
 			kind: 'vase',
 			id: 'shelf0-belly-vase',
 			shelfIndex: 0,
 			profile: 'belly',
-			position: [0.1, y0, -0.15],
-			scale: 1.1,
+			position: [0.07, y0, -0.15],
+			scale: 0.98,
 			clayTone: 'warmClay'
 		},
-		{
-			kind: 'bookend',
-			id: 'shelf0-arch-bookend',
-			shelfIndex: 0,
-			width: 0.052,
-			height: 0.145,
-			depth: 0.11,
-			position: [0.46, y0, -0.11],
-			clayTone: 'slateClay'
-		},
 
-		// --- Shelf 1 (lower-middle): Left tall planter, geometric sculpture, center-left low stack + bud vase ---
+		// --- Shelf 1 (lower-middle): Tall planter, geometric sculpture, horizontal stack topped with hourglass ---
 		{
 			kind: 'planter',
 			id: 'shelf1-tall-planter',
 			shelfIndex: 1,
-			potRadius: 0.068,
-			potHeight: 0.11,
+			potRadius: 0.064,
+			potHeight: 0.105,
 			leafCount: 11,
 			leafStyle: 'tall',
-			position: [-0.45, y1, -0.14],
+			position: [-0.245, y1, -0.14],
 			clayTone: 'alabaster'
 		},
 		{
 			kind: 'sculpture',
 			id: 'shelf1-polyhedron',
 			shelfIndex: 1,
-			radius: 0.064,
-			position: [-0.21, y1, -0.13],
+			radius: 0.056,
+			position: [-0.075, y1, -0.13],
 			clayTone: 'slateClay'
 		},
 		{
 			kind: 'book-stack',
 			id: 'shelf1-low-stack',
 			shelfIndex: 1,
-			position: [0.07, y1, -0.14],
+			position: [0.15, y1, -0.14],
 			books: [
-				{ width: 0.25, depth: 0.18, thickness: 0.03, yaw: -0.02, offsetX: 0, clayTone: 'ash' },
-				{ width: 0.23, depth: 0.17, thickness: 0.026, yaw: 0.035, offsetX: 0.004, clayTone: 'alabaster' }
+				{ width: 0.23, depth: 0.175, thickness: 0.03, yaw: -0.02, offsetX: 0, clayTone: 'ash' },
+				{ width: 0.21, depth: 0.165, thickness: 0.026, yaw: 0.035, offsetX: 0.004, clayTone: 'alabaster' }
 			],
-			topper: { profile: 'bud', scale: 0.9, clayTone: 'stone' }
+			topper: { profile: 'hourglass', scale: 1.0, clayTone: 'warmClay' }
 		},
 
-		// --- Shelf 2 (eye-level default view): Hero leaning frame + ceramic amphora + arch bookend for Stoic cluster ---
+		// --- Shelf 2 (eye-level default view): Hero leaning frame, single ceramic amphora, keepsake box, arch bookend ---
 		{
 			kind: 'frame',
 			id: 'shelf2-hero-frame',
 			shelfIndex: 2,
-			width: 0.24,
-			height: 0.28,
+			width: 0.23,
+			height: 0.27,
 			thickness: 0.018,
-			position: [0.06, y2, -0.255],
+			position: [-0.14, y2, -0.255],
 			tiltX: -0.11,
 			clayTone: 'alabaster'
 		},
@@ -184,54 +230,64 @@ export function getShelfProps(): readonly ShelfPropSpec[] {
 			id: 'shelf2-amphora',
 			shelfIndex: 2,
 			profile: 'amphora',
-			position: [0.27, y2, -0.13],
-			scale: 1.0,
+			position: [0.065, y2, -0.14],
+			scale: 0.96,
 			clayTone: 'stone'
+		},
+		{
+			kind: 'keepsake-box',
+			id: 'shelf2-keepsake-box',
+			shelfIndex: 2,
+			width: 0.115,
+			height: 0.058,
+			depth: 0.095,
+			yaw: -0.08,
+			position: [0.21, y2, -0.13],
+			clayTone: 'charcoal'
 		},
 		{
 			kind: 'bookend',
 			id: 'shelf2-arch-bookend',
 			shelfIndex: 2,
-			width: 0.048,
+			width: 0.046,
 			height: 0.135,
 			depth: 0.105,
-			position: [0.49, y2, -0.11],
+			position: [0.318, y2, -0.11],
 			clayTone: 'warmClay'
 		},
 
-		// --- Shelf 3 (upper-middle): Center tall vase + low vessel, right horizontal stack + wide stoneware bowl ---
+		// --- Shelf 3 (upper-middle): Tabletop globe + taper candlestick, right horizontal stack + shallow bowl ---
 		{
-			kind: 'vase',
-			id: 'shelf3-tall-vase',
+			kind: 'globe',
+			id: 'shelf3-tabletop-globe',
 			shelfIndex: 3,
-			profile: 'tall',
-			position: [-0.08, y3, -0.15],
-			scale: 1.0,
+			radius: 0.072,
+			position: [-0.12, y3, -0.15],
 			clayTone: 'alabaster'
 		},
 		{
-			kind: 'vase',
-			id: 'shelf3-bud-vase',
+			kind: 'candlestick',
+			id: 'shelf3-candlestick',
 			shelfIndex: 3,
-			profile: 'bud',
-			position: [0.06, y3, -0.12],
-			scale: 0.95,
+			height: 0.175,
+			baseRadius: 0.032,
+			position: [0.025, y3, -0.125],
 			clayTone: 'slateClay'
 		},
 		{
 			kind: 'book-stack',
 			id: 'shelf3-right-stack',
 			shelfIndex: 3,
-			position: [0.36, y3, -0.14],
+			position: [0.23, y3, -0.14],
 			books: [
-				{ width: 0.27, depth: 0.19, thickness: 0.03, yaw: 0.015, offsetX: 0, clayTone: 'stone' },
-				{ width: 0.255, depth: 0.185, thickness: 0.028, yaw: -0.025, offsetX: -0.004, clayTone: 'warmClay' },
-				{ width: 0.235, depth: 0.175, thickness: 0.024, yaw: 0.03, offsetX: 0.003, clayTone: 'alabaster' }
+				{ width: 0.255, depth: 0.185, thickness: 0.03, yaw: 0.015, offsetX: 0, clayTone: 'stone' },
+				{ width: 0.24, depth: 0.18, thickness: 0.028, yaw: -0.025, offsetX: -0.004, clayTone: 'warmClay' },
+				{ width: 0.22, depth: 0.17, thickness: 0.024, yaw: 0.03, offsetX: 0.003, clayTone: 'alabaster' }
 			],
-			topper: { profile: 'bowl', scale: 0.92, clayTone: 'ash' }
+			topper: { profile: 'bowl', scale: 0.9, clayTone: 'ash' }
 		},
 
-		// --- Shelf 4 (top): Overlapping leaning art frames on left, succulent planter + small sculpture in center ---
+		// --- Shelf 4 (top): Overlapping leaning art frames on left, succulent planter, candlestick + keepsake box ---
 		{
 			kind: 'frame',
 			id: 'shelf4-frame-large',
@@ -239,7 +295,7 @@ export function getShelfProps(): readonly ShelfPropSpec[] {
 			width: 0.22,
 			height: 0.25,
 			thickness: 0.016,
-			position: [-0.41, y4, -0.255],
+			position: [-0.48, y4, -0.255],
 			tiltX: -0.1,
 			clayTone: 'stone'
 		},
@@ -250,7 +306,7 @@ export function getShelfProps(): readonly ShelfPropSpec[] {
 			width: 0.16,
 			height: 0.19,
 			thickness: 0.015,
-			position: [-0.26, y4, -0.215],
+			position: [-0.32, y4, -0.215],
 			tiltX: -0.11,
 			clayTone: 'alabaster'
 		},
@@ -262,17 +318,28 @@ export function getShelfProps(): readonly ShelfPropSpec[] {
 			potHeight: 0.085,
 			leafCount: 14,
 			leafStyle: 'rosette',
-			position: [-0.04, y4, -0.13],
+			position: [-0.145, y4, -0.13],
 			clayTone: 'warmClay'
 		},
 		{
-			kind: 'vase',
-			id: 'shelf4-belly-mini',
+			kind: 'candlestick',
+			id: 'shelf4-candlestick',
 			shelfIndex: 4,
-			profile: 'belly',
-			position: [0.15, y4, -0.15],
-			scale: 0.72,
+			height: 0.19,
+			baseRadius: 0.034,
+			position: [0.005, y4, -0.145],
 			clayTone: 'ash'
+		},
+		{
+			kind: 'keepsake-box',
+			id: 'shelf4-keepsake-box',
+			shelfIndex: 4,
+			width: 0.12,
+			height: 0.054,
+			depth: 0.095,
+			yaw: 0.06,
+			position: [0.135, y4, -0.14],
+			clayTone: 'charcoal'
 		}
 	];
 }
