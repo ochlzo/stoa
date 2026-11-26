@@ -3,9 +3,11 @@ import { describe, it } from 'node:test';
 import { CATALOG } from '#lib/catalog/volumes.ts';
 import {
 	READING_VOLUME_CONFIG,
+	applyReadingWheelZoom,
 	computeOpenVolumeDimensions,
 	computePageStackSplit,
 	computeReadingPose,
+	createReadingTiltGestures,
 	createReadingVolumeState,
 	evaluateOpenVolumePose,
 	startReadingClose,
@@ -122,7 +124,101 @@ describe('Reading Mode open Volume geometry, stack split, and framing', () => {
 			if (res.finishedClosingToInspect) finishedClose = true;
 		}
 		assert.equal(finishedClose, true);
+		expectZeroTilt(state);
 		assert.equal(state.phase, 'idle');
 		assert.equal(state.openProgress, 0);
 	});
+
+	it('tilts softly within configured bounds on drag and springs smoothly back to level on release', () => {
+		const state = createReadingVolumeState();
+		startReadingOpen(state, -Math.PI / 2, 0);
+		state.alignProgress = 1;
+		for (let i = 0; i < 60; i += 1) {
+			stepReadingVolume(state, 1 / 60, 0);
+		}
+		assert.equal(state.phase, 'reading');
+
+		const gestures = createReadingTiltGestures(state);
+		gestures.start(1, 200, 200);
+		// Huge drag should still respect ±maxTiltYaw / ±maxTiltPitch via soft tanh clamp.
+		assert.equal(gestures.move(1, 600, 500), true);
+		assert.equal(state.isTilting, true);
+		assert.ok(state.tiltYaw > 0 && state.tiltYaw < READING_VOLUME_CONFIG.maxTiltYaw);
+		assert.ok(state.tiltPitch > 0 && state.tiltPitch < READING_VOLUME_CONFIG.maxTiltPitch);
+
+		gestures.end(1);
+		assert.equal(state.isTilting, false);
+
+		for (let i = 0; i < 120; i += 1) {
+			stepReadingVolume(state, 1 / 60, 0);
+		}
+		expectZeroTilt(state);
+	});
+
+	it('supports wheel and two-finger pinch zoom in Reading Mode while preserving default zoom = 1 framing', () => {
+		const camPos: readonly [number, number, number] = [0, 0.9, 1.52];
+		const state = createReadingVolumeState();
+		startReadingOpen(state, -Math.PI / 2, 0);
+		state.alignProgress = 1;
+		for (let i = 0; i < 60; i += 1) {
+			stepReadingVolume(state, 1 / 60, 0);
+		}
+		assert.equal(state.zoom, 1);
+
+		const defaultPose = computeReadingPose(
+			camPos,
+			38,
+			{ width: 1280, height: 800 },
+			odyssey.dimensions,
+			'right',
+			odyssey.spineProfile,
+			odyssey.bindingStyle,
+			READING_VOLUME_CONFIG,
+			state.zoom
+		);
+
+		// Wheel zoom in brings the open Spread closer (larger Z).
+		applyReadingWheelZoom(state, -420, 0);
+		assert.ok(state.targetZoom > 1 && state.targetZoom <= READING_VOLUME_CONFIG.maxZoom);
+		for (let i = 0; i < 45; i += 1) {
+			stepReadingVolume(state, 1 / 60, 0);
+		}
+		assert.ok(state.zoom > 1.25);
+
+		const zoomedPose = computeReadingPose(
+			camPos,
+			38,
+			{ width: 1280, height: 800 },
+			odyssey.dimensions,
+			'right',
+			odyssey.spineProfile,
+			odyssey.bindingStyle,
+			READING_VOLUME_CONFIG,
+			state.zoom
+		);
+		assert.ok(zoomedPose.center[2] > defaultPose.center[2]);
+		assert.ok(zoomedPose.backdropZ < zoomedPose.center[2]);
+
+		// Two-finger pinch out zooms back down without engaging tilt.
+		const gestures = createReadingTiltGestures(state);
+		gestures.start(1, 100, 100);
+		gestures.start(2, 300, 100);
+		gestures.move(2, 160, 100);
+		gestures.end(2);
+		gestures.end(1);
+		assert.equal(state.isTilting, false);
+		assert.ok(state.targetZoom < state.zoom);
+		assert.ok(state.targetZoom >= READING_VOLUME_CONFIG.minZoom);
+
+		// Closing resets targetZoom back to 1.
+		startReadingClose(state, 'inspect');
+		assert.equal(state.targetZoom, 1);
+	});
 });
+
+function expectZeroTilt(state: ReturnType<typeof createReadingVolumeState>): void {
+	assertClose(state.tiltYaw, 0, 1e-4);
+	assertClose(state.tiltPitch, 0, 1e-4);
+	assertClose(state.tiltYawVelocity, 0, 1e-4);
+	assertClose(state.tiltPitchVelocity, 0, 1e-4);
+}

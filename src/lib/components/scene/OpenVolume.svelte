@@ -1,17 +1,18 @@
 <script lang="ts">
 	import { T, useTask, useThrelte } from '@threlte/core';
-	import type { CanvasTexture, Group, PerspectiveCamera } from 'three';
-	import { VOLUME_LAYOUT_CONSTANTS } from '#lib/catalog/layout.ts';
+	import type { Group, PerspectiveCamera } from 'three';
 	import { getSpread, getVolumeReadingModel } from '#lib/catalog/reading.ts';
 	import type { Volume } from '#lib/catalog/types.ts';
-	import { PAGE_BLOCK_CLAY_COLOR, VOLUME_CLAY_COLORS } from '#lib/catalog/volumes.ts';
-	import { createOpenPageSurfaceGeometry } from '#lib/components/scene/open-volume-geometry.ts';
+	import { VOLUME_CLAY_COLORS } from '#lib/catalog/volumes.ts';
+	import { createPageStackGeometry } from '#lib/components/scene/open-volume-geometry.ts';
 	import { computeInspectPose } from '#lib/physics/inspect-volume.ts';
 	import {
 		READING_VOLUME_CONFIG,
+		applyReadingWheelZoom,
 		computeOpenVolumeDimensions,
 		computePageStackSplit,
 		computeReadingPose,
+		createReadingTiltGestures,
 		createReadingVolumeState,
 		evaluateOpenVolumePose,
 		startReadingClose,
@@ -36,7 +37,7 @@
 
 	let { volume }: Props = $props();
 
-	const { camera, size } = useThrelte();
+	const { camera, canvas, size } = useThrelte();
 
 	const openDims = $derived(
 		computeOpenVolumeDimensions(volume.dimensions, volume.spineProfile, volume.bindingStyle)
@@ -47,53 +48,27 @@
 	const stackSplit = $derived(
 		computePageStackSplit(openDims.totalPageThickness, activeSpread.progress)
 	);
-	const innerClearance = VOLUME_LAYOUT_CONSTANTS.innerClearance;
-	const pageLift = READING_VOLUME_CONFIG.pageSurfaceLift;
-	const creaseHalfGap = 0.0005;
-
-	// Build and cleanly dispose the gently arched 3D Page surface geometries.
-	const leftPageGeoBundle = $derived(
-		createOpenPageSurfaceGeometry(
-			openDims.pageWidth,
-			openDims.pageHeight,
-			'left',
-			READING_VOLUME_CONFIG.pageGutterArch
-		)
-	);
-	const rightPageGeoBundle = $derived(
-		createOpenPageSurfaceGeometry(
-			openDims.pageWidth,
-			openDims.pageHeight,
-			'right',
-			READING_VOLUME_CONFIG.pageGutterArch
-		)
-	);
-
-	$effect(() => {
-		const left = leftPageGeoBundle;
-		const right = rightPageGeoBundle;
-		return () => {
-			left.dispose();
-			right.dispose();
-		};
+	const gutterDepth = $derived(Math.min(stackSplit.leftThickness, stackSplit.rightThickness));
+	let unfold = $state(0);
+	const halves = $derived.by(() => {
+		return (['left', 'right'] as const).map((side) => {
+			const left = side === 'left';
+			const thickness = left ? stackSplit.leftThickness : stackSplit.rightThickness;
+			const page = left ? activeSpread.leftPage : activeSpread.rightPage;
+			const texture = createClayPageTexture(page, readingModel.chapters.length);
+			const stack = createPageStackGeometry(openDims.pageWidth, openDims.pageHeight,
+				thickness, gutterDepth, READING_VOLUME_CONFIG.pageGutterArch, side, texture);
+			return { side, sign: left ? -1 : 1, thickness, texture, stack };
+		});
 	});
 
-	// Generate procedural clay placeholder CanvasTextures for the active Spread and
-	// dispose previous textures immediately on Spread change or unmount (zero WebGL leaks).
-	let leftTexture = $state<CanvasTexture | null>(null);
-	let rightTexture = $state<CanvasTexture | null>(null);
-
 	$effect(() => {
-		const spread = activeSpread;
-		const chapterCount = readingModel.chapters.length;
-		const nextLeft = createClayPageTexture(spread.leftPage, spread, chapterCount);
-		const nextRight = createClayPageTexture(spread.rightPage, spread, chapterCount);
-		leftTexture = nextLeft;
-		rightTexture = nextRight;
-
+		const current = halves;
 		return () => {
-			nextLeft.dispose();
-			nextRight.dispose();
+			for (const half of current) {
+				half.stack.dispose();
+				half.texture.dispose();
+			}
 		};
 	});
 
@@ -125,6 +100,52 @@
 		}
 	});
 
+	// Attach subtle spring-back drag-to-tilt gestures while actively reading.
+	$effect(() => {
+		if (getReadingPhase() !== 'reading') return;
+		const tiltGestures = createReadingTiltGestures(readingState);
+
+		function onPointerDown(event: PointerEvent): void {
+			if (event.pointerType === 'mouse' && event.button !== 0) return;
+			tiltGestures.start(event.pointerId, event.clientX, event.clientY);
+		}
+
+		function onPointerMove(event: PointerEvent): void {
+			const moved = tiltGestures.move(event.pointerId, event.clientX, event.clientY);
+			if (moved) {
+				canvas.style.cursor = 'grabbing';
+			}
+		}
+
+		function onPointerEnd(event: PointerEvent): void {
+			tiltGestures.end(event.pointerId);
+			if (!readingState.isTilting) {
+				canvas.style.cursor = 'default';
+			}
+		}
+
+		function onWheel(event: WheelEvent): void {
+			event.preventDefault();
+			applyReadingWheelZoom(readingState, event.deltaY, event.deltaMode);
+		}
+
+		canvas.addEventListener('pointerdown', onPointerDown);
+		canvas.addEventListener('wheel', onWheel, { passive: false });
+		window.addEventListener('pointermove', onPointerMove);
+		window.addEventListener('pointerup', onPointerEnd);
+		window.addEventListener('pointercancel', onPointerEnd);
+
+		return () => {
+			tiltGestures.reset();
+			canvas.style.cursor = 'default';
+			canvas.removeEventListener('pointerdown', onPointerDown);
+			canvas.removeEventListener('wheel', onWheel);
+			window.removeEventListener('pointermove', onPointerMove);
+			window.removeEventListener('pointerup', onPointerEnd);
+			window.removeEventListener('pointercancel', onPointerEnd);
+		};
+	});
+
 	function easeInOutCubic(t: number): number {
 		const c = Math.max(0, Math.min(1, t));
 		return c < 0.5 ? 4 * c * c * c : 1 - Math.pow(-2 * c + 2, 3) / 2;
@@ -151,11 +172,14 @@
 			volume.dimensions,
 			getFocusedPageSide(),
 			volume.spineProfile,
-			volume.bindingStyle
+			volume.bindingStyle,
+			READING_VOLUME_CONFIG,
+			readingState.zoom
 		);
 
 		const step = stepReadingVolume(readingState, dt, readingPose.focusOffsetX);
 		const openT = easeInOutCubic(readingState.openProgress);
+		unfold = openT;
 		const pose = evaluateOpenVolumePose(readingState.openProgress, openDims);
 
 		const targetX = activeCamera.position.x + readingState.currentFocusOffsetX;
@@ -165,27 +189,26 @@
 
 		if (rootGroupRef) {
 			rootGroupRef.position.set(x, y, z);
-			rootGroupRef.rotation.set(pose.pitchX, 0, 0);
+			rootGroupRef.rotation.order = 'XYZ';
+			rootGroupRef.rotation.set(pose.pitchX + readingState.tiltPitch, readingState.tiltYaw, 0);
 		}
 
 		// Spine cradle sits cleanly behind the page stacks when open, and swings to the left edge when closed.
-		const maxStackZ = Math.max(stackSplit.leftThickness, stackSplit.rightThickness);
 		const closedSpineCenterZ = (stackSplit.leftThickness - stackSplit.rightThickness) / 2;
-		const openSpineZ = -(maxStackZ + innerClearance + openDims.boardThickness / 2);
+		const openSpineZ = -(gutterDepth + openDims.boardThickness / 2);
 		if (spineGroupRef) {
 			const spineX = (-openDims.boardThickness / 2) * (1 - openT);
 			const spineZ = closedSpineCenterZ * (1 - openT) + openSpineZ * openT;
+			spineGroupRef.scale.x = 1 - openT * (1 - 2 * openDims.boardThickness / openDims.spineWidth);
 			spineGroupRef.position.set(spineX, 0, spineZ);
 			spineGroupRef.rotation.set(0, (Math.PI / 2) * (1 - openT), 0);
 		}
 
 		if (leftHingeRef) {
-			leftHingeRef.position.set(-creaseHalfGap * openT, 0, 0);
 			leftHingeRef.rotation.set(0, pose.leftHingeAngle, 0);
 		}
 
 		if (rightHingeRef) {
-			rightHingeRef.position.set(creaseHalfGap * openT, 0, 0);
 			rightHingeRef.rotation.set(0, pose.rightHingeAngle, 0);
 		}
 
@@ -219,92 +242,30 @@
 			</T.Mesh>
 		</T.Group>
 
-		<!-- Left cover board + left page-stack half + left Clay Page surface (meeting at central crease) -->
-		<T.Group
-			name="open-left-half"
-			oncreate={(group) => {
-				leftHingeRef = group;
-			}}
-		>
-			<!-- Left cover board (sits directly behind left page-stack half with hardcover overhang) -->
-			<T.Mesh
-				name="left-cover-board"
-				position={[
-					-openDims.boardWidth / 2,
-					0,
-					-(stackSplit.leftThickness + innerClearance + openDims.boardThickness / 2)
-				]}
+		{#each halves as half (half)}
+			<T.Group
+				name={'open-' + half.side + '-half'}
+				oncreate={(group) => {
+					if (half.side === 'left') leftHingeRef = group;
+					else rightHingeRef = group;
+					const pose = evaluateOpenVolumePose(readingState.openProgress, openDims);
+					group.rotation.y = half.side === 'left' ? pose.leftHingeAngle : pose.rightHingeAngle;
+				}}
 			>
-				<T.BoxGeometry args={[openDims.boardWidth, openDims.boardHeight, openDims.boardThickness]} />
-				<T.MeshStandardMaterial color={coverColor} roughness={0.9} metalness={0} />
-			</T.Mesh>
-
-			<!-- Left page-stack half (extends behind the reading plane; thickness grows with reading progress) -->
-			<T.Mesh
-				name="left-page-stack"
-				position={[-openDims.pageWidth / 2, 0, -stackSplit.leftThickness / 2]}
-			>
-				<T.BoxGeometry args={[openDims.pageWidth, openDims.pageHeight, stackSplit.leftThickness]} />
-				<T.MeshStandardMaterial color={PAGE_BLOCK_CLAY_COLOR} roughness={0.95} metalness={0} />
-			</T.Mesh>
-
-			<!-- Left active Page surface (arched clay CanvasTexture, lifted cleanly above stack) -->
-			<T.Mesh
-				name="left-page-surface"
-				geometry={leftPageGeoBundle.geometry}
-				position={[0, 0, pageLift]}
-			>
-				<T.MeshStandardMaterial
-					map={leftTexture}
-					color="#ffffff"
-					roughness={0.94}
-					metalness={0}
+				<T.Mesh
+					name={half.side + '-cover-board'}
+					position={[half.sign * openDims.boardWidth / 2, 0,
+						-(half.thickness * (1 - unfold) + gutterDepth * unfold + openDims.boardThickness / 2)]}
+				>
+					<T.BoxGeometry args={[openDims.boardWidth, openDims.boardHeight, openDims.boardThickness]} />
+					<T.MeshStandardMaterial color={coverColor} roughness={0.9} />
+				</T.Mesh>
+				<T.Mesh
+					name={half.side + '-page-stack'}
+					args={[half.stack.geometry, half.stack.materials]}
+					morphTargetInfluences={[unfold]}
 				/>
-			</T.Mesh>
-		</T.Group>
-
-		<!-- Right cover board + right page-stack half + right Clay Page surface (meeting at central crease) -->
-		<T.Group
-			name="open-right-half"
-			oncreate={(group) => {
-				rightHingeRef = group;
-			}}
-		>
-			<!-- Right cover board (sits directly behind right page-stack half with hardcover overhang) -->
-			<T.Mesh
-				name="right-cover-board"
-				position={[
-					openDims.boardWidth / 2,
-					0,
-					-(stackSplit.rightThickness + innerClearance + openDims.boardThickness / 2)
-				]}
-			>
-				<T.BoxGeometry args={[openDims.boardWidth, openDims.boardHeight, openDims.boardThickness]} />
-				<T.MeshStandardMaterial color={coverColor} roughness={0.9} metalness={0} />
-			</T.Mesh>
-
-			<!-- Right page-stack half (extends behind the reading plane; thickness shrinks with reading progress) -->
-			<T.Mesh
-				name="right-page-stack"
-				position={[openDims.pageWidth / 2, 0, -stackSplit.rightThickness / 2]}
-			>
-				<T.BoxGeometry args={[openDims.pageWidth, openDims.pageHeight, stackSplit.rightThickness]} />
-				<T.MeshStandardMaterial color={PAGE_BLOCK_CLAY_COLOR} roughness={0.95} metalness={0} />
-			</T.Mesh>
-
-			<!-- Right active Page surface (arched clay CanvasTexture, lifted cleanly above stack) -->
-			<T.Mesh
-				name="right-page-surface"
-				geometry={rightPageGeoBundle.geometry}
-				position={[0, 0, pageLift]}
-			>
-				<T.MeshStandardMaterial
-					map={rightTexture}
-					color="#ffffff"
-					roughness={0.94}
-					metalness={0}
-				/>
-			</T.Mesh>
-		</T.Group>
+			</T.Group>
+		{/each}
 	</T.Group>
 {/if}

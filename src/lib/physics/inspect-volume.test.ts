@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { layoutCatalogOnBookcase } from '#lib/catalog/layout.ts';
 import {
 	INSPECT_VOLUME_CONFIG,
+	applyInspectWheelZoom,
 	clampPitch,
 	computeInspectPose,
 	computeVolumeShelfCenter,
@@ -162,5 +163,74 @@ describe('inspect-volume physics', () => {
 		assert.deepEqual(finalTransform.position, computeVolumeShelfCenter(odyssey, 0));
 		assert.deepEqual(finalTransform.rotation, [0, 0, odyssey.rotationZ]);
 		assert.equal(finalTransform.backdropOpacity, 0);
+	});
+
+	it('supports wheel and two-finger pinch zoom in Inspect Mode within safe bounds and resets on return', () => {
+		const state = createInspectVolumeState();
+		startInspectEnter(state, 0);
+		state.progress = 1;
+		state.phase = 'inspecting';
+
+		const basePose = computeInspectPose(
+			[0, 1.0, 2.25],
+			38,
+			{ width: 1280, height: 800 },
+			odyssey.volume.dimensions,
+			INSPECT_VOLUME_CONFIG,
+			1
+		);
+
+		// Wheel zoom in brings the Volume closer to the camera (larger Z).
+		applyInspectWheelZoom(state, -400, 0);
+		assert.ok(state.targetZoom > 1 && state.targetZoom <= INSPECT_VOLUME_CONFIG.maxZoom);
+		for (let i = 0; i < 45; i += 1) {
+			stepInspectVolume(state, 1 / 60);
+		}
+		assert.ok(state.zoom > 1.2);
+
+		const zoomedPose = computeInspectPose(
+			[0, 1.0, 2.25],
+			38,
+			{ width: 1280, height: 800 },
+			odyssey.volume.dimensions,
+			INSPECT_VOLUME_CONFIG,
+			state.zoom
+		);
+		assert.ok(zoomedPose.center[2] > basePose.center[2]);
+		assert.ok(zoomedPose.backdropZ < zoomedPose.center[2]);
+
+		// Two-finger pinch out zooms back down toward minZoom.
+		const gestures = createInspectOrbitGestures(state);
+		gestures.start(1, 100, 100, 0);
+		gestures.start(2, 300, 100, 10);
+		gestures.move(2, 150, 100, 30);
+		gestures.end(2, 40);
+		gestures.end(1, 50);
+		assert.ok(state.targetZoom < state.zoom);
+		assert.ok(state.targetZoom >= INSPECT_VOLUME_CONFIG.minZoom);
+
+		// Return flight resets zoom cleanly back to 1.
+		startInspectReturn(state);
+		assert.equal(state.targetZoom, 1);
+	});
+
+	it('frames inspected Volumes closer by default on narrow mobile portrait screens', () => {
+		const camPos: readonly [number, number, number] = [0, 1.0, 2.25];
+		const mobilePose = computeInspectPose(
+			camPos,
+			46,
+			{ width: 390, height: 844 },
+			odyssey.volume.dimensions
+		);
+		const desktopFillOnMobile = computeInspectPose(
+			camPos,
+			46,
+			{ width: 390, height: 844 },
+			odyssey.volume.dimensions,
+			{ ...INSPECT_VOLUME_CONFIG, mobileViewportFillRatio: INSPECT_VOLUME_CONFIG.viewportFillRatio }
+		);
+		// Closer framing means larger Z (closer to camera at z = 2.25).
+		assert.ok(mobilePose.center[2] > desktopFillOnMobile.center[2]);
+		assert.ok(mobilePose.backdropZ < mobilePose.center[2]);
 	});
 });

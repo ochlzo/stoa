@@ -1,11 +1,10 @@
 import { CanvasTexture, LinearMipmapLinearFilter, SRGBColorSpace } from 'three';
-import type { Page, Spread } from '#lib/catalog/reading.ts';
+import type { Page } from '#lib/catalog/reading.ts';
 
 const PAGE_CANVAS_WIDTH = 768;
 const PAGE_CANVAS_HEIGHT = 1120;
 
 const CLAY_PAPER_BASE = '#eeebe3';
-const CLAY_PAPER_MARGIN_RULE = 'rgba(138, 132, 122, 0.24)';
 const CLAY_INK_PRIMARY = '#4a4640';
 const CLAY_INK_MUTED = '#7b756c';
 const CLAY_BLOCK_DARK = '#b8b2a7';
@@ -63,36 +62,16 @@ function drawGutterShading(ctx: CanvasRenderingContext2D, side: Page['side']): v
 	}
 }
 
-function drawPageChrome(ctx: CanvasRenderingContext2D, page: Page, spread: Spread): void {
+function drawPageChrome(ctx: CanvasRenderingContext2D, page: Page): void {
 	const w = PAGE_CANVAS_WIDTH;
 	const h = PAGE_CANVAS_HEIGHT;
 
 	// Asymmetric book margins: slightly wider inner gutter margin.
-	const marginTop = 92;
-	const marginBottom = 96;
 	const marginOuter = 74;
 	const marginInner = 96;
 	const leftX = page.side === 'left' ? marginOuter : marginInner;
 	const rightX = page.side === 'left' ? w - marginInner : w - marginOuter;
-	const contentW = rightX - leftX;
-
-	// Subtle clay guide frame.
-	ctx.strokeStyle = CLAY_PAPER_MARGIN_RULE;
-	ctx.lineWidth = 1.5;
-	ctx.strokeRect(leftX, marginTop, contentW, h - marginTop - marginBottom);
-
-	// Corner left/right indicator badge for Clay-pass verification.
-	ctx.font = '600 18px Georgia, "Times New Roman", serif';
-	ctx.fillStyle = CLAY_INK_MUTED;
 	ctx.textBaseline = 'middle';
-	const sideLabel = page.side === 'left' ? 'L · VERSO' : 'RECTO · R';
-	if (page.side === 'left') {
-		ctx.textAlign = 'left';
-		ctx.fillText(sideLabel, leftX, 52);
-	} else {
-		ctx.textAlign = 'right';
-		ctx.fillText(sideLabel, rightX, 52);
-	}
 
 	// Running header on body/chapter pages.
 	if (page.kind === 'body' || page.kind === 'chapter-start') {
@@ -114,35 +93,7 @@ function drawPageChrome(ctx: CanvasRenderingContext2D, page: Page, spread: Sprea
 		ctx.fillStyle = CLAY_INK_PRIMARY;
 		ctx.textAlign = 'center';
 		ctx.fillText(String(page.pageNumber), (leftX + rightX) / 2, h - 48);
-	} else {
-		ctx.font = '500 16px Georgia, "Times New Roman", serif';
-		ctx.fillStyle = CLAY_INK_MUTED;
-		ctx.textAlign = 'center';
-		ctx.fillText(`SPREAD ${spread.index + 1}`, (leftX + rightX) / 2, h - 48);
 	}
-}
-
-function drawEndpaper(ctx: CanvasRenderingContext2D, page: Page): void {
-	const w = PAGE_CANVAS_WIDTH;
-	const h = PAGE_CANVAS_HEIGHT;
-	const cx = page.side === 'left' ? w * 0.48 : w * 0.52;
-
-	ctx.strokeStyle = 'rgba(138, 132, 122, 0.32)';
-	ctx.lineWidth = 2;
-	ctx.strokeRect(cx - 190, h * 0.36, 380, 220);
-
-	ctx.fillStyle = CLAY_INK_MUTED;
-	ctx.textAlign = 'center';
-	ctx.textBaseline = 'middle';
-	ctx.font = '600 20px Georgia, "Times New Roman", serif';
-	ctx.fillText(page.index === 0 ? 'FRONT ENDPAPER' : 'ENDPAPER', cx, h * 0.44);
-
-	ctx.fillStyle = CLAY_RULE_LINE;
-	ctx.fillRect(cx - 64, h * 0.48, 128, 3);
-
-	ctx.fillStyle = CLAY_INK_MUTED;
-	ctx.font = 'italic 22px Georgia, "Times New Roman", serif';
-	ctx.fillText(page.volumeTitle, cx, h * 0.525);
 }
 
 function drawFrontTitlePage(ctx: CanvasRenderingContext2D, page: Page, chapterCount: number): void {
@@ -179,8 +130,7 @@ function drawFrontTitlePage(ctx: CanvasRenderingContext2D, page: Page, chapterCo
 	ctx.fillRect(cx - 120, 760, 240, 2);
 	ctx.font = '600 18px Georgia, "Times New Roman", serif';
 	ctx.fillStyle = CLAY_INK_MUTED;
-	ctx.fillText(`${chapterCount} CHAPTERS · FIXED-LAYOUT CLAY`, cx, 810);
-	ctx.fillText('TITLE SPREAD', cx, 846);
+	ctx.fillText(`${chapterCount} CHAPTERS`, cx, 810);
 }
 
 function drawColophonPage(ctx: CanvasRenderingContext2D, page: Page): void {
@@ -269,7 +219,6 @@ function drawChapterStart(ctx: CanvasRenderingContext2D, page: Page): void {
  */
 export function createClayPageTexture(
 	page: Page,
-	spread: Spread,
 	chapterCount: number
 ): CanvasTexture {
 	const canvas = document.createElement('canvas');
@@ -281,11 +230,11 @@ export function createClayPageTexture(
 		ctx.fillStyle = CLAY_PAPER_BASE;
 		ctx.fillRect(0, 0, PAGE_CANVAS_WIDTH, PAGE_CANVAS_HEIGHT);
 
-		drawPageChrome(ctx, page, spread);
+		drawPageChrome(ctx, page);
 
 		switch (page.kind) {
 			case 'endpaper':
-				drawEndpaper(ctx, page);
+				// The unprinted endpaper lines the inside cover.
 				break;
 			case 'front-title':
 				drawFrontTitlePage(ctx, page, chapterCount);

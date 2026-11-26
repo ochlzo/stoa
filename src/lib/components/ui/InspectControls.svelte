@@ -52,7 +52,7 @@
 			<p class="text-[11px] tracking-[0.14em] text-stone-300/90 uppercase">
 				{volume.author}
 			</p>
-			<p class="mt-0.5 text-[11px] text-stone-400/90">Drag to inspect</p>
+			<p class="mt-0.5 text-[11px] text-stone-400/90">Drag to inspect · Scroll or pinch to zoom</p>
 		</header>
 
 		<!-- Floating action controls -->

@@ -26,6 +26,10 @@ export interface InspectVolumeConfig {
 	readonly maxPitch: number;
 	/** Fraction of the limiting viewport axis occupied by the Volume's bounding sphere diameter. */
 	readonly viewportFillRatio: number;
+	/** Viewport aspect ratio threshold below which closer mobile Inspect framing applies. */
+	readonly mobilePortraitAspectThreshold: number;
+	/** Closer fill ratio on narrow mobile portrait screens so the inspected Volume feels immediate. */
+	readonly mobileViewportFillRatio: number;
 	/** Upward vertical offset (fraction of visible height) to balance above bottom floating controls. */
 	readonly verticalBiasRatio: number;
 	/** Minimum world Z for the inspected Volume center so it stays cleanly in front of the Bookcase. */
@@ -48,6 +52,14 @@ export interface InspectVolumeConfig {
 	readonly dragReleaseGraceMs: number;
 	/** Minimum angular speed (rad/s) below which residual inertia snaps cleanly to zero. */
 	readonly stopSpeedThreshold: number;
+	/** Minimum zoom factor in Inspect Mode (< 1 pulls slightly back). */
+	readonly minZoom: number;
+	/** Maximum zoom factor in Inspect Mode (> 1 brings the Volume closer). */
+	readonly maxZoom: number;
+	/** Wheel delta scaling factor for Inspect Mode zoom. */
+	readonly wheelZoomSensitivity: number;
+	/** Exponential smoothing rate (1/s) for Inspect Mode zoom damping. */
+	readonly zoomSmoothing: number;
 	/** Maximum physics step duration in seconds. */
 	readonly maxDelta: number;
 }
@@ -64,6 +76,8 @@ export const INSPECT_VOLUME_CONFIG: InspectVolumeConfig = {
 	defaultPitch: 0.12,
 	maxPitch: (65 * Math.PI) / 180,
 	viewportFillRatio: 0.66,
+	mobilePortraitAspectThreshold: 0.85,
+	mobileViewportFillRatio: 0.88,
 	verticalBiasRatio: 0.035,
 	minInspectZ: 0.32,
 	backdropClearance: 0.08,
@@ -75,6 +89,10 @@ export const INSPECT_VOLUME_CONFIG: InspectVolumeConfig = {
 	dragVelocitySmoothing: 0.35,
 	dragReleaseGraceMs: 80,
 	stopSpeedThreshold: 0.002,
+	minZoom: 0.82,
+	maxZoom: 1.85,
+	wheelZoomSensitivity: 0.0014,
+	zoomSmoothing: 12,
 	maxDelta: 0.05
 };
 
@@ -86,6 +104,10 @@ export interface InspectVolumeState {
 	yaw: number;
 	/** Current orbit pitch around X (radians, clamped to ±maxPitch). */
 	pitch: number;
+	/** Current smoothed zoom factor in Inspect Mode (1 = default framing). */
+	zoom: number;
+	/** Target zoom factor driven by wheel or two-finger pinch in Inspect Mode. */
+	targetZoom: number;
 	/** Current angular yaw velocity (rad/s). */
 	yawVelocity: number;
 	/** Current angular pitch velocity (rad/s). */
@@ -142,6 +164,32 @@ export interface InspectOrbitGestures {
 	move(pointerId: number, x: number, y: number, timeMs: number): boolean;
 	end(pointerId: number, timeMs: number, cancelled?: boolean): InspectOrbitGestureResult;
 	reset(): void;
+}
+
+/**
+ * Clamps an Inspect Mode zoom scalar to the configured [minZoom, maxZoom] range.
+ */
+export function clampInspectZoom(
+	zoom: number,
+	config: InspectVolumeConfig = INSPECT_VOLUME_CONFIG
+): number {
+	if (!Number.isFinite(zoom)) return 1;
+	return Math.max(config.minZoom, Math.min(config.maxZoom, zoom));
+}
+
+/**
+ * Applies a mouse wheel / trackpad pinch zoom impulse in Inspect Mode.
+ */
+export function applyInspectWheelZoom(
+	state: InspectVolumeState,
+	deltaY: number,
+	deltaMode: number,
+	config: InspectVolumeConfig = INSPECT_VOLUME_CONFIG
+): void {
+	if (state.phase !== 'inspecting' && state.phase !== 'entering') return;
+	const pixelDelta = deltaMode === 1 ? deltaY * 16 : deltaMode === 2 ? deltaY * 240 : deltaY;
+	const factor = Math.exp(-pixelDelta * config.wheelZoomSensitivity);
+	state.targetZoom = clampInspectZoom(state.targetZoom * factor, config);
 }
 
 /**
@@ -212,7 +260,8 @@ export function computeInspectPose(
 	fovDegrees: number,
 	viewport: ViewportSize,
 	dimensions: VolumeDimensions,
-	config: InspectVolumeConfig = INSPECT_VOLUME_CONFIG
+	config: InspectVolumeConfig = INSPECT_VOLUME_CONFIG,
+	zoom = 1
 ): InspectFramingPose {
 	const aspect = Math.max(0.25, viewport.width / Math.max(1, viewport.height));
 	const tanHalfV = Math.tan((fovDegrees * Math.PI) / 360);
@@ -225,9 +274,15 @@ export function computeInspectPose(
 		dimensions.depth
 	) / 2;
 
-	const desiredDistance = boundingRadius / Math.max(0.01, limitingTan * config.viewportFillRatio);
+	const clampedZoom = clampInspectZoom(zoom, config);
+	const fillRatio =
+		aspect < config.mobilePortraitAspectThreshold
+			? config.mobileViewportFillRatio
+			: config.viewportFillRatio;
+	const baseDistance = boundingRadius / Math.max(0.01, limitingTan * fillRatio);
+	const desiredDistance = baseDistance / clampedZoom;
 	const maxAllowedDistance = Math.max(0.24, cameraPosition[2] - config.minInspectZ);
-	const minAllowedDistance = boundingRadius + 0.14;
+	const minAllowedDistance = boundingRadius + 0.1;
 	const distance = Math.max(minAllowedDistance, Math.min(desiredDistance, maxAllowedDistance));
 
 	const visibleHeightAtInspect = 2 * distance * tanHalfV;
@@ -260,6 +315,8 @@ export function createInspectVolumeState(
 		progress: 0,
 		yaw: config.defaultYaw,
 		pitch: config.defaultPitch,
+		zoom: 1,
+		targetZoom: 1,
 		yawVelocity: 0,
 		pitchVelocity: 0,
 		isDragging: false,
@@ -282,6 +339,8 @@ export function startInspectEnter(
 	state.progress = 0;
 	state.yaw = config.defaultYaw;
 	state.pitch = config.defaultPitch;
+	state.zoom = 1;
+	state.targetZoom = 1;
 	state.yawVelocity = 0;
 	state.pitchVelocity = 0;
 	state.isDragging = false;
@@ -299,6 +358,7 @@ export function startInspectReturn(state: InspectVolumeState): void {
 	state.phase = 'returning';
 	state.isDragging = false;
 	state.hasClearedShelf = false;
+	state.targetZoom = 1;
 	state.yawVelocity = 0;
 	state.pitchVelocity = 0;
 	state.startPeekOffset = 0;
@@ -347,11 +407,23 @@ export function stepInspectVolume(
 			state.hasClearedShelf = false;
 			state.yaw = config.defaultYaw;
 			state.pitch = config.defaultPitch;
+			state.zoom = 1;
+			state.targetZoom = 1;
 			state.yawVelocity = 0;
 			state.pitchVelocity = 0;
 			state.isDragging = false;
 			completedReturn = true;
 		}
+	}
+
+	// Smoothly damp Inspect Mode zoom toward targetZoom.
+	const zoomDiff = state.targetZoom - state.zoom;
+	if (Math.abs(zoomDiff) > 0.0005) {
+		state.zoom += zoomDiff * (1 - Math.exp(-config.zoomSmoothing * dt));
+		changed = true;
+	} else if (state.zoom !== state.targetZoom) {
+		state.zoom = state.targetZoom;
+		changed = true;
 	}
 
 	// Apply damped angular velocity inertia whenever the Volume is inspectable and not actively dragged.
@@ -488,36 +560,70 @@ export function createInspectOrbitGestures(
 	state: InspectVolumeState,
 	config: InspectVolumeConfig = INSPECT_VOLUME_CONFIG
 ): InspectOrbitGestures {
+	const pointers = new Map<number, { x: number; y: number }>();
 	let activePointerId: number | null = null;
 	let startX = 0;
 	let startY = 0;
 	let lastX = 0;
 	let lastY = 0;
 	let lastMoveTimeMs = 0;
+	let lastPinchDistance: number | null = null;
 	let hasExceededThreshold = false;
 
+	function currentPinchDistance(): number | null {
+		if (pointers.size < 2) return null;
+		const [a, b] = Array.from(pointers.values());
+		return Math.hypot(b.x - a.x, b.y - a.y);
+	}
+
 	function reset(): void {
+		pointers.clear();
 		activePointerId = null;
+		lastPinchDistance = null;
 		hasExceededThreshold = false;
 		state.isDragging = false;
 	}
 
 	function start(pointerId: number, x: number, y: number, timeMs: number): void {
-		if (activePointerId !== null) return;
+		pointers.set(pointerId, { x, y });
+		if (pointers.size >= 2) {
+			// Transition into two-finger pinch zoom; pause single-finger orbit inertia.
+			activePointerId = null;
+			lastPinchDistance = currentPinchDistance();
+			hasExceededThreshold = true;
+			state.isDragging = true;
+			state.yawVelocity = 0;
+			state.pitchVelocity = 0;
+			return;
+		}
 		activePointerId = pointerId;
 		startX = x;
 		startY = y;
 		lastX = x;
 		lastY = y;
 		lastMoveTimeMs = timeMs;
+		lastPinchDistance = null;
 		hasExceededThreshold = false;
 		state.yawVelocity = 0;
 		state.pitchVelocity = 0;
 	}
 
 	function move(pointerId: number, x: number, y: number, timeMs: number): boolean {
-		if (activePointerId !== pointerId) return false;
+		if (!pointers.has(pointerId)) return false;
+		pointers.set(pointerId, { x, y });
 		if (state.phase !== 'inspecting' && state.phase !== 'entering') return false;
+
+		if (pointers.size >= 2) {
+			const dist = currentPinchDistance();
+			if (dist !== null && lastPinchDistance !== null && lastPinchDistance > 1) {
+				state.targetZoom = clampInspectZoom(state.targetZoom * (dist / lastPinchDistance), config);
+			}
+			lastPinchDistance = dist;
+			state.isDragging = true;
+			return true;
+		}
+
+		if (activePointerId !== pointerId) return false;
 
 		if (!hasExceededThreshold) {
 			const travel = Math.hypot(x - startX, y - startY);
@@ -565,12 +671,32 @@ export function createInspectOrbitGestures(
 		timeMs: number,
 		cancelled = false
 	): InspectOrbitGestureResult {
-		if (activePointerId !== pointerId) {
+		if (!pointers.has(pointerId)) {
 			return { kind: 'none' };
+		}
+		pointers.delete(pointerId);
+
+		if (pointers.size === 1) {
+			// Dropped from pinch back to one finger: re-anchor cleanly without jumping.
+			const [[remainingId, pos]] = Array.from(pointers.entries());
+			activePointerId = remainingId;
+			startX = pos.x;
+			startY = pos.y;
+			lastX = pos.x;
+			lastY = pos.y;
+			lastMoveTimeMs = timeMs;
+			lastPinchDistance = null;
+			return { kind: 'drag' };
+		}
+
+		if (pointers.size > 1) {
+			lastPinchDistance = currentPinchDistance();
+			return { kind: 'drag' };
 		}
 
 		const wasDrag = hasExceededThreshold;
 		activePointerId = null;
+		lastPinchDistance = null;
 		hasExceededThreshold = false;
 		state.isDragging = false;
 

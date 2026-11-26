@@ -5,9 +5,11 @@
 	import { getVolumeGeometryParts } from '#lib/catalog/layout.ts';
 	import { PAGE_BLOCK_CLAY_COLOR, VOLUME_CLAY_COLORS } from '#lib/catalog/volumes.ts';
 	import type { PlacedVolume } from '#lib/catalog/types.ts';
+	import { createSpineGeometry } from '#lib/components/scene/spine-geometry.ts';
 	import { createBookmarkRibbonGeometry } from '#lib/components/scene/volume-ribbon-geometry.ts';
 	import {
 		INSPECT_VOLUME_CONFIG,
+		applyInspectWheelZoom,
 		computeInspectPose,
 		computeVolumeShelfCenter,
 		createInspectOrbitGestures,
@@ -71,6 +73,12 @@
 			placed.volume.bindingStyle
 		)
 	);
+	const curvedSpine = $derived(parts.spine.shape === 'flat' ? null :
+		createSpineGeometry(parts.spine.radius, parts.spine.depth, parts.frontBoard.size[0]));
+	$effect(() => {
+		const bundle = curvedSpine;
+		return () => bundle?.dispose();
+	});
 	const coverColor = $derived(VOLUME_CLAY_COLORS[placed.volume.clayTone]);
 	const showRibbon = $derived(placed.volume.kind === 'readable' && hasBookmark);
 	const highlightReadable = $derived(isPeeked && !isInspected && placed.volume.kind === 'readable');
@@ -105,6 +113,7 @@
 	let readingAlignProgress = 0;
 	let readingAlignStartYaw = -Math.PI / 2;
 	let readingAlignStartPitch = 0;
+	let readingAlignStartZoom = 1;
 
 	const hideClosedForReading = $derived(
 		isInspected && getSceneMode() === 'reading' && getReadingUnfolding()
@@ -117,12 +126,14 @@
 		motionGroupRef.rotation.set(0, 0, placed.rotationZ);
 	}
 
-	// Capture starting orbit angles when transitioning from Inspect Mode into Reading Mode.
+	// Capture starting orbit angles and zoom when transitioning from Inspect Mode into Reading Mode.
 	$effect(() => {
 		if (isInspected && getSceneMode() === 'reading' && getReadingPhase() === 'opening' && !getReadingUnfolding()) {
 			readingAlignProgress = 0;
 			readingAlignStartYaw = normalizeAngle(inspectState.yaw);
 			readingAlignStartPitch = inspectState.pitch;
+			readingAlignStartZoom = inspectState.zoom;
+			inspectState.targetZoom = 1;
 			inspectState.yawVelocity = 0;
 			inspectState.pitchVelocity = 0;
 			inspectState.isDragging = false;
@@ -170,7 +181,14 @@
 			}
 		}
 
+		function onWheel(event: WheelEvent): void {
+			if (inspectState.phase !== 'inspecting' && inspectState.phase !== 'entering') return;
+			event.preventDefault();
+			applyInspectWheelZoom(inspectState, event.deltaY, event.deltaMode);
+		}
+
 		canvas.addEventListener('pointerdown', onPointerDown);
+		canvas.addEventListener('wheel', onWheel, { passive: false });
 		window.addEventListener('pointermove', onPointerMove);
 		window.addEventListener('pointerup', onPointerEnd);
 		window.addEventListener('pointercancel', onPointerEnd);
@@ -179,6 +197,7 @@
 			gestures.reset();
 			setInspectOrbiting(false);
 			canvas.removeEventListener('pointerdown', onPointerDown);
+			canvas.removeEventListener('wheel', onWheel);
 			window.removeEventListener('pointermove', onPointerMove);
 			window.removeEventListener('pointerup', onPointerEnd);
 			window.removeEventListener('pointercancel', onPointerEnd);
@@ -210,7 +229,14 @@
 				activeCamera.position.y,
 				activeCamera.position.z
 			];
-			const pose = computeInspectPose(camPos, fov, viewport, placed.volume.dimensions);
+			const pose = computeInspectPose(
+				camPos,
+				fov,
+				viewport,
+				placed.volume.dimensions,
+				INSPECT_VOLUME_CONFIG,
+				inspectState.zoom
+			);
 
 			if (isInspected && getSceneMode() === 'reading') {
 				const readingPose = computeReadingPose(
@@ -224,7 +250,7 @@
 				);
 
 				if (!getReadingUnfolding()) {
-					// Smoothly align the closed Volume to front-cover-facing (-π/2 yaw, 0 pitch) before unfolding.
+					// Smoothly align the closed Volume to front-cover-facing (-π/2 yaw, 0 pitch, 1.0 zoom) before unfolding.
 					readingAlignProgress = Math.min(
 						1,
 						readingAlignProgress + dt / Math.max(0.05, READING_VOLUME_CONFIG.alignDuration)
@@ -237,10 +263,23 @@
 					const deltaYaw = normalizeAngle(targetYaw - readingAlignStartYaw);
 					inspectState.yaw = readingAlignStartYaw + deltaYaw * t;
 					inspectState.pitch = readingAlignStartPitch * (1 - t);
+					inspectState.zoom = readingAlignStartZoom + (1 - readingAlignStartZoom) * t;
 					inspectState.progress = 1;
+					const alignedPose = computeInspectPose(
+						camPos,
+						fov,
+						viewport,
+						placed.volume.dimensions,
+						INSPECT_VOLUME_CONFIG,
+						inspectState.zoom
+					);
 
 					if (motionGroupRef) {
-						motionGroupRef.position.set(pose.center[0], pose.center[1], pose.center[2]);
+						motionGroupRef.position.set(
+							alignedPose.center[0],
+							alignedPose.center[1],
+							alignedPose.center[2]
+						);
 						motionGroupRef.rotation.order = 'XYZ';
 						motionGroupRef.rotation.set(inspectState.pitch, inspectState.yaw, 0);
 					}
@@ -464,25 +503,13 @@
 						metalness={0}
 					/>
 				</T.Mesh>
-			{:else}
-				<!-- Rounded (or shallow) spine: half-cylinder squashed to curve forward to local z = 0 -->
+			{:else if curvedSpine}
 				<T.Mesh
 					name="spine"
-					position={[parts.spine.position[0], parts.spine.position[1], parts.spine.position[2]]}
-					scale={[1, 1, parts.spine.scaleZ]}
+					geometry={curvedSpine.geometry}
+					position={[...parts.spine.position]}
+					scale={[1, parts.spine.height, 1]}
 				>
-					<T.CylinderGeometry
-						args={[
-							parts.spine.radius,
-							parts.spine.radius,
-							parts.spine.height,
-							16,
-							1,
-							false,
-							-Math.PI / 2,
-							Math.PI
-						]}
-					/>
 					<T.MeshStandardMaterial
 						color={coverColor}
 						emissive={coverEmissive}
@@ -509,24 +536,13 @@
 							metalness={0}
 						/>
 					</T.Mesh>
-				{:else}
+				{:else if curvedSpine}
 					<T.Mesh
 						name={band.id}
-						position={[band.position[0], band.position[1], band.position[2]]}
-						scale={[1, 1, band.scaleZ]}
+						geometry={curvedSpine.geometry}
+						position={[...band.position]}
+						scale={[1, band.height, band.scaleZ / parts.spine.scaleZ]}
 					>
-						<T.CylinderGeometry
-							args={[
-								band.radius,
-								band.radius,
-								band.height,
-								16,
-								1,
-								false,
-								-Math.PI / 2,
-								Math.PI
-							]}
-						/>
 						<T.MeshStandardMaterial
 							color={coverColor}
 							emissive={coverEmissive}
@@ -594,6 +610,18 @@
 				/>
 				<T.MeshStandardMaterial color={PAGE_BLOCK_CLAY_COLOR} roughness={0.95} metalness={0} />
 			</T.Mesh>
+
+			{#if curvedSpine}
+				<!-- Rounded backs of the Leaves fill the case beneath its projecting rim. -->
+				<T.Mesh
+					position={[0, parts.pageBlock.position[1], parts.spine.position[2]]}
+					scale={[parts.pageBlock.size[0] / 2, parts.pageBlock.size[1],
+						parts.spine.depth - Math.min(parts.frontBoard.size[0], parts.spine.depth * 0.8)]}
+				>
+					<T.CylinderGeometry args={[1, 1, 1, 32, 1, false, -Math.PI / 2, Math.PI]} />
+					<T.MeshStandardMaterial color={PAGE_BLOCK_CLAY_COLOR} roughness={0.95} />
+				</T.Mesh>
+			{/if}
 
 			<!-- Binding Style woven headbands at top and bottom of the page block -->
 			{#each parts.headbands as headband (headband.id)}
