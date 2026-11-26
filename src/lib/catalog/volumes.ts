@@ -118,7 +118,7 @@ export const CATALOG: readonly Volume[] = [
 	volume({ id: 'pride-and-prejudice', title: 'Pride and Prejudice', author: 'Jane Austen', shelf: 1, size: [0.222, 0.032, 0.152], binding: 'quarter-vellum', coverColor: 'agedVellum', tone: 'bone', spine: 'flat', placement: leaning(LEFT, 14) }),
 
 	volume({ id: 'moby-dick', title: 'Moby-Dick', author: 'Herman Melville', shelf: 1, size: [0.24, 0.046, 0.17], binding: 'raised-band-leather', coverColor: 'navyCloth', tone: 'slateClay', spine: 'rounded', placement: leaning(RIGHT, -14) }),
-	volume({ id: 'don-quixote', title: 'Don Quixote', author: 'Miguel de Cervantes', shelf: 1, size: [0.256, 0.052, 0.18], binding: 'raised-band-leather', coverColor: 'ochreLinen', tone: 'warmClay', spine: 'rounded', placement: RIGHT }),
+	volume({ id: 'don-quixote', title: 'Don Quixote', author: 'Miguel de Cervantes', shelf: 1, size: [0.256, 0.052, 0.18], binding: 'raised-band-leather', coverColor: 'ochreLinen', tone: 'warmClay', spine: 'rounded', placement: RIGHT, readable: true }),
 	volume({ id: 'gullivers-travels', title: "Gulliver's Travels", author: 'Jonathan Swift', shelf: 1, size: [0.228, 0.04, 0.156], binding: 'linen-cloth', coverColor: 'oliveCloth', tone: 'bone', spine: 'flat', placement: RIGHT, readable: true }),
 	volume({ id: 'war-and-peace', title: 'War and Peace', author: 'Leo Tolstoy', shelf: 1, size: [0.268, 0.056, 0.188], binding: 'blind-tooled-calf', coverColor: 'umberCalf', tone: 'alabaster', spine: 'rounded', placement: RIGHT }),
 

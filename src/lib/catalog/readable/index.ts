@@ -7,6 +7,8 @@ import { design as ilustradoDesign } from '#lib/catalog/readable/ilustrado/desig
 import { content as ilustradoContent } from '#lib/catalog/readable/ilustrado/content.ts';
 import { design as theColorPurpleDesign } from '#lib/catalog/readable/the-color-purple/design.ts';
 import { content as theColorPurpleContent } from '#lib/catalog/readable/the-color-purple/content.ts';
+import { design as donQuixoteDesign } from '#lib/catalog/readable/don-quixote/design.ts';
+import { content as donQuixoteContent } from '#lib/catalog/readable/don-quixote/content.ts';
 import { design as gulliversTravelsDesign } from '#lib/catalog/readable/gullivers-travels/design.ts';
 import { content as gulliversTravelsContent } from '#lib/catalog/readable/gullivers-travels/content.ts';
 import { design as sirGawainDesign } from '#lib/catalog/readable/sir-gawain-and-the-green-knight/design.ts';
@@ -27,6 +29,7 @@ export const READABLE_VOLUMES: Readonly<Record<string, ReadableVolumePackage>> =
 	'the-road-not-taken': { design: theRoadNotTakenDesign, content: theRoadNotTakenContent },
 	ilustrado: { design: ilustradoDesign, content: ilustradoContent },
 	'the-color-purple': { design: theColorPurpleDesign, content: theColorPurpleContent },
+	'don-quixote': { design: donQuixoteDesign, content: donQuixoteContent },
 	'gullivers-travels': { design: gulliversTravelsDesign, content: gulliversTravelsContent },
 	'sir-gawain-and-the-green-knight': { design: sirGawainDesign, content: sirGawainContent },
 	'your-laughter': { design: yourLaughterDesign, content: yourLaughterContent },

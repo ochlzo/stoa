@@ -10,6 +10,7 @@ Each teammate owns one isolated `Readable Volume` slot in Stoa's 3D `Bookcase`. 
 | **Burac** | *The Road Not Taken* | Robert Frost | `the-road-not-taken` | Shelf 0 (Left) |
 | **Alcovindas** | *Ilustrado* | Miguel Syjuco | `ilustrado` | Shelf 0 (Right) |
 | **Omadto** | *The Color Purple* | Alice Walker | `the-color-purple` | Shelf 1 (Left) |
+| **Alvarez** | *Don Quixote* | Miguel de Cervantes | `don-quixote` | Shelf 1 (Right) |
 | **Briongos** | *Gulliver's Travels* | Jonathan Swift | `gullivers-travels` | Shelf 1 (Right) |
 | **Licup** | *Sir Gawain and the Green Knight* | Anonymous | `sir-gawain-and-the-green-knight` | Shelf 2 (Left) |
 | **Belgica** | *Your Laughter* | Pablo Neruda | `your-laughter` | Shelf 2 (Right) |
