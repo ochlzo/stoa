@@ -1,10 +1,13 @@
 <script lang="ts">
+	import { setStampFace, type VolumeStamps } from '#lib/components/scene/volume-stamp-geometry.ts';
+	import type { StampFace } from '#lib/textures/volume-stamp.ts';
+	import type { VolumeFinishes } from '#lib/textures/volume-finishes.ts';
 	import { T, useTask, useThrelte } from '@threlte/core';
 	import type { IntersectionEvent } from '@threlte/extras';
 	import { Vector3, type Group, type Mesh, type MeshBasicMaterial, type PerspectiveCamera } from 'three';
 	import { getVolumeGeometryParts } from '#lib/catalog/layout.ts';
-	import { PAGE_BLOCK_CLAY_COLOR, VOLUME_CLAY_COLORS } from '#lib/catalog/volumes.ts';
 	import type { PlacedVolume } from '#lib/catalog/types.ts';
+	import { createBackdropVignetteMaterial } from '#lib/components/scene/backdrop-vignette-geometry.ts';
 	import { createSpineGeometry } from '#lib/components/scene/spine-geometry.ts';
 	import {
 		INSPECT_VOLUME_CONFIG,
@@ -46,8 +49,13 @@
 		setReadingUnfolding,
 		updatePeekAnchor
 	} from '#lib/state/library.svelte.ts';
+	import { LOOKDEV_BACKDROP } from '#lib/catalog/lookdev.ts';
+	import { stepBackdropOpacity } from '#lib/physics/study-lighting.ts';
+	import { isClayMode } from '#lib/state/lookdev.svelte.ts';
 
 	interface Props {
+		stamps: VolumeStamps;
+		finishes: VolumeFinishes;
 		placed: PlacedVolume;
 		isPeeked?: boolean;
 		isInspected?: boolean;
@@ -55,6 +63,8 @@
 	}
 
 	let {
+		stamps,
+		finishes,
 		placed,
 		isPeeked = false,
 		isInspected = false,
@@ -76,7 +86,10 @@
 		const bundle = curvedSpine;
 		return () => bundle?.dispose();
 	});
-	const coverColor = $derived(VOLUME_CLAY_COLORS[placed.volume.clayTone]);
+	const cover = $derived(finishes.cover(placed.volume, isClayMode()));
+	const bandFinish = $derived(finishes.cover(placed.volume, isClayMode(), 0.86));
+	const paper = $derived(finishes.paper(isClayMode()));
+	const headbandFinish = $derived(finishes.headband(isClayMode()));
 	const highlightReadable = $derived(isPeeked && !isInspected && placed.volume.kind === 'readable');
 	const coverEmissive = $derived(highlightReadable ? '#f4ede0' : '#000000');
 	const coverEmissiveIntensity = $derived(highlightReadable ? 0.16 : 0);
@@ -90,9 +103,47 @@
 	const inspectState = createInspectVolumeState();
 	const anchorPoint = new Vector3();
 	let motionGroupRef: Group | undefined;
-	let peekGroupRef: Group | undefined;
+	let peekGroupRef = $state<Group | undefined>(undefined);
 	let backdropMeshRef: Mesh | undefined;
 	let backdropMaterialRef: MeshBasicMaterial | undefined;
+	const vignette = $derived(isInspected && !isClayMode() ? createBackdropVignetteMaterial() : null);
+	$effect(() => {
+		const bundle = vignette;
+		return () => bundle?.dispose();
+	});
+	let vignetteCenterOpacity = 0;
+	let vignetteEdgeOpacity = 0;
+	const shadowsEnabled = $derived(!isClayMode());
+
+	function stepLookdevVignette(dt: number): void {
+		if (!vignette) return;
+		const mode = getSceneMode();
+		const readingPhase = getReadingPhase();
+		const returning =
+			readingPhase === 'closing-to-shelf' ||
+			inspectState.phase === 'returning' ||
+			getInspectPhase() === 'returning';
+		const target = returning
+			? { centerOpacity: 0, edgeOpacity: 0 }
+			: mode === 'reading' && readingPhase !== 'closing-to-inspect'
+				? LOOKDEV_BACKDROP.reading
+				: LOOKDEV_BACKDROP.inspect;
+		vignetteCenterOpacity = stepBackdropOpacity(vignetteCenterOpacity, target.centerOpacity, dt);
+		vignetteEdgeOpacity = stepBackdropOpacity(vignetteEdgeOpacity, target.edgeOpacity, dt);
+		vignette.setLevels(vignetteCenterOpacity, vignetteEdgeOpacity);
+	}
+
+	$effect(() => {
+		const group = peekGroupRef;
+		const enabled = shadowsEnabled;
+		if (!group) return;
+		group.traverse((obj) => {
+			if ('isMesh' in obj && (obj as Mesh).isMesh) {
+				obj.castShadow = enabled;
+				obj.receiveShadow = enabled;
+			}
+		});
+	});
 	let lastPointerType = 'mouse';
 	let readingAlignProgress = 0;
 	let readingAlignStartYaw = -Math.PI / 2;
@@ -130,6 +181,9 @@
 		const phase = getInspectPhase();
 		if (phase === 'entering' && inspectState.phase === 'idle') {
 			startInspectEnter(inspectState, peekState.offset);
+			vignetteCenterOpacity = 0;
+			vignetteEdgeOpacity = 0;
+			vignette?.setLevels(0, 0);
 			peekState.offset = 0;
 			peekState.velocity = 0;
 			if (peekGroupRef) {
@@ -279,7 +333,9 @@
 							1
 						);
 					}
-					if (backdropMaterialRef) {
+					if (vignette) {
+						stepLookdevVignette(dt);
+					} else if (backdropMaterialRef) {
 						backdropMaterialRef.opacity =
 							INSPECT_VOLUME_CONFIG.backdropMaxOpacity +
 							(READING_VOLUME_CONFIG.backdropOpacity - INSPECT_VOLUME_CONFIG.backdropMaxOpacity) *
@@ -300,8 +356,13 @@
 						);
 						backdropMeshRef.scale.set(readingPose.backdropWidth, readingPose.backdropHeight, 1);
 					}
-					if (backdropMaterialRef) {
-						backdropMaterialRef.opacity = READING_VOLUME_CONFIG.backdropOpacity;
+					if (vignette) {
+						stepLookdevVignette(dt);
+					} else if (backdropMaterialRef) {
+						const target = getReadingPhase().startsWith('closing')
+							? INSPECT_VOLUME_CONFIG.backdropMaxOpacity
+							: READING_VOLUME_CONFIG.backdropOpacity;
+						backdropMaterialRef.opacity = stepBackdropOpacity(backdropMaterialRef.opacity, target, dt);
 					}
 				}
 				return;
@@ -335,7 +396,9 @@
 				backdropMeshRef.position.set(activeCamera.position.x, activeCamera.position.y, pose.backdropZ);
 				backdropMeshRef.scale.set(pose.backdropWidth, pose.backdropHeight, 1);
 			}
-			if (backdropMaterialRef) {
+			if (vignette) {
+				stepLookdevVignette(dt);
+			} else if (backdropMaterialRef) {
 				backdropMaterialRef.opacity = transform.backdropOpacity;
 			}
 
@@ -427,6 +490,14 @@
 	}
 </script>
 
+{#snippet binding(face: StampFace)}
+	{#if !isClayMode() && (face === 'spine' || placed.volume.kind === 'readable')}
+		<T is={stamps.get(placed.volume, face)} dispose={false} emissive={coverEmissive} emissiveIntensity={coverEmissiveIntensity} />
+	{:else}
+		<T.MeshStandardMaterial {...cover} emissive={coverEmissive} emissiveIntensity={coverEmissiveIntensity} />
+	{/if}
+{/snippet}
+
 {#if isInspected}
 	<!-- Dimmed Bookcase backdrop plane placed behind the orbiting/open Volume in world space -->
 	<T.Mesh
@@ -438,15 +509,19 @@
 		onclick={onBackdropClick}
 	>
 		<T.PlaneGeometry args={[1, 1]} />
-		<T.MeshBasicMaterial
-			color="#141210"
-			transparent
-			opacity={0}
-			depthWrite={false}
-			oncreate={(mat) => {
-				backdropMaterialRef = mat;
-			}}
-		/>
+		{#if vignette}
+			<T is={vignette.material} dispose={false} />
+		{:else}
+			<T.MeshBasicMaterial
+				color={LOOKDEV_BACKDROP.clayColor}
+				transparent
+				opacity={0}
+				depthWrite={false}
+				oncreate={(mat) => {
+					backdropMaterialRef = mat;
+				}}
+			/>
+		{/if}
 	</T.Mesh>
 {/if}
 
@@ -478,14 +553,8 @@
 					name="spine"
 					position={[parts.spine.position[0], parts.spine.position[1], parts.spine.position[2]]}
 				>
-					<T.BoxGeometry args={[parts.spine.size[0], parts.spine.size[1], parts.spine.size[2]]} />
-					<T.MeshStandardMaterial
-						color={coverColor}
-						emissive={coverEmissive}
-						emissiveIntensity={coverEmissiveIntensity}
-						roughness={0.9}
-						metalness={0}
-					/>
+					<T.BoxGeometry oncreate={(geometry) => setStampFace(geometry, '+z')} args={[parts.spine.size[0], parts.spine.size[1], parts.spine.size[2]]} />
+					{@render binding('spine')}
 				</T.Mesh>
 			{:else if curvedSpine}
 				<T.Mesh
@@ -494,13 +563,7 @@
 					position={[...parts.spine.position]}
 					scale={[1, parts.spine.height, 1]}
 				>
-					<T.MeshStandardMaterial
-						color={coverColor}
-						emissive={coverEmissive}
-						emissiveIntensity={coverEmissiveIntensity}
-						roughness={0.9}
-						metalness={0}
-					/>
+					{@render binding('spine')}
 				</T.Mesh>
 			{/if}
 
@@ -513,11 +576,9 @@
 					>
 						<T.BoxGeometry args={[band.size[0], band.size[1], band.size[2]]} />
 						<T.MeshStandardMaterial
-							color={coverColor}
+							{...bandFinish}
 							emissive={coverEmissive}
 							emissiveIntensity={coverEmissiveIntensity}
-							roughness={0.86}
-							metalness={0}
 						/>
 					</T.Mesh>
 				{:else if curvedSpine}
@@ -528,11 +589,9 @@
 						scale={[1, band.height, band.scaleZ / parts.spine.scaleZ]}
 					>
 						<T.MeshStandardMaterial
-							color={coverColor}
+							{...bandFinish}
 							emissive={coverEmissive}
 							emissiveIntensity={coverEmissiveIntensity}
-							roughness={0.86}
-							metalness={0}
 						/>
 					</T.Mesh>
 				{/if}
@@ -548,15 +607,9 @@
 				]}
 			>
 				<T.BoxGeometry
-					args={[parts.frontBoard.size[0], parts.frontBoard.size[1], parts.frontBoard.size[2]]}
+					oncreate={(geometry) => setStampFace(geometry, '+x')} args={[parts.frontBoard.size[0], parts.frontBoard.size[1], parts.frontBoard.size[2]]}
 				/>
-				<T.MeshStandardMaterial
-					color={coverColor}
-					emissive={coverEmissive}
-					emissiveIntensity={coverEmissiveIntensity}
-					roughness={0.9}
-					metalness={0}
-				/>
+				{@render binding('front')}
 			</T.Mesh>
 
 			<!-- Back cover board -->
@@ -569,15 +622,9 @@
 				]}
 			>
 				<T.BoxGeometry
-					args={[parts.backBoard.size[0], parts.backBoard.size[1], parts.backBoard.size[2]]}
+					oncreate={(geometry) => setStampFace(geometry, '-x')} args={[parts.backBoard.size[0], parts.backBoard.size[1], parts.backBoard.size[2]]}
 				/>
-				<T.MeshStandardMaterial
-					color={coverColor}
-					emissive={coverEmissive}
-					emissiveIntensity={coverEmissiveIntensity}
-					roughness={0.9}
-					metalness={0}
-				/>
+				{@render binding('back')}
 			</T.Mesh>
 
 			<!-- Slightly recessed page block -->
@@ -592,7 +639,7 @@
 				<T.BoxGeometry
 					args={[parts.pageBlock.size[0], parts.pageBlock.size[1], parts.pageBlock.size[2]]}
 				/>
-				<T.MeshStandardMaterial color={PAGE_BLOCK_CLAY_COLOR} roughness={0.95} metalness={0} />
+				<T.MeshStandardMaterial {...paper} />
 			</T.Mesh>
 
 			{#if curvedSpine}
@@ -603,7 +650,7 @@
 						parts.spine.depth - Math.min(parts.frontBoard.size[0], parts.spine.depth * 0.8)]}
 				>
 					<T.CylinderGeometry args={[1, 1, 1, 32, 1, false, -Math.PI / 2, Math.PI]} />
-					<T.MeshStandardMaterial color={PAGE_BLOCK_CLAY_COLOR} roughness={0.95} />
+					<T.MeshStandardMaterial {...paper} />
 				</T.Mesh>
 			{/if}
 
@@ -615,7 +662,7 @@
 					rotation={[0, 0, Math.PI / 2]}
 				>
 					<T.CylinderGeometry args={[headband.radius, headband.radius, headband.width, 10]} />
-					<T.MeshStandardMaterial color="#d8d4cc" roughness={0.92} metalness={0} />
+					<T.MeshStandardMaterial {...headbandFinish} />
 				</T.Mesh>
 			{/each}
 		</T.Group>

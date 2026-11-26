@@ -1,9 +1,12 @@
 <script lang="ts">
+	import { setStampFace, type VolumeStamps } from '#lib/components/scene/volume-stamp-geometry.ts';
+	import type { StampFace } from '#lib/textures/volume-stamp.ts';
+	import type { VolumeFinishes } from '#lib/textures/volume-finishes.ts';
 	import { T, useTask, useThrelte } from '@threlte/core';
 	import type { Group, PerspectiveCamera } from 'three';
 	import { getSpread, getVolumeReadingModel } from '#lib/catalog/reading.ts';
+	import { isClayMode } from '#lib/state/lookdev.svelte.ts';
 	import type { Volume } from '#lib/catalog/types.ts';
-	import { VOLUME_CLAY_COLORS } from '#lib/catalog/volumes.ts';
 	import { createPageStackGeometry } from '#lib/components/scene/open-volume-geometry.ts';
 	import { createLeafGeometry } from '#lib/components/scene/leaf-geometry.ts';
 	import { attachOpenVolumeGestures } from '#lib/components/scene/open-volume-gestures.ts';
@@ -35,20 +38,23 @@
 		startLeafTurn,
 		toggleReadingHud
 	} from '#lib/state/library.svelte.ts';
-	import { createClayPageTexture } from '#lib/textures/page-clay-texture.ts';
+	import { createReadingPagePainter } from '#lib/textures/reading-page-texture.ts';
 
 	interface Props {
+		stamps: VolumeStamps;
+		finishes: VolumeFinishes;
 		volume: Volume;
 	}
 
-	let { volume }: Props = $props();
+	let { volume, finishes, stamps }: Props = $props();
 
 	const { camera, canvas, size } = useThrelte();
 
 	const openDims = $derived(
 		computeOpenVolumeDimensions(volume.dimensions, volume.spineProfile, volume.bindingStyle)
 	);
-	const coverColor = $derived(VOLUME_CLAY_COLORS[volume.clayTone]);
+	const cover = $derived(finishes.cover(volume, isClayMode()));
+	const paintPage = createReadingPagePainter();
 	const readingModel = $derived(getVolumeReadingModel(volume));
 	const activeSpread = $derived(getSpread(readingModel, getCurrentSpreadIndex()));
 	const stackSplit = $derived(
@@ -67,13 +73,14 @@
 			leftThickness: stackSplit.leftThickness,
 			rightThickness: stackSplit.rightThickness,
 			turn,
-			frontTexture: createClayPageTexture(
+			clay: isClayMode(),
+			frontTexture: paintPage(
 				forward ? activeSpread.rightPage : activeSpread.leftPage,
-				readingModel.chapters.length
+				readingModel.chapters.length, isClayMode()
 			),
-			backTexture: createClayPageTexture(
+			backTexture: paintPage(
 				forward ? adjacent.leftPage : adjacent.rightPage,
-				readingModel.chapters.length
+				readingModel.chapters.length, isClayMode()
 			)
 		});
 	});
@@ -87,16 +94,18 @@
 			const thickness = left ? stackSplit.leftThickness : stackSplit.rightThickness;
 			const exposed = adjacent && (left ? turn?.direction === -1 : turn?.direction === 1) ? adjacent : activeSpread;
 			const page = left ? exposed.leftPage : exposed.rightPage;
-			const texture = createClayPageTexture(page, readingModel.chapters.length);
-			const stack = createPageStackGeometry(
-				openDims.pageWidth,
-				openDims.pageHeight,
+			const texture = paintPage(page, readingModel.chapters.length, isClayMode());
+			const stack = createPageStackGeometry({
+				width: openDims.pageWidth,
+				height: openDims.pageHeight,
 				thickness,
 				gutterDepth,
-				READING_VOLUME_CONFIG.pageGutterArch,
+				arch: READING_VOLUME_CONFIG.pageGutterArch,
 				side,
-				texture
-			);
+				texture,
+				edgeFinish: finishes.paper(isClayMode()),
+				clay: isClayMode()
+			});
 			return { side, sign: left ? -1 : 1, thickness, texture, stack };
 		});
 	});
@@ -253,6 +262,14 @@
 	});
 </script>
 
+{#snippet binding(face: StampFace)}
+	{#if isClayMode()}
+		<T.MeshStandardMaterial {...cover} />
+	{:else}
+		<T is={stamps.get(volume, face)} dispose={false} />
+	{/if}
+{/snippet}
+
 {#if getReadingUnfolding()}
 	<T.Group
 		name={`open-volume-${volume.id}`}
@@ -268,8 +285,8 @@
 			}}
 		>
 			<T.Mesh>
-				<T.BoxGeometry args={[openDims.spineWidth, openDims.boardHeight, openDims.boardThickness]} />
-				<T.MeshStandardMaterial color={coverColor} roughness={0.9} metalness={0} />
+				<T.BoxGeometry oncreate={(geometry) => setStampFace(geometry, '-z')} args={[openDims.spineWidth, openDims.boardHeight, openDims.boardThickness]} />
+				{@render binding('spine')}
 			</T.Mesh>
 		</T.Group>
 
@@ -295,8 +312,8 @@
 						-(half.thickness * (1 - unfold) + gutterDepth * unfold + openDims.boardThickness / 2)
 					]}
 				>
-					<T.BoxGeometry args={[openDims.boardWidth, openDims.boardHeight, openDims.boardThickness]} />
-					<T.MeshStandardMaterial color={coverColor} roughness={0.9} />
+					<T.BoxGeometry oncreate={(geometry) => setStampFace(geometry, '-z')} args={[openDims.boardWidth, openDims.boardHeight, openDims.boardThickness]} />
+					{@render binding(half.side === 'left' ? 'front' : 'back')}
 				</T.Mesh>
 				<T.Mesh
 					name={half.side + '-page-stack'}

@@ -96,6 +96,7 @@ function createCurvedLeafGeometry(
 		const y = pos.getY(i);
 		const z = pos.getZ(i);
 		const t = Math.max(0, y / length);
+		geom.attributes.uv.setXY(i, 0.5 + x / (2 * halfWidth), t);
 		const bend = -arch * t * t;
 		const cup = Math.abs(x / halfWidth) * thickness * 1.2;
 		pos.setZ(i, z - thickness / 2 + bend + cup);

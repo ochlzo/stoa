@@ -193,11 +193,11 @@ export function getVolumeGeometryParts(
 		},
 		frontBoard: {
 			size: [preset.boardThickness, height, boardDepth],
-			position: [-boardOffsetX, height / 2, boardCenterZ]
+			position: [boardOffsetX, height / 2, boardCenterZ]
 		},
 		backBoard: {
 			size: [preset.boardThickness, height, boardDepth],
-			position: [boardOffsetX, height / 2, boardCenterZ]
+			position: [-boardOffsetX, height / 2, boardCenterZ]
 		},
 		pageBlock: {
 			size: [pageWidth, pageHeight, pageDepth],

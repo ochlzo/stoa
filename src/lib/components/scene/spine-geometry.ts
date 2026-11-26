@@ -1,3 +1,4 @@
+import { setStampFace } from '#lib/components/scene/volume-stamp-geometry.ts';
 import { BoxGeometry } from 'three';
 
 /** Bend a strip around the bound edge. Its cut ends meet the two cover boards. */
@@ -14,5 +15,6 @@ export function createSpineGeometry(radius: number, depth: number, boardThicknes
 		);
 	}
 	geometry.computeVertexNormals();
+	setStampFace(geometry, '+z');
 	return { geometry, dispose: () => geometry.dispose() };
 }

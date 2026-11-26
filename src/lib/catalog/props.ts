@@ -15,6 +15,7 @@ export interface VasePropSpec {
 
 export interface FramePropSpec {
 	readonly kind: 'frame';
+	readonly print: 'coast' | 'temple' | 'hills';
 	readonly id: string;
 	readonly shelfIndex: number;
 	readonly width: number;
@@ -206,6 +207,7 @@ export function getShelfProps(): readonly ShelfPropSpec[] {
 		{
 			kind: 'frame',
 			id: 'shelf2-hero-frame',
+			print: 'coast',
 			shelfIndex: 2,
 			width: 0.23,
 			height: 0.27,
@@ -280,6 +282,7 @@ export function getShelfProps(): readonly ShelfPropSpec[] {
 		{
 			kind: 'frame',
 			id: 'shelf4-frame-large',
+			print: 'temple',
 			shelfIndex: 4,
 			width: 0.22,
 			height: 0.25,
@@ -291,6 +294,7 @@ export function getShelfProps(): readonly ShelfPropSpec[] {
 		{
 			kind: 'frame',
 			id: 'shelf4-frame-small',
+			print: 'hills',
 			shelfIndex: 4,
 			width: 0.16,
 			height: 0.19,
