@@ -3,8 +3,10 @@ import { readFileSync } from 'node:fs';
 import { Session } from 'node:inspector/promises';
 import { registerHooks } from 'node:module';
 import { test } from 'node:test';
-import { compile } from 'svelte/compiler';
+import { fileURLToPath } from 'node:url';
+import { compile, compileModule } from 'svelte/compiler';
 import { render } from 'svelte/server';
+import ts from 'typescript';
 
 test('ShelfCamera reuses bounds across idle frames and refreshes them after resize', async t => {
 	const component = new URL('../src/lib/components/scene/ShelfCamera.svelte', import.meta.url);
@@ -25,9 +27,22 @@ test('ShelfCamera reuses bounds across idle frames and refreshes them after resi
 			return next(specifier, context);
 		},
 		load(url, context, next) {
-			if (url !== component.href) return next(url, context);
-			const { js } = compile(readFileSync(component, 'utf8'), { generate: 'server' });
-			return { source: js.code, format: 'module', shortCircuit: true };
+			if (url === component.href) {
+				const { js } = compile(readFileSync(component, 'utf8'), { generate: 'server' });
+				return { source: js.code, format: 'module', shortCircuit: true };
+			}
+			if (url.endsWith('.svelte.ts')) {
+				const raw = readFileSync(fileURLToPath(url), 'utf8');
+				const stripped = ts.transpileModule(raw, {
+					compilerOptions: {
+						target: ts.ScriptTarget.ESNext,
+						module: ts.ModuleKind.ESNext
+					}
+				}).outputText;
+				const { js } = compileModule(stripped, { generate: 'server' });
+				return { source: js.code, format: 'module', shortCircuit: true };
+			}
+			return next(url, context);
 		}
 	});
 	t.after(() => hooks.deregister());

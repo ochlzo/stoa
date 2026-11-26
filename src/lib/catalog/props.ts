@@ -144,7 +144,7 @@ export function getShelfProps(): readonly ShelfPropSpec[] {
 			width: 0.048,
 			height: 0.145,
 			depth: 0.11,
-			position: [-0.435, y0, -0.11],
+			position: [-0.457, y0, -0.11],
 			clayTone: 'slateClay'
 		},
 		{
@@ -241,7 +241,7 @@ export function getShelfProps(): readonly ShelfPropSpec[] {
 			width: 0.046,
 			height: 0.135,
 			depth: 0.105,
-			position: [0.318, y2, -0.11],
+			position: [0.34, y2, -0.11],
 			clayTone: 'warmClay'
 		},
 

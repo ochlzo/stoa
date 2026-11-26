@@ -17,8 +17,8 @@ import type {
  * Shared physical tolerances for deterministic Shelf packing and parametric Volume construction (meters).
  */
 export const VOLUME_LAYOUT_CONSTANTS = {
-	/** Horizontal clearance from the Bookcase side panels on each end of a Shelf. */
-	shelfEndMargin: 0.024,
+	/** Hairline horizontal clearance from the Bookcase side panels on each end of a Shelf. */
+	shelfEndMargin: 0.002,
 	/** Minimum horizontal gap between adjacent upright Volumes so covers never clip or Z-fight. */
 	minGap: 0.004,
 	/** Additional deterministic micro-gap variation between adjacent upright Volumes. */
@@ -32,9 +32,7 @@ export const VOLUME_LAYOUT_CONSTANTS = {
 	/** Vertical overhang of cover boards above and below the page block. */
 	pageBlockVerticalInset: 0.0045,
 	/** Horizontal recess of the page block behind the fore-edge of the covers. */
-	pageBlockForeEdgeInset: 0.005,
-	/** Tiny clearance between the page block and inner board/spine faces to prevent Z-fighting. */
-	innerClearance: 0.0004
+	pageBlockForeEdgeInset: 0.005
 } as const;
 
 /**
@@ -127,7 +125,6 @@ export function getVolumeGeometryParts(
 	bindingStyle: BindingStyleId = 'linen-cloth'
 ): VolumeGeometryParts {
 	const { height, depth, thickness } = dimensions;
-	const c = VOLUME_LAYOUT_CONSTANTS;
 	const preset = BINDING_STYLE_PRESETS[bindingStyle];
 
 	const spineRadius = thickness / 2;
@@ -136,13 +133,13 @@ export function getVolumeGeometryParts(
 	const boardCenterZ = -(spineDepth + boardDepth / 2);
 	const boardOffsetX = thickness / 2 - preset.boardThickness / 2;
 
-	const pageWidth = Math.max(0.004, thickness - preset.boardThickness * 2 - c.innerClearance * 2);
+	const pageWidth = Math.max(0.004, thickness - preset.boardThickness * 2);
 	const pageHeight = Math.max(0.02, height - preset.pageBlockVerticalInset * 2);
 	const pageDepth = Math.max(
 		0.015,
-		depth - spineDepth - preset.pageBlockForeEdgeInset - c.innerClearance
+		depth - spineDepth - preset.pageBlockForeEdgeInset
 	);
-	const pageCenterZ = -(spineDepth + c.innerClearance + pageDepth / 2);
+	const pageCenterZ = -(spineDepth + pageDepth / 2);
 
 	const isFlat = spineProfile === 'flat';
 
@@ -166,7 +163,7 @@ export function getVolumeGeometryParts(
 	if (preset.hasHeadbands) {
 		const headbandRadius = Math.min(0.0022, preset.pageBlockVerticalInset * 0.45);
 		const headbandWidth = Math.max(0.003, pageWidth * 0.96);
-		const headbandZ = -(spineDepth + c.innerClearance + headbandRadius);
+		const headbandZ = -(spineDepth + headbandRadius);
 		const pageTopY = height / 2 + pageHeight / 2;
 		const pageBottomY = height / 2 - pageHeight / 2;
 		headbands.push(
