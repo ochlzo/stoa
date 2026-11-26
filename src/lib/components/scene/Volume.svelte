@@ -46,6 +46,7 @@
 		setReadingUnfolding,
 		updatePeekAnchor
 	} from '#lib/state/library.svelte.ts';
+	import { isClayMode } from '#lib/state/lookdev.svelte.ts';
 
 	interface Props {
 		placed: PlacedVolume;
@@ -90,9 +91,22 @@
 	const inspectState = createInspectVolumeState();
 	const anchorPoint = new Vector3();
 	let motionGroupRef: Group | undefined;
-	let peekGroupRef: Group | undefined;
+	let peekGroupRef = $state<Group | undefined>(undefined);
 	let backdropMeshRef: Mesh | undefined;
 	let backdropMaterialRef: MeshBasicMaterial | undefined;
+	const shadowsEnabled = $derived(!isClayMode());
+
+	$effect(() => {
+		const group = peekGroupRef;
+		const enabled = shadowsEnabled;
+		if (!group) return;
+		group.traverse((obj) => {
+			if ('isMesh' in obj && (obj as Mesh).isMesh) {
+				obj.castShadow = enabled;
+				obj.receiveShadow = enabled;
+			}
+		});
+	});
 	let lastPointerType = 'mouse';
 	let readingAlignProgress = 0;
 	let readingAlignStartYaw = -Math.PI / 2;

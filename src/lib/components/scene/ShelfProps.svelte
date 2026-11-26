@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { T } from '@threlte/core';
+	import type { Group, Mesh } from 'three';
 	import { createShelfPropGeometry } from '#lib/components/scene/shelf-prop-geometry.ts';
 	import { getShelfProps } from '#lib/catalog/props.ts';
 	import { PAGE_BLOCK_CLAY_COLOR, VOLUME_CLAY_COLORS } from '#lib/catalog/volumes.ts';
+	import { isClayMode } from '#lib/state/lookdev.svelte.ts';
 
 	import {
 		getFramePivotY, getHourglassRods, getSculptureCenterY, layoutBookStack, rosettePetals,
@@ -10,6 +12,8 @@
 	} from '#lib/catalog/prop-layout.ts';
 
 	const props = getShelfProps();
+	const shadowsEnabled = $derived(!isClayMode());
+	let propsGroupRef = $state<Group | undefined>(undefined);
 
 	const {
 		vaseGeometries, planterPotGeometry, foliageLeafGeometry, succulentPetalGeometry,
@@ -17,9 +21,26 @@
 	} = createShelfPropGeometry(props);
 
 	$effect(() => dispose);
+
+	$effect(() => {
+		const group = propsGroupRef;
+		const enabled = shadowsEnabled;
+		if (!group) return;
+		group.traverse((obj) => {
+			if ('isMesh' in obj && (obj as Mesh).isMesh) {
+				obj.castShadow = enabled;
+				obj.receiveShadow = enabled;
+			}
+		});
+	});
 </script>
 
-<T.Group name="shelf-props">
+<T.Group
+	name="shelf-props"
+	oncreate={(group) => {
+		propsGroupRef = group;
+	}}
+>
 	{#each props as prop (prop.id)}
 		{#if prop.kind === 'vase'}
 			<T.Mesh

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Canvas } from '@threlte/core';
+	import { ACESFilmicToneMapping, PCFSoftShadowMap } from 'three';
 	import LibraryScene from '#lib/components/scene/LibraryScene.svelte';
 	import InspectControls from '#lib/components/ui/InspectControls.svelte';
 	import ReadingControls from '#lib/components/ui/ReadingControls.svelte';
@@ -8,7 +9,7 @@
 
 <main class="relative h-dvh w-dvw overflow-hidden select-none">
 	<div class="h-full w-full touch-none">
-		<Canvas>
+		<Canvas toneMapping={ACESFilmicToneMapping} shadows={PCFSoftShadowMap}>
 			<LibraryScene />
 		</Canvas>
 	</div>
