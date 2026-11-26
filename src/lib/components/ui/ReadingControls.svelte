@@ -36,6 +36,9 @@
 	const model = $derived(volume ? getActiveVolumeReadingModel(volume) : null);
 	const displayTitle = $derived(model?.title ?? volume?.title ?? '');
 	const displayAuthor = $derived(model?.author ?? volume?.author ?? '');
+	const titlePageIcon = $derived(
+		volume?.kind === 'readable' ? (volume.design?.titlePageIcon ?? 'book') : 'book'
+	);
 	const spread = $derived(model ? getSpread(model, spreadIndex) : null);
 	const activeMobilePage = $derived(
 		spread ? (focusedSide === 'left' ? spread.leftPage : spread.rightPage) : null
@@ -335,7 +338,7 @@
 								<form
 									onsubmit={goToPage}
 									novalidate
-									class="sticky -top-2 z-10 -mx-2 -mt-2 flex items-center gap-2 bg-paper px-3 py-1.5 {navigationChoices.length >
+									class="sticky -top-2 z-10 -mx-2 -mt-2 flex items-center gap-2 bg-paper px-3 py-2 {navigationChoices.length >
 									0
 										? 'mb-1 border-b border-ink/15'
 										: ''}"
@@ -344,7 +347,7 @@
 										Go to p.
 									</label>
 									<div
-										class="flex min-w-0 flex-1 items-baseline gap-1 border-b border-ink/25 pb-0.5 transition-colors focus-within:border-brass"
+										class="flex min-w-0 flex-1 items-center gap-1 border-b border-ink/25 transition-colors focus-within:border-brass"
 									>
 										<input
 											id="reading-page-number"
@@ -361,15 +364,27 @@
 										<span class="shrink-0 text-xs tabular-nums text-muted">
 											/ {lastPageNumber}
 										</span>
+										<button
+											type="submit"
+											aria-label="Go to Page"
+											disabled={!!getLeafTurn() || phase !== 'reading'}
+											class="-mr-1 inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-xs text-muted transition-colors enabled:hover:bg-brass/20 enabled:hover:text-ink focus-visible:outline-2 focus-visible:outline-brass disabled:cursor-default disabled:opacity-40"
+										>
+											<svg
+												aria-hidden="true"
+												viewBox="0 0 16 16"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												class="size-4"
+											>
+												<path d="M3 8h10" />
+												<path d="m9 4 4 4-4 4" />
+											</svg>
+										</button>
 									</div>
-									<button
-										type="submit"
-										aria-label="Go to Page"
-										disabled={!!getLeafTurn() || phase !== 'reading'}
-										class="min-h-11 min-w-11 shrink-0 cursor-pointer rounded-xs border border-brass/50 px-2 font-volume text-sm text-ink transition-colors enabled:hover:bg-brass/20 focus-visible:outline-2 focus-visible:outline-brass disabled:cursor-default disabled:opacity-40"
-									>
-										→
-									</button>
 								</form>
 							{/if}
 							{#if navigationChoices.length > 0}
@@ -382,7 +397,31 @@
 									}}
 									class="chapter-choice"
 								>
-									<span class="text-xs text-muted">0</span>
+									{#if titlePageIcon === 'sailboat'}
+										<svg aria-hidden="true" viewBox="0 0 36 36" class="size-5 shrink-0 text-muted">
+											<path d="M18 4v19M18 5l7 2-7 2" fill="none" stroke="currentColor" stroke-width="1.5" />
+											<path d="M16 8 8 22h8V8Zm4 3v11h8L20 11ZM4 24c3 5 8 7 14 7s11-2 14-7H4Z" fill="currentColor" />
+											<path d="M3 33c4-2 7-2 11 0s7 2 11 0 7-2 10 0" fill="none" stroke="currentColor" stroke-width="1.5" />
+										</svg>
+									{:else if typeof titlePageIcon === 'object'}
+										{@const iconSize = titlePageIcon.viewBoxSize ?? 24}
+										<svg aria-hidden="true" viewBox={`0 0 ${iconSize} ${iconSize}`} class="size-4 shrink-0 text-muted">
+											<path d={titlePageIcon.svgPath} fill="currentColor" />
+										</svg>
+									{:else}
+										<svg
+											aria-hidden="true"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.6"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											class="size-4 shrink-0 text-muted"
+										>
+											<path d="M12 6.5c-2.2-1.5-5-2-8-1.5v13c3-.5 5.8 0 8 1.5m0-13c2.2-1.5 5-2 8-1.5v13c-3-.5-5.8 0-8 1.5m0-13v13" />
+										</svg>
+									{/if}
 									<span class="font-volume text-base">Title Page</span>
 								</button>
 								{#each navigationChoices as choice (choice.key)}

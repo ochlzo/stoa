@@ -5,6 +5,7 @@ export const design: VolumeDesign = {
 	spineProfile: 'shallow',
 	coverColor: 'ochreLinen',
 	foilStyle: 'gold',
+	titlePageIcon: 'sailboat',
 	sourceNote: 'Homer, The Odyssey. Translated by Samuel Butler (1900); text via Wikisource.',
 	coverArtwork: {
 		front: 'volumes/the-odyssey/front-cover.jpg',

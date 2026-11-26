@@ -26,6 +26,17 @@ export interface CustomSvgEmblem {
 
 export type CoverEmblemSpec = CoverEmblemPreset | CustomSvgEmblem;
 
+export type TitlePageIconPreset = 'book' | 'sailboat';
+
+export interface CustomTitlePageIcon {
+	/** Single-color SVG path `d` string drawn inside a centered square viewBox. */
+	readonly svgPath: string;
+	/** Square viewBox side length for `svgPath` coordinates (defaults to 24). */
+	readonly viewBoxSize?: number;
+}
+
+export type TitlePageIconSpec = TitlePageIconPreset | CustomTitlePageIcon;
+
 export type FoilStyle = 'gold' | 'blind';
 
 export type CoverBorderStyle = 'double-rule' | 'single-rule' | 'corner-ornaments' | 'none';
@@ -98,6 +109,8 @@ export interface VolumeDesign {
 	readonly sourceNote?: string;
 	readonly coverBorder?: CoverBorderStyle;
 	readonly emblem?: CoverEmblemSpec;
+	/** Icon shown beside "Title Page" in the Reading Mode navigation drawer (defaults to `'book'`). */
+	readonly titlePageIcon?: TitlePageIconSpec;
 	/** Edition imprint stamped near the foot of the cover (defaults to "STOA LIBRARY EDITION"). */
 	readonly editionLine?: string;
 	/** Full custom 2D canvas painter for the front cover stamp channel. */
