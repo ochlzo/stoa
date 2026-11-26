@@ -178,8 +178,6 @@ interface VolumeMetadata {
 	/** Source / edition attribution shown on the back cover, 1st title Page, and closing colophon. */
 	readonly sourceNote?: string;
 	readonly colophonNote?: string;
-	/** When true, vertical mouse-wheel scrolling turns Spreads (with Ctrl+wheel zooming). */
-	readonly wheelTurnsPages?: boolean;
 }
 
 export type VolumeContent = VolumeMetadata &

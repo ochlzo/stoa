@@ -24,7 +24,6 @@ Keep `content.ts` pure TypeScript with `#lib/*` imports and explicit `.ts` exten
 - **`translator`** *(optional)*: Rendered as `"Translated by ..."` on the 1st `Page`.
 - **`sourceNote`** *(recommended)*: Edition / source attribution (e.g. `"Translated by Samuel Butler — Project Gutenberg"`). Displayed on the 1st `Page`, the back cover imprint, and the closing Colophon `Page`.
 - **`colophonNote`** *(optional)*: Custom closing note on the final `Page` (falls back to `sourceNote`).
-- **`wheelTurnsPages`** *(optional, default `false`)*: When `true`, vertical mouse-wheel scrolling turns `Spreads` (and `Ctrl` + wheel zooms). Useful for short illustrated or stanza-per-spread editions.
 
 ### Literary Sections (`sections: readonly VolumeContentSection[]`)
 
@@ -79,7 +78,6 @@ export const content: VolumeContent = {
 	title: '...',
 	author: '...',
 	sourceNote: '...',
-	wheelTurnsPages: true,
 	illustratedStanzas: [
 		{
 			illustrationSrc: 'volumes/<volume-id>/stanza-1.webp',

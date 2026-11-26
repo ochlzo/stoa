@@ -135,15 +135,13 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 		const lastPage = model.pages[model.pages.length - 1];
 		assert.equal(lastPage.kind, 'colophon');
 		assert.equal(lastPage.colophonNote, 'Public domain test fixture');
-		assert.equal(model.wheelTurnsPages, false);
 	});
 
-	it('builds illustratedStanzas with explicit stanza PageKind, fullBleed plates, wheelTurnsPages, and static assets', () => {
+	it('builds illustratedStanzas with explicit stanza PageKind, fullBleed plates, and static assets', () => {
 		const pkg = READABLE_VOLUMES['ode-on-a-grecian-urn'];
 		const model = buildVolumeReadingModel(sampleVolume, pkg.content);
 
 		assert.equal(model.chapters.length, 0);
-		assert.equal(model.wheelTurnsPages, true);
 		// Title spread + 5 illustrated stanza spreads + closing colophon spread
 		assert.equal(model.spreads.length, 7);
 
