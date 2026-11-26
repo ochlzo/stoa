@@ -1,4 +1,11 @@
-import type { VolumeContent } from '#lib/catalog/readable/types.ts';
+import type { IllustrationMotion, VolumeContent } from '#lib/catalog/readable/types.ts';
+
+const urnMotion = {
+	origin: [146, 418],
+	columns: 2,
+	frameCount: 12,
+	framesPerSecond: 8
+} satisfies Omit<IllustrationMotion, 'src'>;
 
 export const content: VolumeContent = {
 	title: 'Ode on a Grecian Urn',
@@ -7,6 +14,10 @@ export const content: VolumeContent = {
 	illustratedStanzas: [
 		{
 			illustrationSrc: 'volumes/ode-on-a-grecian-urn/stanza-1.webp',
+			motion: {
+				...urnMotion,
+				src: 'volumes/ode-on-a-grecian-urn/stanza-1-motion.webp'
+			},
 			lines: [
 				"Thou still unravish'd bride of quietness,",
 				'Thou foster-child of silence and slow time,',
@@ -22,6 +33,10 @@ export const content: VolumeContent = {
 		},
 		{
 			illustrationSrc: 'volumes/ode-on-a-grecian-urn/stanza-2.webp',
+			motion: {
+				...urnMotion,
+				src: 'volumes/ode-on-a-grecian-urn/stanza-2-motion.webp'
+			},
 			lines: [
 				'Heard melodies are sweet, but those unheard',
 				'Are sweeter; therefore, ye soft pipes, play on;',
@@ -37,6 +52,10 @@ export const content: VolumeContent = {
 		},
 		{
 			illustrationSrc: 'volumes/ode-on-a-grecian-urn/stanza-3.webp',
+			motion: {
+				...urnMotion,
+				src: 'volumes/ode-on-a-grecian-urn/stanza-3-motion.webp'
+			},
 			lines: [
 				'Ah, happy, happy boughs! that cannot shed',
 				'Your leaves, nor ever bid the Spring adieu;',
@@ -52,6 +71,10 @@ export const content: VolumeContent = {
 		},
 		{
 			illustrationSrc: 'volumes/ode-on-a-grecian-urn/stanza-4.webp',
+			motion: {
+				...urnMotion,
+				src: 'volumes/ode-on-a-grecian-urn/stanza-4-motion.webp'
+			},
 			lines: [
 				'Who are these coming to the sacrifice?',
 				'To what green altar, O mysterious priest,',
@@ -67,6 +90,10 @@ export const content: VolumeContent = {
 		},
 		{
 			illustrationSrc: 'volumes/ode-on-a-grecian-urn/stanza-5.webp',
+			motion: {
+				...urnMotion,
+				src: 'volumes/ode-on-a-grecian-urn/stanza-5-motion.webp'
+			},
 			lines: [
 				'O Attic shape! Fair attitude! with brede',
 				'Of marble men and maidens overwrought,',

@@ -1,5 +1,6 @@
 import { getReadableVolumePackage } from '#lib/catalog/readable/index.ts';
 import type {
+	IllustrationMotion,
 	ProseSection,
 	VerseSection,
 	VolumeContent
@@ -53,6 +54,7 @@ export interface Page {
 	readonly epigraph?: string;
 	readonly stanzaNumber?: number;
 	readonly illustrationSrc?: string;
+	readonly illustrationMotion?: IllustrationMotion;
 	readonly illustrationCaption?: string;
 }
 
@@ -346,7 +348,8 @@ export function buildVolumeReadingModel(
 					kind: 'illustration',
 					contentMode: 'illustration',
 					lineCount: 0,
-					illustrationSrc: stanza.illustrationSrc
+					illustrationSrc: stanza.illustrationSrc,
+					illustrationMotion: stanza.motion
 				},
 				{
 					...stanzaPage,

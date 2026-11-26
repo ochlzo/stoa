@@ -54,7 +54,7 @@
 		computeOpenVolumeDimensions(volume.dimensions, volume.spineProfile, volume.bindingStyle)
 	);
 	const cover = $derived(finishes.cover(volume, isClayMode()));
-	const paintPage = createReadingPagePainter();
+	const { paintPage, stepIllustrations } = createReadingPagePainter();
 	const volumeDesign = $derived(volume.kind === 'readable' ? volume.design : undefined);
 	const readingModel = $derived(getVolumeReadingModel(volume));
 	const activeSpread = $derived(getSpread(readingModel, getCurrentSpreadIndex()));
@@ -182,6 +182,7 @@
 	useTask((delta) => {
 		const dt = clampDelta(delta);
 		if (!getReadingUnfolding()) return;
+		stepIllustrations(dt);
 
 		if (turn && leaf) {
 			if (stepLeafTurn(turn, dt)) finishLeafTurn();

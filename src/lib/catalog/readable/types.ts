@@ -151,8 +151,19 @@ export interface IllustrationSection {
 
 export type VolumeContentSection = ProseSection | VerseSection | IllustrationSection;
 
+export interface IllustrationMotion {
+	/** Local sprite sheet arranged in row-major order. */
+	readonly src: string;
+	readonly columns: number;
+	readonly frameCount: number;
+	readonly framesPerSecond: number;
+	/** Patch origin in pixels of the full-page illustration. */
+	readonly origin: readonly [x: number, y: number];
+}
+
 export interface IllustratedStanza {
 	readonly illustrationSrc: string;
+	readonly motion?: IllustrationMotion;
 	readonly lines: readonly string[];
 }
 
