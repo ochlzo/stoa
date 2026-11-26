@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>Stoa</title>
+	<title>stoa</title>
 	<link rel="icon" href={favicon} type="image/svg+xml" />
 </svelte:head>
 

@@ -16,7 +16,7 @@ const validCoverColors = new Set(Object.keys(LOOKDEV_PALETTE.volumes));
 describe('Readable Volume packages & registry', () => {
 	it('registers an isolated readable package for every Readable Volume in CATALOG', () => {
 		const readable = CATALOG.filter((v) => v.kind === 'readable');
-		assert.equal(readable.length, 9);
+		assert.equal(readable.length, 10);
 		for (const volume of readable) {
 			const pkg = READABLE_VOLUMES[volume.id];
 			assert.ok(pkg, `Missing readable volume package for ${volume.id}`);
@@ -173,5 +173,6 @@ describe('Agent-agnostic skill registration', () => {
 		assert.ok(claudeMd.includes('AGENTS.md'));
 		assert.ok(guide.includes('Ode on a Grecian Urn'));
 		assert.ok(guide.includes("Gulliver's Travels"));
+		assert.ok(guide.includes('Don Quixote'));
 	});
 });
