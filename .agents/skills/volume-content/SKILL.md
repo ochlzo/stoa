@@ -24,6 +24,7 @@ Keep `content.ts` pure TypeScript with `#lib/*` imports and explicit `.ts` exten
 - **`translator`** *(optional)*: Rendered as `"Translated by ..."` on the 1st `Page`.
 - **`sourceNote`** *(recommended)*: Edition / source attribution (e.g. `"Translated by Samuel Butler — Project Gutenberg"`). Displayed on the 1st `Page`, the back cover imprint, and the closing Colophon `Page`.
 - **`colophonNote`** *(optional)*: Custom closing note on the final `Page` (falls back to `sourceNote`).
+- **`wheelTurnsPages`** *(optional, default `false`)*: When `true`, vertical mouse-wheel scrolling turns `Spreads` (and `Ctrl` + wheel zooms). Useful for short illustrated or stanza-per-spread editions.
 
 ### Literary Sections (`sections: readonly VolumeContentSection[]`)
 
@@ -59,7 +60,7 @@ Stoa deterministically paginates every section into fixed-layout `Pages` and eve
    	]
    }
    ```
-3. **Illustration Plate (`kind: 'illustration'`)** — full-page archival framed plate composited onto rag paper:
+3. **Illustration Plate (`kind: 'illustration'`)** — full-page archival framed plate composited onto rag paper (supports optional `motion` sprite sheet):
    ```ts
    {
    	kind: 'illustration',
@@ -69,9 +70,37 @@ Stoa deterministically paginates every section into fixed-layout `Pages` and eve
    }
    ```
 
+### Illustrated Stanzas (`illustratedStanzas`)
+
+For short illustrated poems where each stanza faces a full-bleed illustration on its own `Spread` without chapters, use `illustratedStanzas` instead of `sections` (see `ode-on-a-grecian-urn/content.ts`):
+
+```ts
+export const content: VolumeContent = {
+	title: '...',
+	author: '...',
+	sourceNote: '...',
+	wheelTurnsPages: true,
+	illustratedStanzas: [
+		{
+			illustrationSrc: 'volumes/<volume-id>/stanza-1.webp',
+			motion: {
+				src: 'volumes/<volume-id>/stanza-1-motion.webp',
+				origin: [146, 418],
+				columns: 2,
+				frameCount: 12,
+				framesPerSecond: 8
+			},
+			lines: ['First line...', 'Second line...']
+		}
+	]
+};
+```
+
+Sprite-sheet `motion` automatically respects `prefers-reduced-motion: reduce` (skipping motion downloads and rendering the still illustration).
+
 ### Interior Image Rules
 
-- Place files inside `static/volumes/<volume-id>/` and reference them as `'volumes/<volume-id>/filename.webp'` (no leading `static/`).
+- Place files inside `static/volumes/<volume-id>/` and reference them as `'volumes/<volume-id>/filename.webp'` (no leading `static/`). Never place image files inside `src/lib/catalog/readable/<volume-id>/` (enforced by `pnpm lint` `volume-assets-in-static`).
 - Never use external hotlinked URLs.
 - Keep images `.webp`, `.png`, or `.jpg`, at most `1200px` wide and `<= 400 KB`.
 
