@@ -38,10 +38,15 @@
 		spread ? (focusedSide === 'left' ? spread.leftPage : spread.rightPage) : null
 	);
 	const totalSpreads = $derived(model ? model.spreads.length : 1);
+	const lastPageNumber = $derived(
+		model ? model.pages.reduce((last, page) => Math.max(last, page.pageNumber ?? 0), 0) : 0
+	);
 	const canPrev = $derived(spreadIndex > 0);
 	const canNext = $derived(spreadIndex < totalSpreads - 1);
 
 	let isMobilePortrait = $state(false);
+	let pageNumberInput = $state('');
+	let pageInput = $state<HTMLInputElement>();
 	let indicator = $state<HTMLButtonElement>();
 	let controls = $state<HTMLDivElement>();
 	let timer: ReturnType<typeof setTimeout>;
@@ -49,7 +54,7 @@
 	function scheduleFade() {
 		clearTimeout(timer);
 		timer = setTimeout(() => {
-			if (!drawerOpen && !controls?.querySelector(':focus-visible')) {
+			if (!drawerOpen && !controls?.contains(document.activeElement)) {
 				readingHud.visible = false;
 				readingHud.dismissPoint = null;
 			}
@@ -93,6 +98,26 @@
 		reveal();
 	}
 
+	function goToPage(event: SubmitEvent) {
+		event.preventDefault();
+		if (!model || getLeafTurn() || phase !== 'reading') return;
+		const value = pageNumberInput.trim();
+		const number = Number(value);
+		const page = /^\d+$/.test(value)
+			? model.pages.find((candidate) => candidate.pageNumber === number)
+			: undefined;
+		if (!page) {
+			pageInput?.setCustomValidity(`Enter a Page number from 1 to ${lastPageNumber}.`);
+			pageInput?.reportValidity();
+			return;
+		}
+		pageInput?.setCustomValidity('');
+		jumpToReadingPage(page.index);
+		pageNumberInput = '';
+		pageInput?.blur();
+		reveal();
+	}
+
 	// Track narrow portrait viewports so mobile single-Page focus controls appear cleanly (ADR 0004).
 	$effect(() => {
 		function updateViewport(): void {
@@ -113,6 +138,7 @@
 		function onKeyDown(event: KeyboardEvent): void {
 			if (phase !== 'reading') return;
 			if (event.key === 'Tab') reveal();
+			if (event.target instanceof HTMLInputElement) return;
 			if (drawerOpen) {
 				if (event.key === 'Escape') {
 					event.preventDefault();
@@ -197,7 +223,7 @@
 			<h1 class="font-volume text-2xl leading-tight">
 				{volume.title}
 			</h1>
-			<div data-chapters class="pointer-events-auto relative mt-1">
+			<div data-chapters class="pointer-events-auto relative mt-1 max-w-full">
 				<button
 					type="button"
 					bind:this={indicator}
@@ -218,12 +244,52 @@
 					{/if}
 					<span aria-hidden="true"> ▾</span>
 				</button>
+				{#if lastPageNumber > 0}
+					<form onsubmit={goToPage} novalidate class="mt-2 flex w-fit items-center bg-ink/95 text-paper">
+						<label for="reading-page-number" class="sr-only">Page number</label>
+						<input
+							id="reading-page-number"
+							bind:this={pageInput}
+							bind:value={pageNumberInput}
+							type="text"
+							inputmode="numeric"
+							autocomplete="off"
+							placeholder="Page"
+							disabled={!!getLeafTurn() || phase !== 'reading'}
+							oninput={() => pageInput?.setCustomValidity('')}
+							class="h-11 w-14 px-1 text-center text-sm text-paper placeholder:text-paper/75 focus-visible:outline-2 focus-visible:outline-brass disabled:opacity-40"
+						/>
+						<button
+							type="submit"
+							disabled={!!getLeafTurn() || phase !== 'reading'}
+							class="study-action border-b border-brass/60 px-2 enabled:hover:bg-paper/15"
+						>
+							Go
+						</button>
+					</form>
+				{/if}
 				{#if drawerOpen && model}
 					<nav
 						id="chapter-drawer"
-						aria-label="Chapters"
+						aria-label="Title Spread and Chapters"
 						class="absolute top-full left-0 z-10 mt-1 max-h-[50dvh] w-80 max-w-[calc(100vw-3.5rem)] overflow-y-auto overscroll-contain border-t-2 border-brass bg-paper p-2 text-left text-ink shadow-lg"
 					>
+						<button
+							type="button"
+							aria-current={spreadIndex === 0 ? 'location' : undefined}
+							onclick={() => {
+								jumpToReadingPage(model.spreads[0].rightPage.index);
+								void closeDrawer();
+							}}
+							class="chapter-choice"
+						>
+							<svg aria-hidden="true" viewBox="0 0 36 36" class="h-6 w-6 text-muted">
+								<path d="M18 4v19M18 5l7 2-7 2" fill="none" stroke="currentColor" stroke-width="1.5" />
+								<path d="M16 8 8 22h8V8Zm4 3v11h8L20 11ZM4 24c3 5 8 7 14 7s11-2 14-7H4Z" fill="currentColor" />
+								<path d="M3 33c4-2 7-2 11 0s7 2 11 0 7-2 10 0" fill="none" stroke="currentColor" stroke-width="1.5" />
+							</svg>
+							<span class="font-volume text-base">Homer, Title Spread</span>
+						</button>
 						{#each model.chapters as chapter (chapter.index)}
 							<button
 								type="button"

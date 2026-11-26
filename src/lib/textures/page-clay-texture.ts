@@ -239,6 +239,17 @@ export function createClayPageTexture(
 			case 'front-title':
 				drawFrontTitlePage(ctx, page, chapterCount);
 				break;
+			case 'chapter-opener': {
+				ctx.fillStyle = 'rgba(184, 178, 167, 0.45)';
+				ctx.fillRect(40, 64, PAGE_CANVAS_WIDTH - 80, PAGE_CANVAS_HEIGHT - 148);
+				ctx.textAlign = 'center';
+				ctx.fillStyle = CLAY_INK_PRIMARY;
+				ctx.font = '700 26px Georgia, "Times New Roman", serif';
+				ctx.fillText(`CHAPTER ${page.chapterRomanNumeral ?? ''}`, PAGE_CANVAS_WIDTH / 2, 180);
+				ctx.font = '700 38px Georgia, "Times New Roman", serif';
+				drawWrappedCenteredText(ctx, page.chapterTitle ?? '', PAGE_CANVAS_WIDTH / 2, 440, 540, 48);
+				break;
+			}
 			case 'chapter-start':
 				drawChapterStart(ctx, page);
 				break;
