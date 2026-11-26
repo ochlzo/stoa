@@ -198,6 +198,7 @@ const PROSE_CHARS_PER_LINE = 42;
 const VERSE_CHARS_PER_LINE = 44;
 const BODY_LINES_PER_PAGE = 22;
 const OPENER_LINES_PER_PAGE = 14;
+const MIN_BODY_LINES_PER_PAGE = 6;
 
 function wrapTextToBudget(text: string, maxChars: number): string[] {
 	const words = text.trim().split(/\s+/).filter(Boolean);
@@ -228,12 +229,29 @@ function paginateProseSection(section: ProseSection): readonly (readonly PageTex
 	if (allLines.length === 0) return [[]];
 
 	const firstLimit = section.epigraph ? OPENER_LINES_PER_PAGE - 3 : OPENER_LINES_PER_PAGE;
-	const buckets: PageTextLine[][] = [];
-	let cursor = 0;
+	let openerLineCount = Math.min(firstLimit, allLines.length);
+	let remainingLineCount = allLines.length - openerLineCount;
+
+	// Give a short tail back to the Chapter-opening Page instead of leaving a
+	// nearly empty final Page by itself.
+	if (remainingLineCount > 0 && remainingLineCount < MIN_BODY_LINES_PER_PAGE) {
+		openerLineCount = Math.max(
+			MIN_BODY_LINES_PER_PAGE,
+			allLines.length - MIN_BODY_LINES_PER_PAGE
+		);
+		remainingLineCount = allLines.length - openerLineCount;
+	}
+
+	const buckets: PageTextLine[][] = [allLines.slice(0, openerLineCount)];
+	const continuationPageCount = Math.ceil(remainingLineCount / BODY_LINES_PER_PAGE);
+	const continuationLinesPerPage = continuationPageCount
+		? Math.ceil(remainingLineCount / continuationPageCount)
+		: 0;
+	let cursor = openerLineCount;
 	while (cursor < allLines.length) {
-		const limit = buckets.length === 0 ? Math.max(6, firstLimit) : BODY_LINES_PER_PAGE;
-		buckets.push(allLines.slice(cursor, cursor + limit));
-		cursor += limit;
+		const end = Math.min(allLines.length, cursor + continuationLinesPerPage);
+		buckets.push(allLines.slice(cursor, end));
+		cursor = end;
 	}
 	return buckets;
 }
