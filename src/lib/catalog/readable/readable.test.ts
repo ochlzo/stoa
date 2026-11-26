@@ -51,6 +51,8 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 
 	it('paginates prose, verse stanzas, and illustration plates into even Spreads with monotonic folios', () => {
 		const content: VolumeContent = {
+			title: 'Ode on a Grecian Urn (Annotated)',
+			author: 'John Keats (1819)',
 			subtitle: 'A Test Specimen',
 			translator: 'E. Translator',
 			sourceNote: 'Public domain test fixture',
@@ -92,10 +94,15 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 		assert.equal(model.pages.length % 2, 0);
 		assert.equal(model.spreads.length, model.pages.length / 2);
 
-		// Spread 0 metadata
+		// Spread 0 metadata, overrides, and source attribution
+		assert.equal(model.title, 'Ode on a Grecian Urn (Annotated)');
+		assert.equal(model.author, 'John Keats (1819)');
 		assert.equal(model.pages[1].kind, 'front-title');
+		assert.equal(model.pages[1].volumeTitle, 'Ode on a Grecian Urn (Annotated)');
+		assert.equal(model.pages[1].volumeAuthor, 'John Keats (1819)');
 		assert.equal(model.pages[1].volumeSubtitle, 'A Test Specimen');
 		assert.equal(model.pages[1].volumeTranslator, 'E. Translator');
+		assert.equal(model.pages[1].sourceNote, 'Public domain test fixture');
 
 		// Verse page preserves stanza gap and epigraph
 		const versePage = model.pages[model.chapters[0].startPageIndex];
@@ -138,10 +145,11 @@ describe('Agent-agnostic skill registration', () => {
 		'volume-design',
 		'volume-content',
 		'volume-verify',
-		'grilling'
+		'grilling',
+		'pr'
 	] as const;
 
-	it('keeps all 6 toolkit skills identical across .agents and .claude and indexed in docs/CONTRIBUTING_VOLUME.md', () => {
+	it('keeps all 7 toolkit skills identical across .agents and .claude and indexed in docs/CONTRIBUTING_VOLUME.md', () => {
 		const root = process.cwd();
 		const guide = readFileSync(resolve(root, 'docs/CONTRIBUTING_VOLUME.md'), 'utf8');
 		const claudeMd = readFileSync(resolve(root, 'CLAUDE.md'), 'utf8');

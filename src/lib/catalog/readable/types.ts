@@ -152,8 +152,13 @@ export interface IllustrationSection {
 export type VolumeContentSection = ProseSection | VerseSection | IllustrationSection;
 
 export interface VolumeContent {
+	/** Optional display title override (replaces the default Catalog title everywhere). */
+	readonly title?: string;
+	/** Optional author override (replaces the default Catalog author everywhere). */
+	readonly author?: string;
 	readonly subtitle?: string;
 	readonly translator?: string;
+	/** Source / edition attribution shown on the back cover, 1st title Page, and closing colophon. */
 	readonly sourceNote?: string;
 	readonly colophonNote?: string;
 	/**

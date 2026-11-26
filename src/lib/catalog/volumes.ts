@@ -63,14 +63,19 @@ function volume(spec: VolumeSpec): Volume {
 		placement: spec.placement
 	};
 	if (spec.readable) {
-		const design = getReadableVolumePackage(spec.id)?.design;
+		const pkg = getReadableVolumePackage(spec.id);
+		const design = pkg?.design;
+		const content = pkg?.content;
 		return {
 			...base,
+			title: content?.title ?? spec.title,
+			author: content?.author ?? spec.author,
 			kind: 'readable',
 			bindingStyle: design?.bindingStyle ?? spec.binding,
 			coverColor: design?.coverColor ?? spec.coverColor,
 			spineProfile: design?.spineProfile ?? spec.spine,
-			design
+			design,
+			sourceNote: content?.sourceNote
 		};
 	}
 	return {

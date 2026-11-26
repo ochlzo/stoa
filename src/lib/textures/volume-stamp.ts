@@ -359,8 +359,18 @@ function board(ctx: CanvasRenderingContext2D, volume: Volume, face: StampFace, w
 		ctx.strokeStyle = foil;
 		bindingEmblem(ctx, volume.bindingStyle, design?.emblem, cx, h * 0.46, w / 330);
 	}
-	const edition = (design?.editionLine ?? 'STOA  LIBRARY  EDITION').toUpperCase();
-	typeset(ctx, edition, cx, h * 0.86, w * 0.67, h * 0.05, w * 0.04);
+	if (face === 'front') {
+		const edition = (design?.editionLine ?? 'STOA  LIBRARY  EDITION').toUpperCase();
+		typeset(ctx, edition, cx, h * 0.86, w * 0.67, h * 0.05, w * 0.04);
+	} else {
+		const backSource = volume.kind === 'readable' ? volume.sourceNote?.trim() : undefined;
+		if (backSource) {
+			typeset(ctx, backSource, cx, h * 0.84, w * 0.72, h * 0.1, w * 0.036, true);
+		} else {
+			const edition = (design?.editionLine ?? 'STOA  LIBRARY  EDITION').toUpperCase();
+			typeset(ctx, edition, cx, h * 0.86, w * 0.67, h * 0.05, w * 0.04);
+		}
+	}
 }
 
 export function createVolumeStamp(volume: Volume, face: StampFace) {

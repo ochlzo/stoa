@@ -535,6 +535,11 @@ export function createReadingPagePainter() {
 				ctx.fillText(page.volumeAuthor, cx, 820);
 			}
 			ornament(ctx, cx, 872, theme);
+			if (title && page.sourceNote) {
+				ctx.font = 'italic 19px ' + theme.font;
+				ctx.fillStyle = theme.inkMuted;
+				heading(ctx, page.sourceNote, cx, 932, right - left - 44, 26);
+			}
 		} else if (page.kind === 'illustration') {
 			ctx.font = 'italic 600 25px ' + theme.font;
 			ctx.fillStyle = theme.inkMuted;

@@ -38,6 +38,7 @@ Start by invoking **`/contribute-volume`** — it locks your agent to your assig
 | **`grilling`** | **Design-tree interview** (`/grilling`): settles open design choices in frontier rounds before writing code. | [SKILL.md](../.agents/skills/grilling/SKILL.md) |
 | **`volume-content`** | **Literary content (`content.ts`)**: metadata overrides, source attribution, prose, verse stanzas, and illustration plates. | [SKILL.md](../.agents/skills/volume-content/SKILL.md) |
 | **`volume-verify`** | **Standards, tests & PR**: scope audit, pure-TS lint checks, `pnpm verify`, visual QC, and PR checklist. | [SKILL.md](../.agents/skills/volume-verify/SKILL.md) |
+| **`pr`** | **Pull request body** (`/pr`): structured Summary, Evidence, and Merge Danger PR template. | [SKILL.md](../.agents/skills/pr/SKILL.md) |
 
 ## 4. Quickstart & Git Workflow
 

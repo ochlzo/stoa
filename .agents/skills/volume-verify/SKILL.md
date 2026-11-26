@@ -57,4 +57,4 @@ Open the app locally and inspect your `Readable Volume` across all three modes:
 
 - `pnpm verify` exits `0` with zero errors/warnings.
 - `git status` shows only files inside your `<volume-id>` scope.
-- Commit cleanly on `dev/<name>`, push (`git push -u origin dev/<name>`), and open a PR into `main`.
+- Commit cleanly on `dev/<name>`, push (`git push -u origin dev/<name>`), and open a PR into `main` using `../pr/SKILL.md` (`/pr`).

@@ -40,6 +40,7 @@ export interface Page {
 	readonly volumeAuthor: string;
 	readonly volumeSubtitle?: string;
 	readonly volumeTranslator?: string;
+	readonly sourceNote?: string;
 	readonly colophonNote?: string;
 	/** Deterministic clay placeholder ruled-line count for this Page. */
 	readonly lineCount: number;
@@ -283,6 +284,8 @@ export function buildVolumeReadingModel(
 	const pages: Page[] = [];
 	const chapters: Chapter[] = [];
 	const hasContent = Boolean(content && content.sections.length > 0);
+	const resolvedTitle = content?.title ?? volume.title;
+	const resolvedAuthor = content?.author ?? volume.author;
 
 	// Spread 0: Front title Spread
 	pages.push({
@@ -294,8 +297,8 @@ export function buildVolumeReadingModel(
 		chapterNumber: null,
 		chapterRomanNumeral: null,
 		chapterTitle: null,
-		volumeTitle: volume.title,
-		volumeAuthor: volume.author,
+		volumeTitle: resolvedTitle,
+		volumeAuthor: resolvedAuthor,
 		lineCount: 0,
 		paragraphBreaks: []
 	});
@@ -309,10 +312,11 @@ export function buildVolumeReadingModel(
 		chapterNumber: null,
 		chapterRomanNumeral: null,
 		chapterTitle: null,
-		volumeTitle: volume.title,
-		volumeAuthor: volume.author,
+		volumeTitle: resolvedTitle,
+		volumeAuthor: resolvedAuthor,
 		volumeSubtitle: content?.subtitle,
 		volumeTranslator: content?.translator,
+		sourceNote: content?.sourceNote,
 		lineCount: 0,
 		paragraphBreaks: []
 	});
@@ -339,8 +343,8 @@ export function buildVolumeReadingModel(
 					chapterNumber,
 					chapterRomanNumeral: roman,
 					chapterTitle: section.title ?? section.caption ?? `Plate ${roman}`,
-					volumeTitle: volume.title,
-					volumeAuthor: volume.author,
+					volumeTitle: resolvedTitle,
+					volumeAuthor: resolvedAuthor,
 					lineCount: 0,
 					paragraphBreaks: [],
 					illustrationSrc: section.src,
@@ -379,8 +383,8 @@ export function buildVolumeReadingModel(
 					chapterNumber,
 					chapterRomanNumeral: roman,
 					chapterTitle: section.title,
-					volumeTitle: volume.title,
-					volumeAuthor: volume.author,
+					volumeTitle: resolvedTitle,
+					volumeAuthor: resolvedAuthor,
 					lineCount: Math.max(1, lines.length),
 					paragraphBreaks,
 					lines,
@@ -424,8 +428,8 @@ export function buildVolumeReadingModel(
 					chapterNumber,
 					chapterRomanNumeral: roman,
 					chapterTitle: bp.title,
-					volumeTitle: volume.title,
-					volumeAuthor: volume.author,
+					volumeTitle: resolvedTitle,
+					volumeAuthor: resolvedAuthor,
 					lineCount: baseLines,
 					paragraphBreaks: buildParagraphBreaks(`${volume.id}:${pageIndex}`, baseLines)
 				});
@@ -456,8 +460,8 @@ export function buildVolumeReadingModel(
 			chapterNumber: null,
 			chapterRomanNumeral: null,
 			chapterTitle: null,
-			volumeTitle: volume.title,
-			volumeAuthor: volume.author,
+			volumeTitle: resolvedTitle,
+			volumeAuthor: resolvedAuthor,
 			lineCount: 0,
 			paragraphBreaks: []
 		});
@@ -471,8 +475,8 @@ export function buildVolumeReadingModel(
 		chapterNumber: null,
 		chapterRomanNumeral: null,
 		chapterTitle: null,
-		volumeTitle: volume.title,
-		volumeAuthor: volume.author,
+		volumeTitle: resolvedTitle,
+		volumeAuthor: resolvedAuthor,
 		colophonNote: content?.colophonNote ?? content?.sourceNote,
 		lineCount: 0,
 		paragraphBreaks: []
@@ -496,8 +500,8 @@ export function buildVolumeReadingModel(
 
 	return {
 		volumeId: volume.id,
-		title: volume.title,
-		author: volume.author,
+		title: resolvedTitle,
+		author: resolvedAuthor,
 		chapters,
 		pages,
 		spreads,
