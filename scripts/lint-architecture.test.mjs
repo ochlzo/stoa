@@ -47,3 +47,28 @@ test('ShelfCamera forwards input and keeps gesture arithmetic in physics', t => 
 	assert.match(result.stderr, /ShelfCamera\.svelte:3 \[camera-gesture-math\]/);
 	assert.match(result.stderr, /2 violation\(s\)/);
 });
+
+test('lint rejects image assets inside src/lib/catalog/readable and wheel math in scene helpers', t => {
+	const root = mkdtempSync(join(tmpdir(), 'stoa-volume-lint-'));
+	t.after(() => rmSync(root, { recursive: true, force: true }));
+	const art = join(root, 'src/lib/catalog/readable/demo-book/art');
+	const scene = join(root, 'src/lib/components/scene');
+	mkdirSync(art, { recursive: true });
+	mkdirSync(scene, { recursive: true });
+	writeFileSync(join(art, 'plate.webp'), 'fake-webp');
+	writeFileSync(join(scene, 'open-volume-gestures.ts'), [
+		'let travel = 0;',
+		'function onWheel(e) {',
+		'  travel += e.deltaY;',
+		'  if (Math.abs(travel) < 32) return;',
+		'}',
+		'canvas.addEventListener("wheel", onWheel);'
+	].join('\n'));
+	const script = fileURLToPath(new URL('./lint-architecture.mjs', import.meta.url));
+	const result = spawnSync(process.execPath, [script], { cwd: root, encoding: 'utf8' });
+	assert.equal(result.status, 1);
+	assert.match(result.stderr, /demo-book\/art\/plate\.webp:1 \[volume-assets-in-static\]/);
+	assert.match(result.stderr, /open-volume-gestures\.ts:3 \[scene-wheel-gesture-math\]/);
+	assert.match(result.stderr, /open-volume-gestures\.ts:4 \[scene-wheel-gesture-math\]/);
+	assert.match(result.stderr, /3 violation\(s\)/);
+});

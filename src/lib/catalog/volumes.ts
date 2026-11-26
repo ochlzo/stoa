@@ -65,17 +65,16 @@ function volume(spec: VolumeSpec): Volume {
 	if (spec.readable) {
 		const pkg = getReadableVolumePackage(spec.id);
 		const design = pkg?.design;
-		const content = pkg?.content;
 		return {
 			...base,
-			title: content?.title ?? spec.title,
-			author: content?.author ?? spec.author,
+			title: design?.title ?? spec.title,
+			author: design?.author ?? spec.author,
 			kind: 'readable',
 			bindingStyle: design?.bindingStyle ?? spec.binding,
 			coverColor: design?.coverColor ?? spec.coverColor,
 			spineProfile: design?.spineProfile ?? spec.spine,
 			design,
-			sourceNote: content?.sourceNote
+			sourceNote: design?.sourceNote
 		};
 	}
 	return {
@@ -138,7 +137,7 @@ export const CATALOG: readonly Volume[] = [
 
 	// --- Shelf 3: Poetry & Drama. Balanced left run with leaning end, toned-down right run ---
 	volume({ id: 'leaves-of-grass', title: 'Leaves of Grass', author: 'Walt Whitman', shelf: 3, size: [0.222, 0.032, 0.154], binding: 'linen-cloth', coverColor: 'oliveCloth', tone: 'bone', spine: 'flat', placement: LEFT }),
-	volume({ id: 'canterbury-tales', title: 'The Canterbury Tales', author: 'Geoffrey Chaucer', shelf: 3, size: [0.254, 0.05, 0.18], binding: 'raised-band-leather', coverColor: 'navyCloth', tone: 'slateClay', spine: 'rounded', placement: LEFT }),
+	volume({ id: 'life-of-pi', title: 'Life of Pi', author: 'Yann Martel', shelf: 3, size: [0.254, 0.05, 0.18], binding: 'raised-band-leather', coverColor: 'navyCloth', tone: 'slateClay', spine: 'rounded', placement: LEFT, readable: true }),
 	volume({ id: 'faust', title: 'Faust', author: 'Johann Wolfgang von Goethe', shelf: 3, size: [0.238, 0.038, 0.166], binding: 'blind-tooled-calf', coverColor: 'umberCalf', tone: 'stone', spine: 'shallow', placement: LEFT }),
 	volume({ id: 'divine-comedy', title: 'The Divine Comedy', author: 'Dante Alighieri', shelf: 3, size: [0.264, 0.054, 0.184], binding: 'raised-band-leather', coverColor: 'oxblood', tone: 'warmClay', spine: 'rounded', placement: LEFT }),
 	volume({ id: 'paradise-lost', title: 'Paradise Lost', author: 'John Milton', shelf: 3, size: [0.23, 0.036, 0.162], binding: 'quarter-vellum', coverColor: 'agedVellum', tone: 'alabaster', spine: 'flat', placement: LEFT }),
