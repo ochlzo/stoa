@@ -199,56 +199,55 @@
 			<h1 class="font-volume text-2xl leading-tight">
 				{volume.title}
 			</h1>
-			{#if model?.chapters.length}
-				<div data-chapters class="pointer-events-auto relative mt-1">
-					<button
-						type="button"
-						bind:this={indicator}
-						disabled={!!getLeafTurn()}
-						aria-label={`Choose Chapter, ${chapterLabel ?? volume.author}, ${spreadLabel}`}
-						aria-expanded={drawerOpen}
-						aria-controls="chapter-drawer"
-						onclick={() => {
-							drawerOpen = !drawerOpen;
-							reveal();
-						}}
-						class="study-action border-b border-brass/60 bg-ink/95 text-left enabled:hover:bg-ink"
-					>
-						{#if chapterLabel}
-							{chapterLabel}, {spreadLabel}
-						{:else}
-							{volume.author}, {spreadLabel}
-						{/if}
-						<span aria-hidden="true"> ▾</span>
-					</button>
-					{#if drawerOpen && model}
-						<nav
-							id="chapter-drawer"
-							aria-label="Chapters"
-							class="absolute top-full left-0 z-10 mt-1 max-h-[50dvh] w-80 max-w-[calc(100vw-3.5rem)] overflow-y-auto overscroll-contain border-t-2 border-brass bg-paper p-2 text-left text-ink shadow-lg"
-						>
-							{#each model.chapters as chapter (chapter.index)}
-								<button
-									type="button"
-									aria-current={chapter.index === spread?.chapterIndex ? 'location' : undefined}
-									onclick={() => {
-										jumpToReadingPage(chapter.startPageIndex);
-										void closeDrawer();
-									}}
-									class="chapter-choice"
-								>
-									<span class="text-xs text-muted">{chapter.romanNumeral}</span>
-									<span class="font-volume text-base">{chapter.title}</span>
-								</button>
-							{/each}
-						</nav>
-					{/if}
-				</div>
-			{:else}
+			{#if !model?.chapters.length}
 				<p class="study-action mt-1 border-b border-brass/60 bg-ink/95">
 					{volume.author}, {spreadLabel}
 				</p>
 			{/if}
+			<div data-chapters hidden={!model?.chapters.length} class="pointer-events-auto relative mt-1">
+				<button
+					type="button"
+					bind:this={indicator}
+					disabled={!!getLeafTurn()}
+					aria-label={`Choose Chapter, ${chapterLabel ?? volume.author}, ${spreadLabel}`}
+					aria-expanded={drawerOpen}
+					aria-controls="chapter-drawer"
+					onclick={() => {
+						drawerOpen = !drawerOpen;
+						reveal();
+					}}
+					class="study-action border-b border-brass/60 bg-ink/95 text-left enabled:hover:bg-ink"
+				>
+					{#if chapterLabel}
+						{chapterLabel}, {spreadLabel}
+					{:else}
+						{volume.author}, {spreadLabel}
+					{/if}
+					<span aria-hidden="true"> ▾</span>
+				</button>
+				{#if drawerOpen && model}
+					<nav
+						id="chapter-drawer"
+						aria-label="Chapters"
+						class="absolute top-full left-0 z-10 mt-1 max-h-[50dvh] w-80 max-w-[calc(100vw-3.5rem)] overflow-y-auto overscroll-contain border-t-2 border-brass bg-paper p-2 text-left text-ink shadow-lg"
+					>
+						{#each model.chapters as chapter (chapter.index)}
+							<button
+								type="button"
+								aria-current={chapter.index === spread?.chapterIndex ? 'location' : undefined}
+								onclick={() => {
+									jumpToReadingPage(chapter.startPageIndex);
+									void closeDrawer();
+								}}
+								class="chapter-choice"
+							>
+								<span class="text-xs text-muted">{chapter.romanNumeral}</span>
+								<span class="font-volume text-base">{chapter.title}</span>
+							</button>
+						{/each}
+					</nav>
+				{/if}
+			</div>
 		</header>
 
 		<!-- Bottom floating Reading Mode action bar -->
