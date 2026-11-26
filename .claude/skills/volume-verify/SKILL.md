@@ -15,7 +15,7 @@ Run every check below before committing or opening a PR. Fix all reported errors
    - Modified/added files must be **only** inside:
      - `src/lib/catalog/readable/<volume-id>/`
      - `static/volumes/<volume-id>/`
-   - If any core file (`src/lib/catalog/volumes.ts`, `src/lib/physics/*`, `src/lib/components/*`, or another teammate's `<volume-id>`) was touched accidentally, revert it before continuing.
+   - If any core file (`src/lib/catalog/volumes.ts`, `src/lib/physics/*`, `src/lib/components/*`, `src/lib/textures/*`, or another teammate's `<volume-id>`) was touched accidentally, revert it before continuing.
 
 ## Step 2 — Standards & Asset Check
 
@@ -40,6 +40,8 @@ This runs `pnpm check && pnpm lint && pnpm test && pnpm build`.
   Your `coverColor` matches an immediate neighbor on the same `Shelf`. Pick a different key from `LOOKDEV_PALETTE.volumes` in `design.ts`.
 - **`use-lib-subpath-imports` / `pure-ts-layer`** (`pnpm lint`):
   Replace relative imports (`../types`) with `#lib/catalog/readable/types.ts` and remove any Three/Svelte/DOM imports.
+- **`volume-assets-in-static`** (`pnpm lint`):
+  Move any `.webp`/`.png`/`.jpg` files out of `src/lib/catalog/readable/<volume-id>/` into `static/volumes/<volume-id>/` and reference them as `'volumes/<volume-id>/<filename>'`.
 - **`noUnusedLocals` / `noUnusedParameters`** (`pnpm check`):
   Remove unused variables, imports, or callback parameters (prefix intentionally unused params with `_` if needed).
 - **Pagination / folio test failures** (`readable.test.ts`):
