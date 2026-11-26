@@ -66,9 +66,9 @@ export interface Page {
 export interface Chapter {
 	/** 0-based index in VolumeReadingModel.chapters. */
 	readonly index: number;
-	/** 1-based Chapter number. */
-	readonly number: number;
-	readonly romanNumeral: string;
+	/** 1-based Chapter number, or null for unnumbered front matter and illustration plates. */
+	readonly number: number | null;
+	readonly romanNumeral: string | null;
 	readonly title: string;
 	/** First Page index belonging to this Chapter. */
 	readonly startPageIndex: number;
@@ -94,6 +94,8 @@ export interface VolumeReadingModel {
 	readonly title: string;
 	readonly author: string;
 	readonly chapters: readonly Chapter[];
+	/** Count of numbered Chapters (excluding unnumbered front matter and illustration plates). */
+	readonly numberedChapterCount: number;
 	readonly pages: readonly Page[];
 	readonly spreads: readonly Spread[];
 	readonly totalLeaves: number;
@@ -382,14 +384,15 @@ export function buildVolumeReadingModel(
 			folio += 2;
 		}
 	} else if (content?.sections?.length) {
+		let numberedChapterCount = 0;
+
 		for (const section of content.sections) {
 			const chapterIndex = chapters.length;
-			const chapterNumber = chapterIndex + 1;
-			const roman = toRomanNumeral(chapterNumber);
 			const startPageIndex = pages.length;
 
 			if (section.kind === 'illustration') {
 				const pageIndex = pages.length;
+				const plateTitle = section.title ?? section.caption ?? 'Illustration';
 				pages.push({
 					index: pageIndex,
 					pageNumber: folio,
@@ -397,9 +400,9 @@ export function buildVolumeReadingModel(
 					kind: 'illustration',
 					contentMode: 'illustration',
 					chapterIndex,
-					chapterNumber,
-					chapterRomanNumeral: roman,
-					chapterTitle: section.title ?? section.caption ?? `Plate ${roman}`,
+					chapterNumber: null,
+					chapterRomanNumeral: null,
+					chapterTitle: plateTitle,
 					volumeTitle: resolvedTitle,
 					volumeAuthor: resolvedAuthor,
 					lineCount: 0,
@@ -411,15 +414,18 @@ export function buildVolumeReadingModel(
 				folio += 1;
 				chapters.push({
 					index: chapterIndex,
-					number: chapterNumber,
-					romanNumeral: roman,
-					title: section.title ?? section.caption ?? `Plate ${roman}`,
+					number: null,
+					romanNumeral: null,
+					title: plateTitle,
 					startPageIndex,
 					endPageIndex: pageIndex,
 					startSpreadIndex: Math.floor(startPageIndex / 2)
 				});
 				continue;
 			}
+
+			const chapterNumber = section.unnumbered ? null : ++numberedChapterCount;
+			const roman = chapterNumber === null ? null : toRomanNumeral(chapterNumber);
 
 			if (section.openingImageSrc) {
 				const pageIndex = pages.length;
@@ -584,6 +590,7 @@ export function buildVolumeReadingModel(
 		title: resolvedTitle,
 		author: resolvedAuthor,
 		chapters,
+		numberedChapterCount: chapters.filter((chapter) => chapter.number !== null).length,
 		pages,
 		spreads,
 		totalLeaves: spreadCount

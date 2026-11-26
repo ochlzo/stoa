@@ -221,7 +221,7 @@
 		if (!model || !spread || spread.chapterIndex === null) return null;
 		const index = isMobilePortrait ? (activeMobilePage?.chapterIndex ?? null) : spread.chapterIndex;
 		const ch = index === null ? null : model.chapters[index];
-		return ch ? `Chapter ${ch.romanNumeral} — ${ch.title}` : null;
+		return ch ? (ch.romanNumeral ? `Chapter ${ch.romanNumeral} — ${ch.title}` : ch.title) : null;
 	});
 
 	interface NavigationChoice {
@@ -237,7 +237,7 @@
 		if (model.chapters.length > 0) {
 			return model.chapters.map((chapter) => ({
 				key: chapter.index,
-				marker: chapter.romanNumeral,
+				marker: chapter.romanNumeral ?? '·',
 				label: chapter.title,
 				startPageIndex: chapter.startPageIndex,
 				active: chapter.index === spread?.chapterIndex

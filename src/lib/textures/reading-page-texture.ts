@@ -545,8 +545,10 @@ function drawChapterOpener(
 		ctx.fillRect(0, 0, width, 710);
 		ctx.textAlign = 'center';
 		ctx.fillStyle = '#24160e';
-		ctx.font = '600 30px ' + theme.font;
-		ctx.fillText(`CHAPTER ${page.chapterRomanNumeral ?? ''}`, layout.cx, 165);
+		if (page.chapterRomanNumeral) {
+			ctx.font = '600 30px ' + theme.font;
+			ctx.fillText(`CHAPTER ${page.chapterRomanNumeral}`, layout.cx, 165);
+		}
 		ctx.font = '600 54px ' + theme.font;
 		heading(ctx, page.chapterTitle ?? '', layout.cx, 430, layout.right - layout.left, 62);
 		if (page.pageNumber !== null) {
@@ -699,14 +701,20 @@ export function createReadingPagePainter() {
 			ctx.font = 'italic 600 25px ' + theme.font;
 			ctx.fillStyle = theme.inkMuted;
 			ctx.fillText(
-				page.side === 'left' ? page.volumeTitle : 'Chapter ' + page.chapterRomanNumeral,
+				page.side === 'left'
+					? page.volumeTitle
+					: page.chapterRomanNumeral
+						? 'Chapter ' + page.chapterRomanNumeral
+						: (page.chapterTitle ?? page.volumeTitle),
 				cx,
 				64
 			);
 			let startY = 148;
 			if (opener) {
-				ctx.font = '600 28px ' + theme.font;
-				ctx.fillText('CHAPTER ' + page.chapterRomanNumeral, cx, 173);
+				if (page.chapterRomanNumeral) {
+					ctx.font = '600 28px ' + theme.font;
+					ctx.fillText('CHAPTER ' + page.chapterRomanNumeral, cx, 173);
+				}
 				ctx.font = '600 44px ' + theme.font;
 				ctx.fillStyle = theme.inkPrimary;
 				const bottom = heading(ctx, page.chapterTitle ?? '', cx, 242, right - left, 50);

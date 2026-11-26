@@ -148,6 +148,8 @@ export interface VolumeDesign {
 export interface ProseSection {
 	readonly kind: 'prose';
 	readonly title: string;
+	/** Exclude front/back matter (e.g. Author's Note, Epilogue) from sequential Chapter numbering. */
+	readonly unnumbered?: boolean;
 	readonly epigraph?: string;
 	/** Full-page Chapter opener artwork, followed by prose on the next Page. */
 	readonly openingImageSrc?: string;
@@ -157,6 +159,8 @@ export interface ProseSection {
 export interface VerseSection {
 	readonly kind: 'verse';
 	readonly title: string;
+	/** Exclude front/back matter from sequential Chapter numbering. */
+	readonly unnumbered?: boolean;
 	readonly epigraph?: string;
 	/** Full-page Chapter opener artwork, followed by verse on the next Page. */
 	readonly openingImageSrc?: string;

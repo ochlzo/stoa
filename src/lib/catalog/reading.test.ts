@@ -6,6 +6,7 @@ import {
 	getSpread,
 	getSpreadIndexForPage,
 	getVolumeReadingModel,
+	loadVolumeReadingModel,
 	toRomanNumeral
 } from '#lib/catalog/reading.ts';
 import { CATALOG } from '#lib/catalog/volumes.ts';
@@ -70,5 +71,27 @@ describe('Deterministic Chapter / Page / Spread model (ADR 0004)', () => {
 		assert.equal(toRomanNumeral(9), 'IX');
 		assert.equal(toRomanNumeral(14), 'XIV');
 		assert.equal(toRomanNumeral(24), 'XXIV');
+	});
+
+	it('excludes unnumbered sections and illustration plates from chapter numbering', async () => {
+		const lifeOfPi = CATALOG.find((v) => v.id === 'life-of-pi')!;
+		const model = await loadVolumeReadingModel(lifeOfPi);
+
+		assert.equal(model.numberedChapterCount, 100);
+		assert.equal(model.chapters[0].title, "Author's Note");
+		assert.equal(model.chapters[0].number, null);
+		assert.equal(model.chapters[0].romanNumeral, null);
+
+		const chapter1 = model.chapters.find((c) => c.title === 'Chapter 1')!;
+		assert.equal(chapter1.number, 1);
+		assert.equal(chapter1.romanNumeral, 'I');
+
+		const chapter100 = model.chapters.find((c) => c.title === 'Chapter 100')!;
+		assert.equal(chapter100.number, 100);
+		assert.equal(chapter100.romanNumeral, 'C');
+
+		const plate = model.chapters.find((c) => c.title === 'The Shipwreck')!;
+		assert.equal(plate.number, null);
+		assert.equal(plate.romanNumeral, null);
 	});
 });

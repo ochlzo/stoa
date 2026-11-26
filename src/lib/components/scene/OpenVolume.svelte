@@ -78,13 +78,13 @@
 			clay: isClayMode(),
 			frontTexture: paintPage(
 				forward ? activeSpread.rightPage : activeSpread.leftPage,
-				readingModel.chapters.length,
+				readingModel.numberedChapterCount,
 				isClayMode(),
 				volumeDesign
 			),
 			backTexture: paintPage(
 				forward ? adjacent.leftPage : adjacent.rightPage,
-				readingModel.chapters.length,
+				readingModel.numberedChapterCount,
 				isClayMode(),
 				volumeDesign
 			)
@@ -100,7 +100,7 @@
 			const thickness = left ? stackSplit.leftThickness : stackSplit.rightThickness;
 			const exposed = adjacent && (left ? turn?.direction === -1 : turn?.direction === 1) ? adjacent : activeSpread;
 			const page = left ? exposed.leftPage : exposed.rightPage;
-			const texture = paintPage(page, readingModel.chapters.length, isClayMode(), volumeDesign);
+			const texture = paintPage(page, readingModel.numberedChapterCount, isClayMode(), volumeDesign);
 			const stack = createPageStackGeometry({
 				width: openDims.pageWidth,
 				height: openDims.pageHeight,
