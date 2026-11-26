@@ -243,6 +243,7 @@ export function createClayPageTexture(
 				drawChapterStart(ctx, page);
 				break;
 			case 'body':
+			case 'stanza':
 				drawRuledLines(ctx, page, 138, PAGE_CANVAS_HEIGHT - 134);
 				break;
 			case 'illustration': {

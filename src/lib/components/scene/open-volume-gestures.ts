@@ -5,6 +5,7 @@ import type { LeafTurn, TurnDirection } from '#lib/physics/leaf-turn.ts';
 import {
 	READING_SWIPE_CONFIG,
 	createReadingSwipe,
+	createReadingWheelTurn,
 	isWithinTapThreshold,
 	type PageHit
 } from '#lib/physics/reading-swipe.ts';
@@ -14,10 +15,6 @@ import {
 	createReadingTiltGestures,
 	type ReadingVolumeState
 } from '#lib/physics/reading-volume.ts';
-import { normalizeWheelDelta } from '#lib/physics/shelf-camera.ts';
-
-const WHEEL_TURN_THRESHOLD_PX = 32;
-const WHEEL_GESTURE_GAP_MS = 180;
 
 export interface OpenVolumeGestureOptions {
 	readonly canvas: HTMLCanvasElement;
@@ -79,14 +76,12 @@ export function attachOpenVolumeGestures(options: OpenVolumeGestureOptions): () 
 	} = options;
 
 	const tiltGestures = createReadingTiltGestures(readingState);
+	const wheelTurn = createReadingWheelTurn();
 	const raycaster = new Raycaster();
 	const activePointers = new Set<number>();
 	let swipe: ReturnType<typeof createReadingSwipe> | undefined;
 	let swipeOwner: number | undefined;
 	let pressedVolume = false;
-	let lastWheelTime = -Infinity;
-	let wheelTravel = 0;
-	let wheelConsumed = false;
 	let pendingTap: { id: number; x: number; y: number } | undefined;
 
 	function onClick(event: MouseEvent): void {
@@ -190,24 +185,15 @@ export function attachOpenVolumeGestures(options: OpenVolumeGestureOptions): () 
 			return;
 		}
 
-		const deltaMode = event.deltaMode;
-		const delta = normalizeWheelDelta(event.deltaY, deltaMode, canvas.clientHeight);
-		if (!delta || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
-		if (event.timeStamp - lastWheelTime >= WHEEL_GESTURE_GAP_MS) {
-			wheelTravel = 0;
-			wheelConsumed = false;
-		}
-		lastWheelTime = event.timeStamp;
-
-		// Treat trackpad momentum as part of the same gesture, including during a Leaf turn.
-		if (getLeafTurn() || activePointers.size > 0) {
-			wheelConsumed = true;
-		}
-		if (wheelConsumed) return;
-		wheelTravel += delta;
-		if (Math.abs(wheelTravel) < WHEEL_TURN_THRESHOLD_PX) return;
-		wheelConsumed = true;
-		startLeafTurn(wheelTravel > 0 ? 1 : -1);
+		const direction = wheelTurn.step({
+			deltaX: event.deltaX,
+			deltaY: event.deltaY,
+			deltaMode: event.deltaMode,
+			viewportHeight: canvas.clientHeight,
+			timeStamp: event.timeStamp,
+			blocked: Boolean(getLeafTurn()) || activePointers.size > 0
+		});
+		if (direction) startLeafTurn(direction);
 	}
 
 	canvas.addEventListener('click', onClick, true);
@@ -220,6 +206,7 @@ export function attachOpenVolumeGestures(options: OpenVolumeGestureOptions): () 
 	return () => {
 		onPanOffsetChange(0);
 		tiltGestures.reset();
+		wheelTurn.reset();
 		canvas.style.cursor = 'default';
 		canvas.removeEventListener('click', onClick, true);
 		canvas.removeEventListener('pointerdown', onPointerDown);

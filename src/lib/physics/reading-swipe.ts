@@ -7,6 +7,7 @@ import {
 	type LeafTurn,
 	type TurnDirection
 } from '#lib/physics/leaf-turn.ts';
+import { normalizeWheelDelta } from '#lib/physics/shelf-camera.ts';
 
 export const READING_SWIPE_CONFIG = {
 	tapDragThresholdPx: 6,
@@ -18,6 +19,61 @@ export const READING_SWIPE_CONFIG = {
 	maxSwipeVelocity: 4,
 	velocityStaleMs: 100
 } as const;
+
+export const READING_WHEEL_TURN_CONFIG = {
+	thresholdPx: 32,
+	gestureGapMs: 180
+} as const;
+
+export interface ReadingWheelInput {
+	readonly deltaX: number;
+	readonly deltaY: number;
+	readonly deltaMode: number;
+	readonly viewportHeight: number;
+	readonly timeStamp: number;
+	readonly blocked: boolean;
+}
+
+/**
+ * Pure-TS wheel-to-turn accumulator for Reading Mode Spreads.
+ * Coalesces trackpad momentum bursts into at most one Leaf turn per gesture.
+ */
+export function createReadingWheelTurn() {
+	let lastWheelTime = -Infinity;
+	let wheelTravel = 0;
+	let wheelConsumed = false;
+
+	function reset(): void {
+		lastWheelTime = -Infinity;
+		wheelTravel = 0;
+		wheelConsumed = false;
+	}
+
+	function step(input: ReadingWheelInput): TurnDirection | null {
+		const delta = normalizeWheelDelta(input.deltaY, input.deltaMode, input.viewportHeight);
+		if (!delta || Math.abs(input.deltaX) > Math.abs(input.deltaY)) return null;
+
+		if (input.timeStamp - lastWheelTime >= READING_WHEEL_TURN_CONFIG.gestureGapMs) {
+			wheelTravel = 0;
+			wheelConsumed = false;
+		}
+		lastWheelTime = input.timeStamp;
+
+		// Treat trackpad momentum as part of the same gesture, including during a Leaf turn.
+		if (input.blocked) {
+			wheelConsumed = true;
+		}
+		if (wheelConsumed) return null;
+
+		wheelTravel += delta;
+		if (Math.abs(wheelTravel) < READING_WHEEL_TURN_CONFIG.thresholdPx) return null;
+
+		wheelConsumed = true;
+		return wheelTravel > 0 ? 1 : -1;
+	}
+
+	return { step, reset };
+}
 
 export function isWithinTapThreshold(dx: number, dy: number): boolean {
 	return Math.hypot(dx, dy) < READING_SWIPE_CONFIG.tapDragThresholdPx;

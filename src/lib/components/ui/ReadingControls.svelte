@@ -170,8 +170,9 @@
 	const spreadLabel = $derived.by(() => {
 		if (!spread) return '';
 		if (spread.index === 0) return 'Title Spread';
-		const stanzaNumber = spread.rightPage.stanzaNumber;
-		if (stanzaNumber !== undefined) return 'Stanza ' + stanzaNumber;
+		if (spread.rightPage.kind === 'stanza' && spread.rightPage.stanzaNumber !== undefined) {
+			return 'Stanza ' + spread.rightPage.stanzaNumber;
+		}
 		if (isMobilePortrait && activeMobilePage?.pageNumber !== null && activeMobilePage) {
 			return `p. ${activeMobilePage.pageNumber}`;
 		}

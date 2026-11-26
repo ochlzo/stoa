@@ -1,8 +1,12 @@
 import { CanvasTexture, ClampToEdgeWrapping } from 'three';
 import type { Page } from '#lib/catalog/reading.ts';
-import type { EndpaperPaintInfo, IllustrationMotion, VolumeDesign } from '#lib/catalog/readable/types.ts';
+import type { EndpaperPaintInfo, VolumeDesign } from '#lib/catalog/readable/types.ts';
 import { LOOKDEV_PALETTE, createSeededRandom } from '#lib/catalog/lookdev.ts';
 import { drawStoaCombinationMark } from '#lib/textures/brand-mark.ts';
+import {
+	createIllustrationMotionController,
+	type IllustrationMotionController
+} from '#lib/textures/illustration-motion.ts';
 import { configurePbrTexture, wrapCanvasLines } from '#lib/textures/pbr-texture-cache.ts';
 import { createClayPageTexture } from '#lib/textures/page-clay-texture.ts';
 
@@ -14,16 +18,10 @@ const tau = 2 * Math.PI;
 const BOOKPLATE_PAPER = '#E7E1D2';
 const BOOKPLATE_INK = '#473929';
 
-const bundledIllustrations = import.meta.glob<string>('../catalog/readable/*/art/*.webp', {
-	eager: true,
-	import: 'default',
-	query: '?url'
-});
-
-function resolveIllustrationSrc(src: string): string {
-	const relativeSrc = src.replace(/^\/+/, '');
-	const bundledSrc = bundledIllustrations['../catalog/' + relativeSrc];
-	return bundledSrc ?? new URL(relativeSrc, document.baseURI).href;
+interface PageLayout {
+	readonly left: number;
+	readonly right: number;
+	readonly cx: number;
 }
 
 interface PageTheme {
@@ -418,87 +416,18 @@ function drawStanza(
 	ctx.fillText(String(page.pageNumber), cx, height - 49);
 }
 
-type StepIllustration = (delta: number) => void;
-
-function loadIllustrationMotion(
-	ctx: CanvasRenderingContext2D,
-	texture: CanvasTexture,
-	motion: IllustrationMotion,
-	drawX: number,
-	drawY: number,
-	scale: number,
-	drawStill: () => void,
-	side: Page['side'],
-	activeIllustrations: Map<CanvasTexture, StepIllustration>,
-	reducedMotion: MediaQueryList
-) {
-	const sheet = new Image();
-	const stop = () => {
-		sheet.onload = null;
-		activeIllustrations.delete(texture);
-		texture.removeEventListener('dispose', stop);
-	};
-	texture.addEventListener('dispose', stop);
-	sheet.onload = () => {
-		const rows = Math.ceil(motion.frameCount / motion.columns);
-		const frameWidth = sheet.naturalWidth / motion.columns;
-		const frameHeight = sheet.naturalHeight / rows;
-		const [x, y] = motion.origin;
-		const destX = drawX + x * scale;
-		const destY = drawY + y * scale;
-		let elapsed = 0;
-		let lastFrame = -1;
-
-		activeIllustrations.set(texture, (delta) => {
-			if (reducedMotion.matches) {
-				if (lastFrame !== -1) drawStill();
-				lastFrame = -1;
-				elapsed = 0;
-				return;
-			}
-			elapsed = (elapsed + delta) % (motion.frameCount / motion.framesPerSecond);
-			const frame = Math.floor(elapsed * motion.framesPerSecond);
-			if (frame === lastFrame) return;
-			lastFrame = frame;
-
-			ctx.save();
-			ctx.beginPath();
-			ctx.rect(destX, destY, frameWidth * scale, frameHeight * scale);
-			ctx.clip();
-			ctx.drawImage(
-				sheet,
-				(frame % motion.columns) * frameWidth,
-				Math.floor(frame / motion.columns) * frameHeight,
-				frameWidth,
-				frameHeight,
-				destX,
-				destY,
-				frameWidth * scale,
-				frameHeight * scale
-			);
-			drawGutterShadow(ctx, side);
-			ctx.restore();
-			texture.needsUpdate = true;
-		});
-	};
-	sheet.src = resolveIllustrationSrc(motion.src);
-}
-
 function drawIllustrationPlate(
 	ctx: CanvasRenderingContext2D,
 	page: Page,
-	left: number,
-	right: number,
-	cx: number,
+	layout: PageLayout,
 	texture: CanvasTexture,
 	theme: PageTheme,
-	activeIllustrations: Map<CanvasTexture, StepIllustration>,
-	reducedMotion: MediaQueryList
+	motionController: IllustrationMotionController
 ) {
-	const fullPage = page.stanzaNumber !== undefined;
-	const frameX = fullPage ? 0 : left + 14;
+	const fullPage = Boolean(page.fullBleed);
+	const frameX = fullPage ? 0 : layout.left + 14;
 	const frameY = fullPage ? 0 : 148;
-	const frameW = fullPage ? width : right - left - 28;
+	const frameW = fullPage ? width : layout.right - layout.left - 28;
 	const frameH = fullPage ? height : 710;
 
 	if (!fullPage) {
@@ -514,18 +443,18 @@ function drawIllustrationPlate(
 		ctx.textAlign = 'center';
 		ctx.font = 'italic 23px ' + theme.font;
 		ctx.fillStyle = theme.inkMuted;
-		heading(ctx, page.illustrationCaption, cx, frameY + frameH + 46, frameW, 30);
+		heading(ctx, page.illustrationCaption, layout.cx, frameY + frameH + 46, frameW, 30);
 	}
 
 	if (!fullPage && page.pageNumber !== null) {
 		ctx.textAlign = 'center';
 		ctx.font = '600 25px ' + theme.font;
 		ctx.fillStyle = theme.inkPrimary;
-		ctx.fillText(String(page.pageNumber), cx, height - 49);
+		ctx.fillText(String(page.pageNumber), layout.cx, height - 49);
 	}
 
 	if (!page.illustrationSrc || typeof Image === 'undefined') return;
-	const resolvedSrc = resolveIllustrationSrc(page.illustrationSrc);
+	const resolvedSrc = new URL(page.illustrationSrc.replace(/^\/+/, ''), document.baseURI).href;
 	const img = new Image();
 	img.crossOrigin = 'anonymous';
 	const cancelLoad = () => {
@@ -560,10 +489,14 @@ function drawIllustrationPlate(
 		};
 		drawStill();
 		if (page.illustrationMotion) {
-			loadIllustrationMotion(
-				ctx, texture, page.illustrationMotion, drawX, drawY, scale, drawStill, page.side,
-				activeIllustrations, reducedMotion
-			);
+			motionController.attach({
+				ctx,
+				texture,
+				motion: page.illustrationMotion,
+				placement: { drawX, drawY, scale },
+				drawStill,
+				drawOverlay: () => drawGutterShadow(ctx, page.side)
+			});
 		}
 	};
 	img.src = resolvedSrc;
@@ -571,8 +504,7 @@ function drawIllustrationPlate(
 
 // One stock tile per tint per open Volume. Each face owns its CanvasTexture, including a turning Leaf's reverse.
 export function createReadingPagePainter() {
-	const activeIllustrations = new Map<CanvasTexture, StepIllustration>();
-	const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+	const motionController = createIllustrationMotionController();
 	const stockByTint = new Map<string, HTMLCanvasElement>();
 	function getStock(tint: string) {
 		let tile = stockByTint.get(tint);
@@ -681,15 +613,13 @@ export function createReadingPagePainter() {
 				heading(ctx, page.sourceNote, cx, 932, right - left - 44, 26);
 			}
 		} else if (page.kind === 'illustration') {
-			if (page.stanzaNumber === undefined) {
+			if (!page.fullBleed) {
 				ctx.font = 'italic 600 25px ' + theme.font;
 				ctx.fillStyle = theme.inkMuted;
 				ctx.fillText(page.chapterTitle ?? page.volumeTitle, cx, 64);
 			}
-			drawIllustrationPlate(
-				ctx, page, left, right, cx, texture, theme, activeIllustrations, reducedMotion
-			);
-		} else if (page.stanzaNumber !== undefined) {
+			drawIllustrationPlate(ctx, page, { left, right, cx }, texture, theme, motionController);
+		} else if (page.kind === 'stanza') {
 			drawStanza(ctx, page, left, right, theme);
 		} else {
 			const opener = page.kind === 'chapter-start';
@@ -736,7 +666,7 @@ export function createReadingPagePainter() {
 	return {
 		paintPage,
 		stepIllustrations(delta: number) {
-			for (const step of activeIllustrations.values()) step(delta);
+			motionController.step(delta);
 		}
 	};
 }

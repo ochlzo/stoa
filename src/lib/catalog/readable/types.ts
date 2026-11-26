@@ -146,18 +146,19 @@ export interface IllustrationSection {
 	readonly title?: string;
 	/** Relative path under `static/`, e.g. `volumes/ode-on-a-grecian-urn/urn.webp`. */
 	readonly src: string;
+	readonly motion?: IllustrationMotion;
 	readonly caption?: string;
 }
 
 export type VolumeContentSection = ProseSection | VerseSection | IllustrationSection;
 
 export interface IllustrationMotion {
-	/** Local sprite sheet arranged in row-major order. */
+	/** Local sprite sheet under `static/`, arranged in row-major order. */
 	readonly src: string;
 	readonly columns: number;
 	readonly frameCount: number;
 	readonly framesPerSecond: number;
-	/** Patch origin in pixels of the full-page illustration. */
+	/** Patch origin in pixels of the base illustration. */
 	readonly origin: readonly [x: number, y: number];
 }
 
@@ -177,6 +178,8 @@ interface VolumeMetadata {
 	/** Source / edition attribution shown on the back cover, 1st title Page, and closing colophon. */
 	readonly sourceNote?: string;
 	readonly colophonNote?: string;
+	/** When true, vertical mouse-wheel scrolling turns Spreads (with Ctrl+wheel zooming). */
+	readonly wheelTurnsPages?: boolean;
 }
 
 export type VolumeContent = VolumeMetadata &
