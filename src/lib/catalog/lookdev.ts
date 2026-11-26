@@ -150,9 +150,9 @@ export const SUNLIT_STUDY_LIGHTS: SunlitStudyLightsConfig = {
 		position: [2.45, 2.75, 2.1],
 		target: [1.18, bookcaseCenterY - 0.12, -0.35],
 		angle: 0.72,
-		penumbra: 0.75,
-		color: '#ffe2b0',
-		intensity: 2.15,
+		penumbra: 0.52,
+		color: '#ffe0a6',
+		intensity: 2.95,
 		castShadow: false
 	}
 };

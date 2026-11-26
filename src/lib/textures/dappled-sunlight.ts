@@ -40,13 +40,13 @@ export function createDappledSunlightMap(): DappledSunlightBundle {
 	ctx.fillStyle = aperture;
 	ctx.fillRect(0, 0, size, size);
 
-	// Paint soft diagonal tree branches and clustered leaf shadows in a blurred layer.
+	// Paint crisp-yet-soft diagonal tree branches and clustered leaf shadows in a blurred layer.
 	const shadowLayer = document.createElement('canvas');
 	shadowLayer.width = size;
 	shadowLayer.height = size;
 	const sctx = shadowLayer.getContext('2d')!;
-	sctx.strokeStyle = 'rgba(0, 0, 0, 0.72)';
-	sctx.fillStyle = 'rgba(0, 0, 0, 0.68)';
+	sctx.strokeStyle = 'rgba(0, 0, 0, 0.88)';
+	sctx.fillStyle = 'rgba(0, 0, 0, 0.84)';
 
 	// Four sweeping diagonal branch stems crossing from upper-right toward lower-left.
 	const branches: readonly (readonly [number, number, number, number, number])[] = [
@@ -83,9 +83,9 @@ export function createDappledSunlightMap(): DappledSunlightBundle {
 		}
 	}
 
-	// Composite the foliage shadows with a soft Gaussian blur so edges feel like real sunlight.
+	// Composite the foliage shadows with a gentle blur so leaf silhouettes read clearly on the wall.
 	ctx.save();
-	ctx.filter = 'blur(9px)';
+	ctx.filter = 'blur(4px)';
 	ctx.drawImage(shadowLayer, 0, 0);
 	ctx.restore();
 
