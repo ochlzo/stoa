@@ -94,7 +94,6 @@ export interface VolumeReadingModel {
 	readonly pages: readonly Page[];
 	readonly spreads: readonly Spread[];
 	readonly totalLeaves: number;
-	readonly wheelTurnsPages: boolean;
 }
 
 interface ChapterBlueprint {
@@ -550,8 +549,7 @@ export function buildVolumeReadingModel(
 		chapters,
 		pages,
 		spreads,
-		totalLeaves: spreadCount,
-		wheelTurnsPages: Boolean(content?.wheelTurnsPages)
+		totalLeaves: spreadCount
 	};
 }
 

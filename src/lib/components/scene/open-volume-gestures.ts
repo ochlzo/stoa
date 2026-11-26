@@ -5,7 +5,6 @@ import type { LeafTurn, TurnDirection } from '#lib/physics/leaf-turn.ts';
 import {
 	READING_SWIPE_CONFIG,
 	createReadingSwipe,
-	createReadingWheelTurn,
 	isWithinTapThreshold,
 	type PageHit
 } from '#lib/physics/reading-swipe.ts';
@@ -22,7 +21,6 @@ export interface OpenVolumeGestureOptions {
 	readonly getRootGroup: () => Group | undefined;
 	readonly getPageWidth: () => number;
 	readonly readingState: ReadingVolumeState;
-	readonly wheelTurnsPages: boolean;
 	readonly getLeafTurn: () => LeafTurn | null;
 	readonly startLeafTurn: (direction: TurnDirection, drag?: boolean) => LeafTurn | null;
 	readonly getFocusedPageSide: () => PageSide;
@@ -66,7 +64,6 @@ export function attachOpenVolumeGestures(options: OpenVolumeGestureOptions): () 
 		getRootGroup,
 		getPageWidth,
 		readingState,
-		wheelTurnsPages,
 		getLeafTurn,
 		startLeafTurn,
 		getFocusedPageSide,
@@ -76,7 +73,6 @@ export function attachOpenVolumeGestures(options: OpenVolumeGestureOptions): () 
 	} = options;
 
 	const tiltGestures = createReadingTiltGestures(readingState);
-	const wheelTurn = createReadingWheelTurn();
 	const raycaster = new Raycaster();
 	const activePointers = new Set<number>();
 	let swipe: ReturnType<typeof createReadingSwipe> | undefined;
@@ -180,20 +176,7 @@ export function attachOpenVolumeGestures(options: OpenVolumeGestureOptions): () 
 
 	function onWheel(event: WheelEvent): void {
 		event.preventDefault();
-		if (!wheelTurnsPages || event.ctrlKey) {
-			applyReadingWheelZoom(readingState, event.deltaY, event.deltaMode);
-			return;
-		}
-
-		const direction = wheelTurn.step({
-			deltaX: event.deltaX,
-			deltaY: event.deltaY,
-			deltaMode: event.deltaMode,
-			viewportHeight: canvas.clientHeight,
-			timeStamp: event.timeStamp,
-			blocked: Boolean(getLeafTurn()) || activePointers.size > 0
-		});
-		if (direction) startLeafTurn(direction);
+		applyReadingWheelZoom(readingState, event.deltaY, event.deltaMode);
 	}
 
 	canvas.addEventListener('click', onClick, true);
@@ -206,7 +189,6 @@ export function attachOpenVolumeGestures(options: OpenVolumeGestureOptions): () 
 	return () => {
 		onPanOffsetChange(0);
 		tiltGestures.reset();
-		wheelTurn.reset();
 		canvas.style.cursor = 'default';
 		canvas.removeEventListener('click', onClick, true);
 		canvas.removeEventListener('pointerdown', onPointerDown);

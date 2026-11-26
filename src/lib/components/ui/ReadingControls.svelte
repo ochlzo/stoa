@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { getSpread, getVolumeReadingModel } from '#lib/catalog/reading.ts';
+	import { getSpread, getVolumeReadingModel, toRomanNumeral } from '#lib/catalog/reading.ts';
 	import { READING_VOLUME_CONFIG } from '#lib/physics/reading-volume.ts';
 	import {
 		getCurrentSpreadIndex,
@@ -169,7 +169,7 @@
 
 	const spreadLabel = $derived.by(() => {
 		if (!spread) return '';
-		if (spread.index === 0) return 'Title Spread';
+		if (spread.index === 0) return 'Title Page';
 		if (spread.rightPage.kind === 'stanza' && spread.rightPage.stanzaNumber !== undefined) {
 			return 'Stanza ' + spread.rightPage.stanzaNumber;
 		}
@@ -192,6 +192,43 @@
 		const ch = index === null ? null : model.chapters[index];
 		return ch ? `Chapter ${ch.romanNumeral} — ${ch.title}` : null;
 	});
+
+	interface NavigationChoice {
+		readonly key: number;
+		readonly marker: string;
+		readonly label: string;
+		readonly startPageIndex: number;
+		readonly active: boolean;
+	}
+
+	const navigationChoices = $derived.by((): readonly NavigationChoice[] => {
+		if (!model) return [];
+		if (model.chapters.length > 0) {
+			return model.chapters.map((chapter) => ({
+				key: chapter.index,
+				marker: chapter.romanNumeral,
+				label: chapter.title,
+				startPageIndex: chapter.startPageIndex,
+				active: chapter.index === spread?.chapterIndex
+			}));
+		}
+		return model.spreads
+			.filter((s) => s.rightPage.kind === 'stanza' && s.rightPage.stanzaNumber !== undefined)
+			.map((s) => {
+				const num = s.rightPage.stanzaNumber!;
+				return {
+					key: s.index,
+					marker: toRomanNumeral(num),
+					label: `Stanza ${num}`,
+					startPageIndex: s.leftPage.index,
+					active: s.index === spread?.index
+				};
+			});
+	});
+
+	const hasChapters = $derived((model?.chapters.length ?? 0) > 0);
+	const drawerTitle = $derived(hasChapters ? 'Chapters' : 'Stanzas');
+	const choosePrompt = $derived(hasChapters ? 'Choose Chapter' : 'Choose Stanza');
 </script>
 
 <svelte:window onpointermove={onHover} onpointerdown={onPointerDown} />
@@ -229,55 +266,56 @@
 			<h1 class="font-volume text-xl leading-tight sm:text-2xl">
 				{volume.title}
 			</h1>
-			{#if !model?.chapters.length}
-				<p class="study-action mt-1 border-b border-brass/60 bg-ink/95">
+			{#if navigationChoices.length === 0}
+				<p class="study-action mt-1 inline-flex cursor-default items-center border-b border-brass/60 bg-ink/95">
 					{volume.author}, {spreadLabel}
 				</p>
-			{/if}
-			<div data-chapters hidden={!model?.chapters.length} class="pointer-events-auto relative mt-1">
-				<button
-					type="button"
-					bind:this={indicator}
-					disabled={!!getLeafTurn()}
-					aria-label={`Choose Chapter, ${chapterLabel ?? volume.author}, ${spreadLabel}`}
-					aria-expanded={drawerOpen}
-					aria-controls="chapter-drawer"
-					onclick={() => {
-						drawerOpen = !drawerOpen;
-						reveal();
-					}}
-					class="study-action max-w-full truncate border-b border-brass/60 bg-ink/95 text-left enabled:hover:bg-ink"
-				>
-					{#if chapterLabel}
-						{chapterLabel}, {spreadLabel}
-					{:else}
-						{volume.author}, {spreadLabel}
-					{/if}
-					<span aria-hidden="true"> ▾</span>
-				</button>
-				{#if drawerOpen && model}
-					<nav
-						id="chapter-drawer"
-						aria-label="Chapters"
-						class="absolute top-full left-0 z-10 mt-1 max-h-[50dvh] w-80 max-w-[calc(100vw-3.5rem)] overflow-y-auto overscroll-contain border-t-2 border-brass bg-paper p-2 text-left text-ink shadow-lg"
+			{:else}
+				<div data-chapters class="pointer-events-auto relative mt-1">
+					<button
+						type="button"
+						bind:this={indicator}
+						disabled={!!getLeafTurn()}
+						aria-label={`${choosePrompt}, ${chapterLabel ?? volume.author}, ${spreadLabel}`}
+						aria-expanded={drawerOpen}
+						aria-controls="chapter-drawer"
+						onclick={() => {
+							drawerOpen = !drawerOpen;
+							reveal();
+						}}
+						class="study-action max-w-full truncate border-b border-brass/60 bg-ink/95 text-left enabled:hover:bg-ink"
 					>
-						{#each model.chapters as chapter (chapter.index)}
-							<button
-								type="button"
-								aria-current={chapter.index === spread?.chapterIndex ? 'location' : undefined}
-								onclick={() => {
-									jumpToReadingPage(chapter.startPageIndex);
-									void closeDrawer();
-								}}
-								class="chapter-choice"
-							>
-								<span class="text-xs text-muted">{chapter.romanNumeral}</span>
-								<span class="font-volume text-base">{chapter.title}</span>
-							</button>
-						{/each}
-					</nav>
-				{/if}
-			</div>
+						{#if chapterLabel}
+							{chapterLabel}, {spreadLabel}
+						{:else}
+							{volume.author}, {spreadLabel}
+						{/if}
+						<span aria-hidden="true"> ▾</span>
+					</button>
+					{#if drawerOpen}
+						<nav
+							id="chapter-drawer"
+							aria-label={drawerTitle}
+							class="absolute top-full left-0 z-10 mt-1 max-h-[50dvh] w-80 max-w-[calc(100vw-3.5rem)] overflow-y-auto overscroll-contain border-t-2 border-brass bg-paper p-2 text-left text-ink shadow-lg"
+						>
+							{#each navigationChoices as choice (choice.key)}
+								<button
+									type="button"
+									aria-current={choice.active ? 'location' : undefined}
+									onclick={() => {
+										jumpToReadingPage(choice.startPageIndex);
+										void closeDrawer();
+									}}
+									class="chapter-choice"
+								>
+									<span class="text-xs text-muted">{choice.marker}</span>
+									<span class="font-volume text-base">{choice.label}</span>
+								</button>
+							{/each}
+						</nav>
+					{/if}
+				</div>
+			{/if}
 		</header>
 
 		<!-- Bottom floating Reading Mode action bar -->

@@ -11,7 +11,6 @@ export const content: VolumeContent = {
 	title: 'Ode on a Grecian Urn',
 	author: 'John Keats',
 	sourceNote: 'Wikisource · Keats: Poems Published in 1820 (1909 edition)',
-	wheelTurnsPages: true,
 	illustratedStanzas: [
 		{
 			illustrationSrc: 'volumes/ode-on-a-grecian-urn/stanza-1.webp',
