@@ -30,6 +30,7 @@ let isShelfPanning = $state(false);
 let inspectedVolume = $state<Volume | null>(null);
 let inspectPhase = $state<InspectPhase>('idle');
 let isInspectOrbiting = $state(false);
+let inspectShelfCleared = $state(false);
 
 export function getSceneMode(): SceneMode {
 	return sceneMode;
@@ -69,6 +70,15 @@ export function getInspectPhase(): InspectPhase {
 
 export function getIsInspectOrbiting(): boolean {
 	return isInspectOrbiting;
+}
+
+export function getInspectShelfCleared(): boolean {
+	return inspectShelfCleared;
+}
+
+export function setInspectShelfCleared(cleared: boolean): void {
+	if (inspectShelfCleared === cleared) return;
+	inspectShelfCleared = cleared;
 }
 
 export function setShelfPanning(panning: boolean): void {
@@ -127,6 +137,7 @@ export function enterInspectMode(volume: Volume): boolean {
 	inspectedVolume = volume;
 	inspectPhase = 'entering';
 	isInspectOrbiting = false;
+	inspectShelfCleared = false;
 	sceneMode = 'inspect';
 	return true;
 }
@@ -147,6 +158,7 @@ export function requestReturnToShelf(): void {
 	if (sceneMode !== 'inspect' || inspectPhase === 'returning' || inspectPhase === 'idle') return;
 	inspectPhase = 'returning';
 	isInspectOrbiting = false;
+	inspectShelfCleared = false;
 }
 
 /**
@@ -156,6 +168,7 @@ export function completeReturnToShelf(): void {
 	inspectedVolume = null;
 	inspectPhase = 'idle';
 	isInspectOrbiting = false;
+	inspectShelfCleared = false;
 	sceneMode = 'shelf';
 }
 

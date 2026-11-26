@@ -17,8 +17,8 @@ import type {
  * Shared physical tolerances for deterministic Shelf packing and parametric Volume construction (meters).
  */
 export const VOLUME_LAYOUT_CONSTANTS = {
-	/** Horizontal clearance from the Bookcase side panels on each end of a Shelf. */
-	shelfEndMargin: 0.024,
+	/** Hairline horizontal clearance from the Bookcase side panels on each end of a Shelf. */
+	shelfEndMargin: 0.002,
 	/** Minimum horizontal gap between adjacent upright Volumes so covers never clip or Z-fight. */
 	minGap: 0.004,
 	/** Additional deterministic micro-gap variation between adjacent upright Volumes. */

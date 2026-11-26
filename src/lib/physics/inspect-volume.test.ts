@@ -54,23 +54,30 @@ describe('inspect-volume physics', () => {
 		assert.ok(zoomedIn.backdropZ >= 0.12);
 	});
 
-	it('pulls the Volume forward along +Z during flight and settles smoothly into Inspect Mode', () => {
+	it('performs staged finger-hook tilt, in-lane +Z pull-out, grip pause, shelf-clear trigger, and glide into Inspect Mode', () => {
 		const state = createInspectVolumeState();
 		startInspectEnter(state, 0.036);
 		const pose = computeInspectPose([0, 1.0, 2.25], 38, { width: 1280, height: 800 }, odyssey.volume.dimensions);
+		const restCenter = computeVolumeShelfCenter(odyssey, 0.036);
 
-		// Mid-flight should have a positive pull-out bulge and non-zero backdrop opacity
+		// Stage 1 (inside slot extraction): tilts forward, moves strictly +Z with zero X drift or yaw!
 		stepInspectVolume(state, 0.05);
 		stepInspectVolume(state, 0.05);
-		stepInspectVolume(state, 0.05);
-		const mid = evaluateInspectTransform(state, odyssey, pose.center);
-		assert.ok(mid.backdropOpacity > 0 && mid.backdropOpacity < INSPECT_VOLUME_CONFIG.backdropMaxOpacity);
+		const stage1 = evaluateInspectTransform(state, odyssey, pose.center);
+		assert.equal(stage1.position[0], restCenter[0], 'Must stay strictly in-lane X during Stage 1');
+		assert.ok(stage1.position[2] > restCenter[2], 'Must pull forward along +Z during Stage 1');
+		assert.ok(stage1.rotation[0] > 0, 'Must tilt forward (positive pitch) during Stage 1');
+		assert.equal(stage1.rotation[1], 0, 'Must not yaw while still inside the Shelf slot');
+		assert.equal(stage1.backdropOpacity, 0, 'Backdrop stays bright until glide stage');
 
+		let clearedShelfCount = 0;
 		let entered = false;
 		for (let i = 0; i < 30; i++) {
 			const res = stepInspectVolume(state, 0.05);
+			if (res.clearedShelf) clearedShelfCount += 1;
 			if (res.enteredInspect) entered = true;
 		}
+		assert.equal(clearedShelfCount, 1, 'Shelf-clear domino trigger should fire exactly once');
 		assert.equal(entered, true);
 		assert.equal(state.phase, 'inspecting');
 		assert.equal(state.progress, 1);

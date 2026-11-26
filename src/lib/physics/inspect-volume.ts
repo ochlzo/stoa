@@ -4,10 +4,20 @@ import { clampDelta, type ViewportSize } from '#lib/physics/shelf-camera.ts';
 export type InspectPhase = 'idle' | 'entering' | 'inspecting' | 'returning';
 
 export interface InspectVolumeConfig {
-	/** Flight duration (seconds) when pulling a Volume out of or back into its Shelf slot. */
+	/** Total flight duration (seconds) for the staged pull-out / return choreography. */
 	readonly flightDuration: number;
-	/** Forward +Z pull-out bulge (meters) during flight so the Volume clears Shelf neighbors cleanly. */
-	readonly pullOutArcZ: number;
+	/** Normalized progress (0..1) where Stage 1 (tilt forward + pull straight out) completes. */
+	readonly extractEndProgress: number;
+	/** Normalized progress (0..1) where the brief hand-grip pause ends and Stage 3 (glide/turn) begins. */
+	readonly pauseEndProgress: number;
+	/** Normalized progress (0..1) at which the Volume has cleared its slot and releases neighbors. */
+	readonly shelfClearProgress: number;
+	/** Forward +Z clearance beyond the Volume's full depth when extracted from the Shelf (meters). */
+	readonly extractExtraClearance: number;
+	/** Forward finger-hook tilt angle (radians, positive pitches top edge toward the reader). */
+	readonly hookTiltPitch: number;
+	/** Subtle upward lift (meters) as the book unseats from the Shelf surface. */
+	readonly hookLiftY: number;
 	/** Canonical starting yaw (radians) showing the cover and spine in a three-quarter hero pose. */
 	readonly defaultYaw: number;
 	/** Canonical starting pitch (radians) gently tilting the top edge toward the reader. */
@@ -43,8 +53,13 @@ export interface InspectVolumeConfig {
 }
 
 export const INSPECT_VOLUME_CONFIG: InspectVolumeConfig = {
-	flightDuration: 0.48,
-	pullOutArcZ: 0.22,
+	flightDuration: 0.72,
+	extractEndProgress: 0.34,
+	pauseEndProgress: 0.44,
+	shelfClearProgress: 0.3,
+	extractExtraClearance: 0.045,
+	hookTiltPitch: 0.22,
+	hookLiftY: 0.01,
 	defaultYaw: -1.12,
 	defaultPitch: 0.12,
 	maxPitch: (65 * Math.PI) / 180,
@@ -77,6 +92,8 @@ export interface InspectVolumeState {
 	pitchVelocity: number;
 	/** Whether the user is actively dragging to orbit the Volume. */
 	isDragging: boolean;
+	/** True once the Volume has pulled clear of its Shelf slot (triggers neighbor dominoes). */
+	hasClearedShelf: boolean;
 	/** Peek +Z offset captured at the moment Inspect Mode began so the pull-out starts seamlessly. */
 	startPeekOffset: number;
 	/** Shortest-path starting yaw captured when returning to the Shelf slot. */
@@ -99,7 +116,7 @@ export interface InspectFramingPose {
 export interface InspectTransform {
 	/** World-space position of the Volume's geometric center [x, y, z]. */
 	readonly position: readonly [number, number, number];
-	/** Euler rotation [pitchX, yawY, rollZ] in 'YXZ' order. */
+	/** Euler rotation [pitchX, yawY, rollZ] in 'XYZ' order (screen-horizontal pitch, spine-axis yaw). */
 	readonly rotation: readonly [number, number, number];
 	/** Current dimmed backdrop opacity (0..backdropMaxOpacity). */
 	readonly backdropOpacity: number;
@@ -108,6 +125,8 @@ export interface InspectTransform {
 export interface InspectStepResult {
 	/** True when flight progress or orbit angles changed this frame. */
 	readonly changed: boolean;
+	/** True on the frame the Volume clears its Shelf slot and releases leaning neighbors. */
+	readonly clearedShelf: boolean;
 	/** True on the frame the Volume settles back into its Shelf slot after returning. */
 	readonly completedReturn: boolean;
 	/** True on the frame the Volume finishes flying into its centered Inspect pose. */
@@ -147,8 +166,13 @@ export function clampPitch(
 	return Math.max(-config.maxPitch, Math.min(config.maxPitch, pitch));
 }
 
+function easeOutCubic(t: number): number {
+	const clamped = Math.max(0, Math.min(1, t));
+	return 1 - Math.pow(1 - clamped, 3);
+}
+
 /**
- * Smooth cubic-out / quintic-in-out ease for calm, tactile Volume flight.
+ * Smooth cubic-in-out ease for calm, tactile Volume glide.
  */
 function easeInOutCubic(t: number): number {
 	const clamped = Math.max(0, Math.min(1, t));
@@ -239,6 +263,7 @@ export function createInspectVolumeState(
 		yawVelocity: 0,
 		pitchVelocity: 0,
 		isDragging: false,
+		hasClearedShelf: false,
 		startPeekOffset: 0,
 		returnStartYaw: config.defaultYaw,
 		returnStartPitch: config.defaultPitch
@@ -260,6 +285,7 @@ export function startInspectEnter(
 	state.yawVelocity = 0;
 	state.pitchVelocity = 0;
 	state.isDragging = false;
+	state.hasClearedShelf = false;
 	state.startPeekOffset = currentPeekOffset;
 	state.returnStartYaw = config.defaultYaw;
 	state.returnStartPitch = config.defaultPitch;
@@ -272,6 +298,7 @@ export function startInspectReturn(state: InspectVolumeState): void {
 	if (state.phase === 'idle' || state.phase === 'returning') return;
 	state.phase = 'returning';
 	state.isDragging = false;
+	state.hasClearedShelf = false;
 	state.yawVelocity = 0;
 	state.pitchVelocity = 0;
 	state.startPeekOffset = 0;
@@ -289,10 +316,11 @@ export function stepInspectVolume(
 ): InspectStepResult {
 	const dt = clampDelta(rawDelta, config.maxDelta);
 	if (dt === 0 || state.phase === 'idle') {
-		return { changed: false, completedReturn: false, enteredInspect: false };
+		return { changed: false, clearedShelf: false, completedReturn: false, enteredInspect: false };
 	}
 
 	let changed = false;
+	let clearedShelf = false;
 	let completedReturn = false;
 	let enteredInspect = false;
 
@@ -300,6 +328,10 @@ export function stepInspectVolume(
 		const prev = state.progress;
 		state.progress = Math.min(1, state.progress + dt / Math.max(0.05, config.flightDuration));
 		changed = changed || state.progress !== prev;
+		if (!state.hasClearedShelf && state.progress >= config.shelfClearProgress) {
+			state.hasClearedShelf = true;
+			clearedShelf = true;
+		}
 		if (state.progress >= 1) {
 			state.progress = 1;
 			state.phase = 'inspecting';
@@ -312,6 +344,7 @@ export function stepInspectVolume(
 		if (state.progress <= 0) {
 			state.progress = 0;
 			state.phase = 'idle';
+			state.hasClearedShelf = false;
 			state.yaw = config.defaultYaw;
 			state.pitch = config.defaultPitch;
 			state.yawVelocity = 0;
@@ -352,12 +385,19 @@ export function stepInspectVolume(
 		}
 	}
 
-	return { changed, completedReturn, enteredInspect };
+	return { changed, clearedShelf, completedReturn, enteredInspect };
 }
 
 /**
  * Evaluates the Volume's world-space geometric center position, 'YXZ' Euler rotation,
- * and backdrop opacity for the current InspectVolumeState.
+ * and backdrop opacity for the staged hand-pull choreography:
+ *
+ * - Stage 1 (0 .. extractEndProgress): Finger-hook forward tilt + straight +Z pull-out
+ *   staying strictly inside the Volume's X lane (zero sideways or yaw clipping).
+ * - Stage 2 (extractEndProgress .. pauseEndProgress): Brief tactile hand-grip beat with
+ *   subtle forward drift once clear of the Shelf.
+ * - Stage 3 (pauseEndProgress .. 1): Smooth glide in X/Y/Z and three-quarter turn into
+ *   the centered Inspect Mode pose while softly dimming the Bookcase backdrop.
  */
 export function evaluateInspectTransform(
 	state: InspectVolumeState,
@@ -378,30 +418,64 @@ export function evaluateInspectTransform(
 		};
 	}
 
-	const eased = easeInOutCubic(state.progress);
-	// Smooth sine bulge along +Z during flight so the Volume pulls forward clear of neighbors
-	// before gliding to the centered inspect pose (and pulls forward before seating back in).
-	const pullArc = Math.sin(eased * Math.PI) * config.pullOutArcZ;
+	const p = Math.max(0, Math.min(1, state.progress));
+	const extractEnd = config.extractEndProgress;
+	const pauseEnd = config.pauseEndProgress;
 
-	const x = restCenter[0] + (inspectCenter[0] - restCenter[0]) * eased;
-	const y = restCenter[1] + (inspectCenter[1] - restCenter[1]) * eased;
-	const z = restCenter[2] + (inspectCenter[2] - restCenter[2]) * eased + pullArc;
-
-	// Delay rotation slightly at the very start of pull-out (and finish straightening slightly
-	// before seating back in) so the cover boards clear adjacent Volumes cleanly.
-	const rotT = easeInOutCubic(Math.max(0, Math.min(1, (state.progress - 0.12) / 0.88)));
+	// Clear Z sits safely in front of the Shelf so the entire book body clears adjacent spines
+	// before any lateral glide or yaw rotation begins.
+	const clearZ = Math.min(
+		inspectCenter[2],
+		restCenter[2] + placed.volume.dimensions.depth + config.extractExtraClearance
+	);
+	const pauseDriftZ = Math.min(0.012, Math.max(0, (inspectCenter[2] - clearZ) * 0.12));
+	const pauseEndZ = clearZ + pauseDriftZ;
 
 	const targetYaw = state.phase === 'returning' ? state.returnStartYaw : state.yaw;
 	const targetPitch = state.phase === 'returning' ? state.returnStartPitch : state.pitch;
 
-	const pitch = targetPitch * rotT;
-	const yaw = targetYaw * rotT;
-	const roll = placed.rotationZ * (1 - rotT);
+	if (p <= extractEnd) {
+		// Stage 1: Hook top spine forward and pull straight out along +Z in-lane.
+		const t = easeOutCubic(p / extractEnd);
+		const tiltT = easeOutCubic(Math.min(1, p / (extractEnd * 0.65)));
+		const z = restCenter[2] + (clearZ - restCenter[2]) * t;
+		const y = restCenter[1] + config.hookLiftY * tiltT;
+		const pitch = config.hookTiltPitch * tiltT;
+
+		return {
+			position: [restCenter[0], y, z],
+			rotation: [pitch, 0, placed.rotationZ],
+			backdropOpacity: 0
+		};
+	}
+
+	if (p <= pauseEnd) {
+		// Stage 2: Subtle hand-grip breath right in front of the Shelf slot.
+		const pauseT = (p - extractEnd) / Math.max(1e-4, pauseEnd - extractEnd);
+		const z = clearZ + pauseDriftZ * pauseT;
+		return {
+			position: [restCenter[0], restCenter[1] + config.hookLiftY, z],
+			rotation: [config.hookTiltPitch, 0, placed.rotationZ],
+			backdropOpacity: 0
+		};
+	}
+
+	// Stage 3: Smooth glide and three-quarter turn into the centered Inspect pose.
+	const glideT = easeInOutCubic((p - pauseEnd) / Math.max(1e-4, 1 - pauseEnd));
+	const startY = restCenter[1] + config.hookLiftY;
+
+	const x = restCenter[0] + (inspectCenter[0] - restCenter[0]) * glideT;
+	const y = startY + (inspectCenter[1] - startY) * glideT;
+	const z = pauseEndZ + (inspectCenter[2] - pauseEndZ) * glideT;
+
+	const pitch = config.hookTiltPitch + (targetPitch - config.hookTiltPitch) * glideT;
+	const yaw = targetYaw * glideT;
+	const roll = placed.rotationZ * (1 - glideT);
 
 	return {
 		position: [x, y, z],
 		rotation: [pitch, yaw, roll],
-		backdropOpacity: eased * config.backdropMaxOpacity
+		backdropOpacity: glideT * config.backdropMaxOpacity
 	};
 }
 

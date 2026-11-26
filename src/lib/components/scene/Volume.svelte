@@ -17,13 +17,11 @@
 		startInspectReturn,
 		stepInspectVolume
 	} from '#lib/physics/inspect-volume.ts';
-	import {
-		createLeaningNeighborState,
-		evaluateLeaningTransform,
-		stepLeaningNeighbor,
-		type LeaningNeighborSupport
-	} from '#lib/physics/leaning-neighbor.ts';
 	import { SHELF_CAMERA_CONFIG, clampDelta, getShelfCameraFov } from '#lib/physics/shelf-camera.ts';
+	import {
+		getShelfDominoPose,
+		type ShelfDominoSimulation
+	} from '#lib/physics/shelf-domino.ts';
 	import { createVolumePeekState, stepVolumePeek } from '#lib/physics/volume-peek.ts';
 	import {
 		canSelectVolume,
@@ -36,6 +34,7 @@
 		requestReturnToShelf,
 		setInspectOrbiting,
 		setInspectPhase,
+		setInspectShelfCleared,
 		setPeekedVolume,
 		updatePeekAnchor
 	} from '#lib/state/library.svelte.ts';
@@ -45,8 +44,7 @@
 		hasBookmark?: boolean;
 		isPeeked?: boolean;
 		isInspected?: boolean;
-		leaningSupport?: LeaningNeighborSupport | null;
-		isSupportRemoved?: boolean;
+		dominoSim?: ShelfDominoSimulation | null;
 	}
 
 	let {
@@ -54,8 +52,7 @@
 		hasBookmark = false,
 		isPeeked = false,
 		isInspected = false,
-		leaningSupport = null,
-		isSupportRemoved = false
+		dominoSim = null
 	}: Props = $props();
 
 	const { camera, canvas, size } = useThrelte();
@@ -92,8 +89,6 @@
 
 	const peekState = createVolumePeekState();
 	const inspectState = createInspectVolumeState();
-	const leaningState = createLeaningNeighborState(0);
-	let leaningInitialized = false;
 	const anchorPoint = new Vector3();
 	let motionGroupRef: Group | undefined;
 	let peekGroupRef: Group | undefined;
@@ -101,20 +96,10 @@
 	let backdropMaterialRef: MeshBasicMaterial | undefined;
 	let lastPointerType = 'mouse';
 
-	// Seed the leaning neighbor's angular state from its exact resting lean angle.
-	$effect(() => {
-		if (leaningSupport && !leaningInitialized) {
-			leaningState.angle = leaningSupport.restingAngle;
-			leaningState.angularVelocity = 0;
-			leaningState.atCatch = false;
-			leaningInitialized = true;
-		}
-	});
-
 	function applyRestingTransform(): void {
 		if (!motionGroupRef) return;
 		motionGroupRef.position.set(shelfCenter[0], shelfCenter[1], shelfCenter[2]);
-		motionGroupRef.rotation.order = 'YXZ';
+		motionGroupRef.rotation.order = 'XYZ';
 		motionGroupRef.rotation.set(0, 0, placed.rotationZ);
 	}
 
@@ -192,6 +177,9 @@
 
 		if (isInspected || inspectState.phase !== 'idle') {
 			const step = stepInspectVolume(inspectState, dt);
+			if (step.clearedShelf) {
+				setInspectShelfCleared(true);
+			}
 			if (step.enteredInspect) {
 				setInspectPhase('inspecting');
 			}
@@ -213,7 +201,7 @@
 					transform.position[1],
 					transform.position[2]
 				);
-				motionGroupRef.rotation.order = 'YXZ';
+				motionGroupRef.rotation.order = 'XYZ';
 				motionGroupRef.rotation.set(
 					transform.rotation[0],
 					transform.rotation[1],
@@ -236,23 +224,12 @@
 			return;
 		}
 
-		if (leaningSupport && leaningInitialized) {
-			const tipped = stepLeaningNeighbor(leaningState, leaningSupport, isSupportRemoved, dt);
-			if (tipped && motionGroupRef) {
-				const leanTransform = evaluateLeaningTransform(
-					placed,
-					leaningSupport.footX,
-					leaningSupport.surfaceY,
-					leaningSupport.sign,
-					leaningState.angle
-				);
-				motionGroupRef.position.set(
-					leanTransform.center[0],
-					leanTransform.center[1],
-					leanTransform.center[2]
-				);
-				motionGroupRef.rotation.order = 'YXZ';
-				motionGroupRef.rotation.set(0, 0, leanTransform.rotationZ);
+		if (dominoSim && motionGroupRef) {
+			const dominoPose = getShelfDominoPose(dominoSim, placed.volume.id);
+			if (dominoPose) {
+				motionGroupRef.position.set(dominoPose.centerX, dominoPose.centerY, dominoPose.centerZ);
+				motionGroupRef.rotation.order = 'XYZ';
+				motionGroupRef.rotation.set(0, 0, dominoPose.angle);
 			}
 		}
 
@@ -353,7 +330,7 @@
 	rotation={[0, 0, placed.rotationZ]}
 	oncreate={(group) => {
 		motionGroupRef = group;
-		group.rotation.order = 'YXZ';
+		group.rotation.order = 'XYZ';
 	}}
 >
 	<T.Group position={[0, -halfHeight, halfDepth]}>
