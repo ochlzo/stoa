@@ -44,7 +44,7 @@ describe('Deterministic Chapter / Page / Spread model (ADR 0004)', () => {
 
 		for (const page of model.pages) {
 			assert.equal(page.side, page.index % 2 === 0 ? 'left' : 'right');
-			if (page.kind === 'chapter-start' || page.kind === 'body') {
+			if (page.kind === 'chapter-opener' || page.kind === 'chapter-start' || page.kind === 'body') {
 				assert.equal(page.pageNumber, expectedFolio);
 				expectedFolio += 1;
 			}

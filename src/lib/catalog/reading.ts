@@ -1,4 +1,4 @@
-import { getReadableVolumePackage } from '#lib/catalog/readable/index.ts';
+import { getLoadedVolumeContent, loadVolumeContent } from '#lib/catalog/readable/index.ts';
 import type {
 	IllustrationMotion,
 	ProseSection,
@@ -10,6 +10,7 @@ import type { Volume } from '#lib/catalog/types.ts';
 export type PageKind =
 	| 'endpaper'
 	| 'front-title'
+	| 'chapter-opener'
 	| 'chapter-start'
 	| 'body'
 	| 'stanza'
@@ -21,6 +22,8 @@ export type PageContentMode = 'specimen' | 'prose' | 'verse' | 'illustration';
 export interface PageTextLine {
 	readonly text: string;
 	readonly indent?: boolean;
+	/** Expand the spaces in a continuing prose line to the right margin. */
+	readonly justify?: boolean;
 	readonly stanzaGapBefore?: boolean;
 }
 
@@ -194,7 +197,7 @@ function getChapterBlueprintsForVolume(volume: Volume): readonly ChapterBlueprin
 	return blueprints;
 }
 
-const PROSE_CHARS_PER_LINE = 42;
+const PROSE_CHARS_PER_LINE = 44;
 const VERSE_CHARS_PER_LINE = 44;
 const BODY_LINES_PER_PAGE = 22;
 const OPENER_LINES_PER_PAGE = 14;
@@ -217,28 +220,39 @@ function wrapTextToBudget(text: string, maxChars: number): string[] {
 	return rows;
 }
 
-function paginateProseSection(section: ProseSection): readonly (readonly PageTextLine[])[] {
+function getFirstPageLineLimit(hasArtworkOpener: boolean, epigraph?: string): number {
+	const base = hasArtworkOpener ? BODY_LINES_PER_PAGE : OPENER_LINES_PER_PAGE;
+	return Math.max(6, base - (epigraph ? 3 : 0));
+}
+
+function paginateProseSection(
+	section: ProseSection,
+	hasArtworkOpener = false
+): readonly (readonly PageTextLine[])[] {
 	const allLines: PageTextLine[] = [];
 	for (const paragraph of section.paragraphs) {
 		const wrapped = wrapTextToBudget(paragraph, PROSE_CHARS_PER_LINE);
 		wrapped.forEach((text, idx) => {
-			allLines.push({ text, indent: idx === 0 });
+			allLines.push({ text, indent: idx === 0, justify: idx < wrapped.length - 1 });
 		});
 	}
 	if (allLines.length === 0) return [[]];
 
-	const firstLimit = section.epigraph ? OPENER_LINES_PER_PAGE - 3 : OPENER_LINES_PER_PAGE;
+	const firstLimit = getFirstPageLineLimit(hasArtworkOpener, section.epigraph);
 	const buckets: PageTextLine[][] = [];
 	let cursor = 0;
 	while (cursor < allLines.length) {
-		const limit = buckets.length === 0 ? Math.max(6, firstLimit) : BODY_LINES_PER_PAGE;
+		const limit = buckets.length === 0 ? firstLimit : BODY_LINES_PER_PAGE;
 		buckets.push(allLines.slice(cursor, cursor + limit));
 		cursor += limit;
 	}
 	return buckets;
 }
 
-function paginateVerseSection(section: VerseSection): readonly (readonly PageTextLine[])[] {
+function paginateVerseSection(
+	section: VerseSection,
+	hasArtworkOpener = false
+): readonly (readonly PageTextLine[])[] {
 	const allLines: PageTextLine[] = [];
 	section.stanzas.forEach((stanza, stanzaIdx) => {
 		stanza.forEach((rawLine, lineIdx) => {
@@ -255,11 +269,11 @@ function paginateVerseSection(section: VerseSection): readonly (readonly PageTex
 	});
 	if (allLines.length === 0) return [[]];
 
-	const firstLimit = section.epigraph ? OPENER_LINES_PER_PAGE - 3 : OPENER_LINES_PER_PAGE;
+	const firstLimit = getFirstPageLineLimit(hasArtworkOpener, section.epigraph);
 	const buckets: PageTextLine[][] = [];
 	let cursor = 0;
 	while (cursor < allLines.length) {
-		const limit = buckets.length === 0 ? Math.max(6, firstLimit) : BODY_LINES_PER_PAGE;
+		const limit = buckets.length === 0 ? firstLimit : BODY_LINES_PER_PAGE;
 		const slice: PageTextLine[] = [];
 		let units = 0;
 		while (cursor < allLines.length) {
@@ -407,8 +421,31 @@ export function buildVolumeReadingModel(
 				continue;
 			}
 
+			if (section.openingImageSrc) {
+				const pageIndex = pages.length;
+				pages.push({
+					index: pageIndex,
+					pageNumber: folio,
+					side: pageIndex % 2 === 0 ? 'left' : 'right',
+					kind: 'chapter-opener',
+					contentMode: 'illustration',
+					chapterIndex,
+					chapterNumber,
+					chapterRomanNumeral: roman,
+					chapterTitle: section.title,
+					volumeTitle: resolvedTitle,
+					volumeAuthor: resolvedAuthor,
+					lineCount: 0,
+					paragraphBreaks: [],
+					illustrationSrc: section.openingImageSrc
+				});
+				folio += 1;
+			}
+
 			const pageBuckets =
-				section.kind === 'prose' ? paginateProseSection(section) : paginateVerseSection(section);
+				section.kind === 'prose'
+					? paginateProseSection(section, !!section.openingImageSrc)
+					: paginateVerseSection(section, !!section.openingImageSrc);
 
 			pageBuckets.forEach((lines, bucketIdx) => {
 				const pageIndex = pages.length;
@@ -421,7 +458,7 @@ export function buildVolumeReadingModel(
 					index: pageIndex,
 					pageNumber: folio,
 					side: pageIndex % 2 === 0 ? 'left' : 'right',
-					kind: isStart ? 'chapter-start' : 'body',
+					kind: isStart && !section.openingImageSrc ? 'chapter-start' : 'body',
 					contentMode: section.kind,
 					chapterIndex,
 					chapterNumber,
@@ -555,14 +592,33 @@ export function buildVolumeReadingModel(
 
 /**
  * Builds (and caches) a deterministic fixed-layout Chapter / Page / Spread model
- * for a Volume (ADR 0004).
+ * for a Volume (ADR 0004). Uses already-loaded VolumeContent when present, or
+ * falls back to the deterministic specimen layout until `loadVolumeReadingModel` resolves.
  */
 export function getVolumeReadingModel(volume: Volume): VolumeReadingModel {
 	const cached = modelCache.get(volume.id);
 	if (cached) return cached;
 
-	const pkg = getReadableVolumePackage(volume.id);
-	const model = buildVolumeReadingModel(volume, pkg?.content);
+	const content = getLoadedVolumeContent(volume.id);
+	const model = buildVolumeReadingModel(volume, content);
+	if (content || volume.kind !== 'readable') {
+		modelCache.set(volume.id, model);
+	}
+	return model;
+}
+
+/**
+ * Lazy-loads a Readable Volume's `content.ts` chunk, builds its deterministic
+ * reading model, and caches it for synchronous lookups.
+ */
+export async function loadVolumeReadingModel(volume: Volume): Promise<VolumeReadingModel> {
+	if (volume.kind !== 'readable') return getVolumeReadingModel(volume);
+
+	const content = await loadVolumeContent(volume.id);
+	const cached = modelCache.get(volume.id);
+	if (cached) return cached;
+
+	const model = buildVolumeReadingModel(volume, content);
 	modelCache.set(volume.id, model);
 	return model;
 }

@@ -65,17 +65,16 @@ function volume(spec: VolumeSpec): Volume {
 	if (spec.readable) {
 		const pkg = getReadableVolumePackage(spec.id);
 		const design = pkg?.design;
-		const content = pkg?.content;
 		return {
 			...base,
-			title: content?.title ?? spec.title,
-			author: content?.author ?? spec.author,
+			title: design?.title ?? spec.title,
+			author: design?.author ?? spec.author,
 			kind: 'readable',
 			bindingStyle: design?.bindingStyle ?? spec.binding,
 			coverColor: design?.coverColor ?? spec.coverColor,
 			spineProfile: design?.spineProfile ?? spec.spine,
 			design,
-			sourceNote: content?.sourceNote
+			sourceNote: design?.sourceNote
 		};
 	}
 	return {

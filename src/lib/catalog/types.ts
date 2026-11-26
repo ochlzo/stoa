@@ -68,7 +68,7 @@ interface VolumeBase {
 export interface ReadableVolume extends VolumeBase {
 	readonly kind: 'readable';
 	readonly design?: VolumeDesign;
-	/** Optional source / edition attribution from content.ts (stamped on the back cover). */
+	/** Optional source / edition attribution from design.ts (stamped eagerly on the back cover). */
 	readonly sourceNote?: string;
 }
 

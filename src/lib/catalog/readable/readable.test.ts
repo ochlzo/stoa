@@ -5,7 +5,9 @@ import { describe, it } from 'node:test';
 import { LOOKDEV_PALETTE } from '#lib/catalog/lookdev.ts';
 import {
 	buildVolumeReadingModel,
-	getSpreadIndexForPage
+	getSpreadIndexForPage,
+	getVolumeReadingModel,
+	loadVolumeReadingModel
 } from '#lib/catalog/reading.ts';
 import { READABLE_VOLUMES } from '#lib/catalog/readable/index.ts';
 import type { VolumeContent } from '#lib/catalog/readable/types.ts';
@@ -81,6 +83,7 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 				{
 					kind: 'prose',
 					title: 'Commentary',
+					openingImageSrc: 'volumes/ode-on-a-grecian-urn/commentary.webp',
 					paragraphs: [
 						'This is a long prose paragraph designed to wrap deterministically across multiple fixed-layout lines without relying on browser DOM measurements.',
 						'A second paragraph verifies that paragraph indents and folio numbering remain strictly monotonic across every Spread.'
@@ -116,15 +119,24 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 		assert.equal(platePage.illustrationSrc, 'volumes/ode-on-a-grecian-urn/urn.webp');
 		assert.equal(platePage.illustrationCaption, 'Attic red-figure amphora');
 
-		// Prose page
-		const prosePage = model.pages[model.chapters[2].startPageIndex];
+		// An illustrated opener belongs to its prose Chapter; text starts on the next Page.
+		const openerPage = model.pages[model.chapters[2].startPageIndex];
+		assert.equal(openerPage.kind, 'chapter-opener');
+		assert.equal(openerPage.illustrationSrc, 'volumes/ode-on-a-grecian-urn/commentary.webp');
+		const prosePage = model.pages[openerPage.index + 1];
+		assert.equal(prosePage.kind, 'body');
 		assert.equal(prosePage.contentMode, 'prose');
 		assert.ok((prosePage.lines?.length ?? 0) >= 3);
 
 		// Monotonic folios & round-trip spread mapping
 		let expectedFolio = 1;
 		for (const page of model.pages) {
-			if (page.kind === 'chapter-start' || page.kind === 'body' || page.kind === 'illustration') {
+			if (
+				page.kind === 'chapter-start' ||
+				page.kind === 'chapter-opener' ||
+				page.kind === 'body' ||
+				page.kind === 'illustration'
+			) {
 				assert.equal(page.pageNumber, expectedFolio);
 				expectedFolio += 1;
 			}
@@ -137,9 +149,9 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 		assert.equal(lastPage.colophonNote, 'Public domain test fixture');
 	});
 
-	it('builds illustratedStanzas with explicit stanza PageKind, fullBleed plates, and static assets', () => {
+	it('builds illustratedStanzas with explicit stanza PageKind, fullBleed plates, and static assets', async () => {
 		const pkg = READABLE_VOLUMES['ode-on-a-grecian-urn'];
-		const model = buildVolumeReadingModel(sampleVolume, pkg.content);
+		const model = buildVolumeReadingModel(sampleVolume, await pkg.loadContent());
 
 		assert.equal(model.chapters.length, 0);
 		// Title spread + 5 illustrated stanza spreads + closing colophon spread
@@ -165,6 +177,15 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 			assert.equal(spread.rightPage.stanzaNumber, i);
 			assert.equal(spread.rightPage.lines?.length, 10);
 		}
+	});
+
+	it('lazy-loads The Odyssey content on demand and caches its 24 illustrated chapters', async () => {
+		const odyssey = CATALOG.find((v) => v.id === 'the-odyssey')!;
+		const model = await loadVolumeReadingModel(odyssey);
+
+		assert.equal(model.chapters.length, 24);
+		assert.equal(model.pages.filter((p) => p.kind === 'chapter-opener').length, 24);
+		assert.equal(getVolumeReadingModel(odyssey), model);
 	});
 });
 

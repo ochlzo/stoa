@@ -4,7 +4,7 @@
 	import type { VolumeFinishes } from '#lib/textures/volume-finishes.ts';
 	import { T, useTask, useThrelte } from '@threlte/core';
 	import type { Group, PerspectiveCamera } from 'three';
-	import { getSpread, getVolumeReadingModel } from '#lib/catalog/reading.ts';
+	import { getSpread } from '#lib/catalog/reading.ts';
 	import { isClayMode } from '#lib/state/lookdev.svelte.ts';
 	import type { Volume } from '#lib/catalog/types.ts';
 	import { createPageStackGeometry } from '#lib/components/scene/open-volume-geometry.ts';
@@ -29,6 +29,7 @@
 		completeCloseToShelf,
 		completeReadingOpen,
 		finishLeafTurn,
+		getActiveVolumeReadingModel,
 		getCurrentSpreadIndex,
 		getFocusedPageSide,
 		getLeafTurn,
@@ -56,7 +57,7 @@
 	const cover = $derived(finishes.cover(volume, isClayMode()));
 	const { paintPage, stepIllustrations } = createReadingPagePainter();
 	const volumeDesign = $derived(volume.kind === 'readable' ? volume.design : undefined);
-	const readingModel = $derived(getVolumeReadingModel(volume));
+	const readingModel = $derived(getActiveVolumeReadingModel(volume));
 	const activeSpread = $derived(getSpread(readingModel, getCurrentSpreadIndex()));
 	const stackSplit = $derived(
 		computePageStackSplit(openDims.totalPageThickness, activeSpread.progress)

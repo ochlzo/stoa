@@ -1,10 +1,13 @@
 import type { Volume } from '#lib/catalog/types.ts';
+import { getLoadedVolumeContent } from '#lib/catalog/readable/index.ts';
 import {
 	clampSpreadIndex,
 	getCanonicalPageIndexForSpread,
 	getSpreadIndexForPage,
 	getVolumeReadingModel,
-	type PageSide
+	loadVolumeReadingModel,
+	type PageSide,
+	type VolumeReadingModel
 } from '#lib/catalog/reading.ts';
 import { createLeafTurn, type LeafTurn, type TurnDirection } from '#lib/physics/leaf-turn.ts';
 import type { InspectPhase } from '#lib/physics/inspect-volume.ts';
@@ -61,6 +64,46 @@ let readingUnfolding = $state(false);
 let leafTurn = $state.raw<LeafTurn | null>(null);
 let currentSpreadIndex = $state(0);
 let focusedPageSide = $state<PageSide>('right');
+let readingModelVersion = $state(0);
+
+/**
+ * Reactive wrapper around `getVolumeReadingModel` that re-evaluates `$derived`
+ * consumers once a Readable Volume's lazy `content.ts` chunk finishes loading.
+ */
+export function getActiveVolumeReadingModel(volume: Volume): VolumeReadingModel {
+	void readingModelVersion;
+	return getVolumeReadingModel(volume);
+}
+
+const preloadingVolumeIds = new Set<string>();
+
+function preloadVolumeContent(volume: Volume): void {
+	if (
+		volume.kind !== 'readable' ||
+		getLoadedVolumeContent(volume.id) ||
+		preloadingVolumeIds.has(volume.id)
+	) {
+		return;
+	}
+	preloadingVolumeIds.add(volume.id);
+	void loadVolumeReadingModel(volume)
+		.then((model) => {
+			readingModelVersion += 1;
+			if (sceneMode === 'reading' && inspectedVolume?.id === volume.id && !leafTurn) {
+				const savedPage = getLastReadPage(volume.id);
+				if (savedPage !== undefined) {
+					currentSpreadIndex = getSpreadIndexForPage(model, savedPage);
+					focusedPageSide = model.pages[savedPage]?.side ?? 'right';
+				}
+			}
+		})
+		.catch(() => {
+			// Keep deterministic specimen fallback visible if a lazy chunk fails to load.
+		})
+		.finally(() => {
+			preloadingVolumeIds.delete(volume.id);
+		});
+}
 
 export function getSceneMode(): SceneMode {
 	return sceneMode;
@@ -187,6 +230,7 @@ export function enterInspectMode(volume: Volume): boolean {
 	readingPhase = 'idle';
 	readingUnfolding = false;
 	sceneMode = 'inspect';
+	preloadVolumeContent(volume);
 	return true;
 }
 
@@ -236,6 +280,7 @@ export function openReadingMode(): boolean {
 	}
 
 	const model = getVolumeReadingModel(inspectedVolume);
+	preloadVolumeContent(inspectedVolume);
 	const savedPage = getLastReadPage(inspectedVolume.id);
 
 	if (savedPage === undefined) {
