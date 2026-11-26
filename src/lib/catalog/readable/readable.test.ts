@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { LOOKDEV_PALETTE } from '#lib/catalog/lookdev.ts';
@@ -135,6 +135,38 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 		const lastPage = model.pages[model.pages.length - 1];
 		assert.equal(lastPage.kind, 'colophon');
 		assert.equal(lastPage.colophonNote, 'Public domain test fixture');
+		assert.equal(model.wheelTurnsPages, false);
+	});
+
+	it('builds illustratedStanzas with explicit stanza PageKind, fullBleed plates, wheelTurnsPages, and static assets', () => {
+		const pkg = READABLE_VOLUMES['ode-on-a-grecian-urn'];
+		const model = buildVolumeReadingModel(sampleVolume, pkg.content);
+
+		assert.equal(model.chapters.length, 0);
+		assert.equal(model.wheelTurnsPages, true);
+		// Title spread + 5 illustrated stanza spreads + closing colophon spread
+		assert.equal(model.spreads.length, 7);
+
+		const root = process.cwd();
+		for (let i = 1; i <= 5; i += 1) {
+			const spread = model.spreads[i];
+			assert.equal(spread.leftPage.kind, 'illustration');
+			assert.equal(spread.leftPage.fullBleed, true);
+			assert.ok(spread.leftPage.illustrationSrc?.startsWith('volumes/ode-on-a-grecian-urn/'));
+			assert.ok(
+				existsSync(resolve(root, 'static', spread.leftPage.illustrationSrc!)),
+				`Missing static asset ${spread.leftPage.illustrationSrc}`
+			);
+			assert.ok(spread.leftPage.illustrationMotion?.src.startsWith('volumes/ode-on-a-grecian-urn/'));
+			assert.ok(
+				existsSync(resolve(root, 'static', spread.leftPage.illustrationMotion!.src)),
+				`Missing static motion asset ${spread.leftPage.illustrationMotion?.src}`
+			);
+
+			assert.equal(spread.rightPage.kind, 'stanza');
+			assert.equal(spread.rightPage.stanzaNumber, i);
+			assert.equal(spread.rightPage.lines?.length, 10);
+		}
 	});
 });
 

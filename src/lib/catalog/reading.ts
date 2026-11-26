@@ -12,6 +12,7 @@ export type PageKind =
 	| 'front-title'
 	| 'chapter-start'
 	| 'body'
+	| 'stanza'
 	| 'illustration'
 	| 'colophon';
 export type PageSide = 'left' | 'right';
@@ -53,6 +54,7 @@ export interface Page {
 	readonly lines?: readonly PageTextLine[];
 	readonly epigraph?: string;
 	readonly stanzaNumber?: number;
+	readonly fullBleed?: boolean;
 	readonly illustrationSrc?: string;
 	readonly illustrationMotion?: IllustrationMotion;
 	readonly illustrationCaption?: string;
@@ -92,6 +94,7 @@ export interface VolumeReadingModel {
 	readonly pages: readonly Page[];
 	readonly spreads: readonly Spread[];
 	readonly totalLeaves: number;
+	readonly wheelTurnsPages: boolean;
 }
 
 interface ChapterBlueprint {
@@ -348,6 +351,7 @@ export function buildVolumeReadingModel(
 					kind: 'illustration',
 					contentMode: 'illustration',
 					lineCount: 0,
+					fullBleed: true,
 					illustrationSrc: stanza.illustrationSrc,
 					illustrationMotion: stanza.motion
 				},
@@ -356,7 +360,7 @@ export function buildVolumeReadingModel(
 					index: pageIndex + 1,
 					pageNumber: folio + 1,
 					side: 'right',
-					kind: 'body',
+					kind: 'stanza',
 					contentMode: 'verse',
 					lineCount: lines.length,
 					lines
@@ -388,6 +392,7 @@ export function buildVolumeReadingModel(
 					lineCount: 0,
 					paragraphBreaks: [],
 					illustrationSrc: section.src,
+					illustrationMotion: section.motion,
 					illustrationCaption: section.caption
 				});
 				folio += 1;
@@ -545,7 +550,8 @@ export function buildVolumeReadingModel(
 		chapters,
 		pages,
 		spreads,
-		totalLeaves: spreadCount
+		totalLeaves: spreadCount,
+		wheelTurnsPages: Boolean(content?.wheelTurnsPages)
 	};
 }
 

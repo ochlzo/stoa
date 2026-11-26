@@ -11,12 +11,13 @@ export const content: VolumeContent = {
 	title: 'Ode on a Grecian Urn',
 	author: 'John Keats',
 	sourceNote: 'Wikisource · Keats: Poems Published in 1820 (1909 edition)',
+	wheelTurnsPages: true,
 	illustratedStanzas: [
 		{
-			illustrationSrc: 'readable/ode-on-a-grecian-urn/art/stanza-1.webp',
+			illustrationSrc: 'volumes/ode-on-a-grecian-urn/stanza-1.webp',
 			motion: {
 				...urnMotion,
-				src: 'readable/ode-on-a-grecian-urn/art/stanza-1-motion.webp'
+				src: 'volumes/ode-on-a-grecian-urn/stanza-1-motion.webp'
 			},
 			lines: [
 				"Thou still unravish'd bride of quietness,",
@@ -32,10 +33,10 @@ export const content: VolumeContent = {
 			]
 		},
 		{
-			illustrationSrc: 'readable/ode-on-a-grecian-urn/art/stanza-2.webp',
+			illustrationSrc: 'volumes/ode-on-a-grecian-urn/stanza-2.webp',
 			motion: {
 				...urnMotion,
-				src: 'readable/ode-on-a-grecian-urn/art/stanza-2-motion.webp'
+				src: 'volumes/ode-on-a-grecian-urn/stanza-2-motion.webp'
 			},
 			lines: [
 				'Heard melodies are sweet, but those unheard',
@@ -51,10 +52,10 @@ export const content: VolumeContent = {
 			]
 		},
 		{
-			illustrationSrc: 'readable/ode-on-a-grecian-urn/art/stanza-3.webp',
+			illustrationSrc: 'volumes/ode-on-a-grecian-urn/stanza-3.webp',
 			motion: {
 				...urnMotion,
-				src: 'readable/ode-on-a-grecian-urn/art/stanza-3-motion.webp'
+				src: 'volumes/ode-on-a-grecian-urn/stanza-3-motion.webp'
 			},
 			lines: [
 				'Ah, happy, happy boughs! that cannot shed',
@@ -70,10 +71,10 @@ export const content: VolumeContent = {
 			]
 		},
 		{
-			illustrationSrc: 'readable/ode-on-a-grecian-urn/art/stanza-4.webp',
+			illustrationSrc: 'volumes/ode-on-a-grecian-urn/stanza-4.webp',
 			motion: {
 				...urnMotion,
-				src: 'readable/ode-on-a-grecian-urn/art/stanza-4-motion.webp'
+				src: 'volumes/ode-on-a-grecian-urn/stanza-4-motion.webp'
 			},
 			lines: [
 				'Who are these coming to the sacrifice?',
@@ -89,10 +90,10 @@ export const content: VolumeContent = {
 			]
 		},
 		{
-			illustrationSrc: 'readable/ode-on-a-grecian-urn/art/stanza-5.webp',
+			illustrationSrc: 'volumes/ode-on-a-grecian-urn/stanza-5.webp',
 			motion: {
 				...urnMotion,
-				src: 'readable/ode-on-a-grecian-urn/art/stanza-5-motion.webp'
+				src: 'volumes/ode-on-a-grecian-urn/stanza-5-motion.webp'
 			},
 			lines: [
 				'O Attic shape! Fair attitude! with brede',
