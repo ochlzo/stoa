@@ -17,6 +17,7 @@
 		startLeafTurn
 	} from '#lib/state/library.svelte.ts';
 
+	const pageSides = ['left', 'right'] as const;
 	const HUD_FADE_DELAY_MS = 3200;
 	const HUD_HOVER_REVEAL_DISTANCE_PX = 48;
 	const HUD_EDGE_REVEAL_BAND_PX = 96;
@@ -174,7 +175,7 @@
 		data-reading-phase={phase}
 		data-spread-index={spreadIndex}
 		data-focused-side={focusedSide}
-		class="pointer-events-none fixed inset-0 z-30 flex flex-col items-center justify-between px-4 py-5 transition-opacity duration-200 sm:py-7 {isVisible
+		class="study-controls {isVisible
 			? 'opacity-100'
 			: 'opacity-0'}"
 	>
@@ -192,11 +193,11 @@
 		{/if}
 
 		<!-- Top reading status header -->
-		<header class="relative z-10 flex flex-col items-center gap-0.5 text-center">
-			<h1 class="text-sm font-medium tracking-wide text-stone-100 drop-shadow-xs sm:text-base">
+		<header class="study-heading relative z-10 max-w-full">
+			<h1 class="font-volume text-2xl leading-tight">
 				{volume.title}
 			</h1>
-			<div data-chapters class="pointer-events-auto relative text-center">
+			<div data-chapters class="pointer-events-auto relative mt-1">
 				<button
 					type="button"
 					bind:this={indicator}
@@ -208,12 +209,12 @@
 						drawerOpen = !drawerOpen;
 						reveal();
 					}}
-					class="cursor-pointer rounded-full bg-stone-900/80 px-3 py-1.5 text-[11px] tracking-wide text-stone-200 hover:bg-stone-800"
+					class="study-action border-b border-brass/60 bg-ink/95 text-left enabled:hover:bg-ink"
 				>
 					{#if chapterLabel}
-						{chapterLabel} · {spreadLabel}
+						{chapterLabel}, {spreadLabel}
 					{:else}
-						{volume.author} · {spreadLabel}
+						{volume.author}, {spreadLabel}
 					{/if}
 					<span aria-hidden="true"> ▾</span>
 				</button>
@@ -221,7 +222,7 @@
 					<nav
 						id="chapter-drawer"
 						aria-label="Chapters"
-						class="absolute top-full left-1/2 z-10 mt-2 max-h-[50dvh] w-72 max-w-[92vw] -translate-x-1/2 overflow-y-auto overscroll-contain rounded-xl border border-stone-600 bg-stone-900 p-1.5 text-left shadow-lg"
+						class="absolute top-full left-0 z-10 mt-1 max-h-[50dvh] w-80 max-w-[calc(100vw-3.5rem)] overflow-y-auto overscroll-contain border-t-2 border-brass bg-paper p-2 text-left text-ink shadow-lg"
 					>
 						{#each model.chapters as chapter (chapter.index)}
 							<button
@@ -231,9 +232,10 @@
 									jumpToReadingPage(chapter.startPageIndex);
 									void closeDrawer();
 								}}
-								class="block w-full cursor-pointer rounded-lg px-3 py-2 text-left text-sm text-stone-200 hover:bg-stone-700 aria-current:bg-stone-800"
+								class="chapter-choice"
 							>
-								{chapter.romanNumeral} · {chapter.title}
+								<span class="text-xs text-muted">{chapter.romanNumeral}</span>
+								<span class="font-volume text-base">{chapter.title}</span>
 							</button>
 						{/each}
 					</nav>
@@ -242,73 +244,61 @@
 		</header>
 
 		<!-- Bottom floating Reading Mode action bar -->
-		<div class="relative z-10 flex flex-col items-center gap-2">
+		<div class="relative z-10 flex w-full flex-col items-center">
 			{#if isMobilePortrait}
 				<!-- Mobile single-Page focus switcher (ADR 0004) -->
-				<div
-					class="pointer-events-auto flex items-center gap-1 rounded-full border border-stone-600/50 bg-stone-900/85 p-1 text-[11px] shadow-md backdrop-blur-md"
-				>
-					<button
-						type="button"
-						disabled={!!getLeafTurn() || phase !== 'reading'}
-						onclick={() => setFocusedPageSide('left')}
-						class="cursor-pointer rounded-full px-3 py-1 font-medium transition-colors {focusedSide ===
-						'left'
-							? 'bg-stone-100 text-stone-900'
-							: 'text-stone-300 hover:text-white'}"
-					>
-						Left Page
-					</button>
-					<button
-						type="button"
-						disabled={!!getLeafTurn() || phase !== 'reading'}
-						onclick={() => setFocusedPageSide('right')}
-						class="cursor-pointer rounded-full px-3 py-1 font-medium transition-colors {focusedSide ===
-						'right'
-							? 'bg-stone-100 text-stone-900'
-							: 'text-stone-300 hover:text-white'}"
-					>
-						Right Page
-					</button>
+				<div class="flex gap-4">
+					{#each pageSides as side}
+						<button
+							type="button"
+							disabled={!!getLeafTurn() || phase !== 'reading'}
+							aria-pressed={focusedSide === side}
+							onclick={() => setFocusedPageSide(side)}
+							class="volume-action"
+						>
+							{side === 'left' ? 'Left Page' : 'Right Page'}
+						</button>
+					{/each}
 				</div>
 			{/if}
 
-			<div
-				class="pointer-events-auto flex flex-wrap items-center justify-center gap-1.5 rounded-full border border-stone-600/50 bg-stone-900/85 p-1.5 shadow-lg backdrop-blur-md"
-			>
-				<button
-					type="button"
-					disabled={!!getLeafTurn() || phase !== 'reading' || !canPrev}
-					onclick={() => startLeafTurn(-1)}
-					aria-label="Previous Spread"
-					class="cursor-pointer rounded-full px-3 py-2 text-xs font-medium text-stone-200 transition-colors hover:bg-stone-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
-				>
-					← <span class="hidden sm:inline">Prev</span>
-				</button>
-				<button
-					type="button"
-					disabled={!!getLeafTurn() || phase !== 'reading' || !canNext}
-					onclick={() => startLeafTurn(1)}
-					aria-label="Next Spread"
-					class="cursor-pointer rounded-full px-3 py-2 text-xs font-medium text-stone-200 transition-colors hover:bg-stone-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
-				>
-					<span class="hidden sm:inline">Next </span>→
-				</button>
-				<span class="mx-0.5 h-4 w-px bg-stone-700/80" aria-hidden="true"></span>
-				<button
-					type="button"
-					onclick={requestCloseToInspect}
-					class="cursor-pointer rounded-full bg-stone-100 px-2.5 py-2 text-xs font-medium tracking-wide text-stone-900 transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-200 sm:px-4"
-				>
-					Close
-				</button>
-				<button
-					type="button"
-					onclick={requestReturnToShelfFromReading}
-					class="cursor-pointer rounded-full px-4 py-2 text-xs font-medium tracking-wide text-stone-200 transition-colors hover:bg-stone-800 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-400"
-				>
-					Return to Shelf
-				</button>
+			<div class="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-0">
+				<div class="flex items-center gap-1 sm:gap-4">
+					<button
+						type="button"
+						disabled={!!getLeafTurn() || phase !== 'reading' || !canPrev}
+						onclick={() => startLeafTurn(-1)}
+						aria-label="Previous Spread"
+						class="volume-action"
+					>
+						Previous
+					</button>
+					<button
+						type="button"
+						disabled={!!getLeafTurn() || phase !== 'reading' || !canNext}
+						onclick={() => startLeafTurn(1)}
+						aria-label="Next Spread"
+						class="volume-action"
+					>
+						Next
+					</button>
+				</div>
+				<div class="flex items-center gap-1 sm:gap-4">
+					<button
+						type="button"
+						onclick={requestCloseToInspect}
+						class="volume-action"
+					>
+						Close
+					</button>
+					<button
+						type="button"
+						onclick={requestReturnToShelfFromReading}
+						class="volume-action"
+					>
+						Return to Shelf
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>

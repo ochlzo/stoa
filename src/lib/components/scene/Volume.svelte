@@ -49,7 +49,7 @@
 		setReadingUnfolding,
 		updatePeekAnchor
 	} from '#lib/state/library.svelte.ts';
-	import { LOOKDEV_BACKDROP } from '#lib/catalog/lookdev.ts';
+	import { LOOKDEV_BACKDROP, LOOKDEV_PALETTE } from '#lib/catalog/lookdev.ts';
 	import { stepBackdropOpacity } from '#lib/physics/study-lighting.ts';
 	import { isClayMode } from '#lib/state/lookdev.svelte.ts';
 
@@ -91,8 +91,8 @@
 	const paper = $derived(finishes.paper(isClayMode()));
 	const headbandFinish = $derived(finishes.headband(isClayMode()));
 	const highlightReadable = $derived(isPeeked && !isInspected && placed.volume.kind === 'readable');
-	const coverEmissive = $derived(highlightReadable ? '#f4ede0' : '#000000');
-	const coverEmissiveIntensity = $derived(highlightReadable ? 0.16 : 0);
+	const coverEmissive = $derived(highlightReadable ? LOOKDEV_PALETTE.paperAndInk.goldFoil : '#000000');
+	const coverEmissiveIntensity = $derived(highlightReadable ? 0.065 : 0);
 
 	// Exact world-space geometric center of this Volume when seated flush in its Shelf slot.
 	const shelfCenter = $derived(computeVolumeShelfCenter(placed, 0));

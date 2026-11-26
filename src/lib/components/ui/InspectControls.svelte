@@ -40,41 +40,23 @@
 		data-testid="inspect-controls"
 		data-volume-id={volume.id}
 		data-inspect-phase={phase}
-		class="pointer-events-none fixed inset-0 z-30 flex flex-col items-center justify-between px-4 py-6 transition-opacity duration-200 sm:py-8 {isVisible
+		inert={!isVisible}
+		class="study-controls {isVisible
 			? 'opacity-100'
 			: 'opacity-0'}"
 	>
-		<!-- Subtle editorial header for the inspected Volume -->
-		<header class="flex flex-col items-center gap-1 text-center">
-			<h1 class="text-sm font-medium tracking-wide text-stone-100 drop-shadow-xs sm:text-base">
-				{volume.title}
-			</h1>
-			<p class="text-[11px] tracking-[0.14em] text-stone-300/90 uppercase">
-				{volume.author}
-			</p>
-			<p class="mt-0.5 text-[11px] text-stone-400/90">Drag to inspect · Scroll or pinch to zoom</p>
+		<header class="study-heading">
+			<h1 class="font-volume text-3xl leading-tight sm:text-4xl">{volume.title}</h1>
+			<p class="mt-1 text-sm">{volume.author}</p>
 		</header>
 
-		<!-- Floating action controls -->
-		<div class="flex flex-col items-center gap-2">
-			<div
-				class="pointer-events-auto flex items-center gap-2 rounded-full border border-stone-600/50 bg-stone-900/85 p-1.5 shadow-lg backdrop-blur-md"
-			>
-				<button
-					type="button"
-					onclick={handleOpenToRead}
-					class="cursor-pointer rounded-full bg-stone-100 px-4 py-2 text-xs font-medium tracking-wide text-stone-900 transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-200"
-				>
-					Open to Read
-				</button>
-				<button
-					type="button"
-					onclick={requestReturnToShelf}
-					class="cursor-pointer rounded-full px-4 py-2 text-xs font-medium tracking-wide text-stone-200 transition-colors hover:bg-stone-800 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-400"
-				>
-					Return to Shelf
-				</button>
-			</div>
+		<div class="flex w-full items-center justify-between">
+			<button type="button" onclick={requestReturnToShelf} class="volume-action">
+				Return to Shelf
+			</button>
+			<button type="button" onclick={handleOpenToRead} class="volume-action underline decoration-brass">
+				Open to Read <span aria-hidden="true">→</span>
+			</button>
 		</div>
 	</div>
 {/if}

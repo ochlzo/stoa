@@ -9,3 +9,64 @@ body {
 	overflow: hidden;
 	background-color: #e5e3de;
 }
+
+@theme inline {
+	--color-paper: var(--study-paper);
+	--color-ink: var(--study-ink);
+	--color-muted: var(--study-muted);
+	--color-brass: var(--study-brass);
+	--font-volume: Georgia, 'Times New Roman', serif;
+}
+
+@layer components {
+	.study-controls {
+		@apply pointer-events-none fixed inset-0 z-30 flex flex-col items-center justify-between px-5 text-paper motion-safe:transition-opacity sm:px-10;
+		padding-top: max(1.25rem, env(safe-area-inset-top));
+		padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+	}
+
+	.study-heading {
+		@apply self-start border-l-2 border-brass pl-3 sm:mt-3;
+		text-shadow: 0 1px 4px var(--study-ink), 0 0 10px var(--study-ink);
+	}
+
+	.study-action {
+		@apply min-h-11 min-w-11 cursor-pointer rounded-xs px-3 text-[13px] font-medium text-paper enabled:hover:bg-paper/15 disabled:cursor-default disabled:opacity-40 motion-safe:transition-colors;
+		text-shadow: none;
+	}
+
+	.volume-action {
+		@apply pointer-events-auto min-h-11 min-w-11 cursor-pointer px-1 font-volume text-xl font-medium text-paper underline-offset-[0.3em] enabled:hover:underline enabled:hover:decoration-paper focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-paper disabled:cursor-default disabled:opacity-45;
+		text-shadow: 0 1px 2px black, 0 0 5px black, 0 0 10px var(--study-ink);
+	}
+
+	.volume-action[aria-pressed='true'] {
+		@apply underline decoration-brass;
+	}
+
+	.study-action:focus-visible,
+	.chapter-choice:focus-visible {
+		outline: 2px solid var(--study-brass);
+		outline-offset: -3px;
+	}
+
+	.chapter-choice {
+		@apply grid min-h-11 w-full cursor-pointer grid-cols-[2.25rem_1fr] items-center border-b border-ink/10 px-2 py-1 text-left last:border-0 hover:bg-ink/5 aria-[current=location]:bg-brass/20;
+		text-shadow: none;
+	}
+
+	.peek-label {
+		@apply border-l-2 border-brass bg-paper px-3.5 py-2 text-ink shadow-md;
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		.peek-label {
+			animation: peek-arrive 140ms ease-out;
+		}
+	}
+}
+
+@keyframes peek-arrive {
+	from { opacity: 0; transform: translateY(3px); }
+	to { opacity: 1; transform: translateY(0); }
+}
