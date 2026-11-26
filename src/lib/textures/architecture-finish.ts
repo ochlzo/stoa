@@ -34,8 +34,12 @@ function grain(u: number, v: number): number {
 
 function relief(finish: Finish, u: number, v: number): number {
 	if (finish === 'plaster') {
-		return 0.6 * noise(u, v, 12, 8) + 0.25 * noise(u, v, 73, 49)
-			+ 0.15 * noise(u, v, 273, 179);
+		return (
+			0.38 * noise(u, v, 3, 2) +
+			0.34 * noise(u, v, 12, 8) +
+			0.18 * noise(u, v, 73, 49) +
+			0.1 * noise(u, v, 273, 179)
+		);
 	}
 	if (finish === 'wood') return grain(u, v);
 
@@ -57,7 +61,7 @@ export function createFinishMaps(finish: Finish, color: string) {
 	// Three reads roughness from green and bump from red, so both share a data map.
 	const surface = new Uint8Array(albedo.length);
 	const rgb = Number.parseInt(color.slice(1), 16);
-	const contrast = finish === 'plaster' ? 0.075 : 0.36;
+	const contrast = finish === 'plaster' ? 0.16 : 0.44;
 	for (let y = 0; y < height; y++) {
 		for (let x = 0; x < width; x++) {
 			const h = relief(finish, (x + 0.5) / width, (y + 0.5) / height);

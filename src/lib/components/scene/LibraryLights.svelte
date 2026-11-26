@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { T, useTask, useThrelte } from '@threlte/core';
 	import { onMount } from 'svelte';
-	import type { DirectionalLight, HemisphereLight } from 'three';
+	import type { DirectionalLight, HemisphereLight, SpotLight } from 'three';
 	import {
 		LOOKDEV_RENDERER_CONFIG,
 		STUDY_LIGHTING,
@@ -12,6 +12,7 @@
 	import { stepStudyLighting } from '#lib/physics/study-lighting.ts';
 	import { getInspectPhase, getReadingPhase, getSceneMode } from '#lib/state/library.svelte.ts';
 	import { isClayMode } from '#lib/state/lookdev.svelte.ts';
+	import { createDappledSunlightMap } from '#lib/textures/dappled-sunlight.ts';
 	import { createStudyEnvironment } from '#lib/textures/environment.ts';
 
 	const { renderer, scene } = useThrelte();
@@ -22,6 +23,7 @@
 	let sky = $state<DirectionalLight>();
 	let ambient = $state<HemisphereLight>();
 	let rim = $state<DirectionalLight>();
+	let dappled = $state<SpotLight>();
 	let showDust = $state(false);
 
 	onMount(() => {
@@ -36,7 +38,7 @@
 
 	useTask((delta) => {
 		const dt = Math.min(delta, 0.05);
-		if (clayMode || !sun || !rim || !sky || !ambient) return;
+		if (clayMode || !sun || !rim || !sky || !ambient || !dappled) return;
 		const mode = getSceneMode();
 		const closing = getReadingPhase();
 		const returning = closing === 'closing-to-shelf' || getInspectPhase() === 'returning';
@@ -46,6 +48,7 @@
 		sky.intensity = lighting.sky;
 		ambient.intensity = lighting.ambient;
 		rim.intensity = lighting.rim;
+		dappled.intensity = lighting.dappled;
 		scene.environmentIntensity = lighting.environment;
 		renderer.toneMappingExposure = lighting.exposure;
 	});
@@ -71,8 +74,8 @@
 		};
 	});
 
-	function aimDirectionalTarget(targetPos: readonly [number, number, number]) {
-		return (light: DirectionalLight) => {
+	function aimLightTarget(targetPos: readonly [number, number, number]) {
+		return (light: DirectionalLight | SpotLight) => {
 			light.target.position.set(targetPos[0], targetPos[1], targetPos[2]);
 			light.target.updateMatrixWorld();
 			scene.add(light.target);
@@ -112,8 +115,30 @@
 		shadow.camera.near={frustum.near}
 		shadow.camera.far={frustum.far}
 		oncreate={(light) => {
-			aimDirectionalTarget(SUNLIT_STUDY_LIGHTS.sunKey.target)(light);
+			aimLightTarget(SUNLIT_STUDY_LIGHTS.sunKey.target)(light);
 			return () => {
+				scene.remove(light.target);
+			};
+		}}
+	/>
+
+	<!-- Soft dappled afternoon leaf-shadow sunlight wash across the right wall, floor & Bookcase edge -->
+	<T.SpotLight
+		bind:ref={dappled}
+		position={[...SUNLIT_STUDY_LIGHTS.dappledSun.position]}
+		intensity={SUNLIT_STUDY_LIGHTS.dappledSun.intensity}
+		angle={SUNLIT_STUDY_LIGHTS.dappledSun.angle}
+		penumbra={SUNLIT_STUDY_LIGHTS.dappledSun.penumbra}
+		decay={0}
+		color={SUNLIT_STUDY_LIGHTS.dappledSun.color}
+		castShadow={false}
+		oncreate={(light) => {
+			aimLightTarget(SUNLIT_STUDY_LIGHTS.dappledSun.target)(light);
+			const projection = createDappledSunlightMap();
+			light.map = projection.texture;
+			return () => {
+				light.map = null;
+				projection.dispose();
 				scene.remove(light.target);
 			};
 		}}
@@ -125,7 +150,7 @@
 		intensity={SUNLIT_STUDY_LIGHTS.skyFill.intensity}
 		color={SUNLIT_STUDY_LIGHTS.skyFill.color}
 		oncreate={(light) => {
-			aimDirectionalTarget(SUNLIT_STUDY_LIGHTS.skyFill.target)(light);
+			aimLightTarget(SUNLIT_STUDY_LIGHTS.skyFill.target)(light);
 			return () => {
 				scene.remove(light.target);
 			};
@@ -137,7 +162,7 @@
 		intensity={SUNLIT_STUDY_LIGHTS.warmBounce.intensity}
 		color={SUNLIT_STUDY_LIGHTS.warmBounce.color}
 		oncreate={(light) => {
-			aimDirectionalTarget(SUNLIT_STUDY_LIGHTS.warmBounce.target)(light);
+			aimLightTarget(SUNLIT_STUDY_LIGHTS.warmBounce.target)(light);
 			return () => {
 				scene.remove(light.target);
 			};
@@ -150,7 +175,7 @@
 		intensity={SUNLIT_STUDY_LIGHTS.rim.intensity}
 		color={SUNLIT_STUDY_LIGHTS.rim.color}
 		oncreate={(light) => {
-			aimDirectionalTarget(SUNLIT_STUDY_LIGHTS.rim.target)(light);
+			aimLightTarget(SUNLIT_STUDY_LIGHTS.rim.target)(light);
 			return () => {
 				scene.remove(light.target);
 			};

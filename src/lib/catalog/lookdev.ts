@@ -53,6 +53,8 @@ export interface SunlitStudyLightsConfig {
 	readonly warmBounce: StudyLightSpec;
 	/** Back-left rim light that separates covers and catches foil during Inspect Mode. */
 	readonly rim: StudyLightSpec;
+	/** Non-shadow-casting dappled afternoon foliage sunlight washing the right wall and floor. */
+	readonly dappledSun: StudyLightSpec & { readonly angle: number; readonly penumbra: number };
 }
 
 export interface StudyLightingTarget {
@@ -60,6 +62,7 @@ export interface StudyLightingTarget {
 	sky: number;
 	ambient: number;
 	rim: number;
+	dappled: number;
 	environment: number;
 	exposure: number;
 	dust: number;
@@ -109,31 +112,31 @@ export const LOOKDEV_RENDERER_CONFIG: LookdevRendererConfig = {
  * - Inspect Mode rim light from back-left to catch cover grain and gold foil
  */
 export const SUNLIT_STUDY_LIGHTS: SunlitStudyLightsConfig = {
-	background: '#ece3d5',
+	background: '#d5c6b1',
 	hemisphere: {
-		skyColor: '#fff5e4',
-		groundColor: '#b99c7a',
-		intensity: 0.52
+		skyColor: '#fff2dc',
+		groundColor: '#8d6a49',
+		intensity: 0.44
 	},
 	sunKey: {
 		position: [2.1, 3.05, 2.55],
 		target: [0, bookcaseCenterY, -0.15],
-		color: '#ffdfb3',
-		intensity: 2.25,
+		color: '#ffddb0',
+		intensity: 2.05,
 		castShadow: true
 	},
 	skyFill: {
 		position: [-2.2, 1.5, 1.9],
 		target: [0, bookcaseCenterY, -0.1],
-		color: '#d8e4f2',
-		intensity: 0.42,
+		color: '#d2dfee',
+		intensity: 0.34,
 		castShadow: false
 	},
 	warmBounce: {
 		position: [0.25, -0.8, 1.8],
 		target: [0, bookcaseCenterY, -0.1],
-		color: '#f2d8b6',
-		intensity: 0.2,
+		color: '#e8c499',
+		intensity: 0.18,
 		castShadow: false
 	},
 	rim: {
@@ -141,6 +144,15 @@ export const SUNLIT_STUDY_LIGHTS: SunlitStudyLightsConfig = {
 		target: [0, bookcaseCenterY, -0.15],
 		color: '#ffe5be',
 		intensity: 0,
+		castShadow: false
+	},
+	dappledSun: {
+		position: [2.45, 2.75, 2.1],
+		target: [1.18, bookcaseCenterY - 0.12, -0.35],
+		angle: 0.72,
+		penumbra: 0.75,
+		color: '#ffe2b0',
+		intensity: 2.15,
 		castShadow: false
 	}
 };
@@ -150,6 +162,7 @@ const shelfLighting: StudyLightingTarget = {
 	sky: SUNLIT_STUDY_LIGHTS.skyFill.intensity,
 	ambient: SUNLIT_STUDY_LIGHTS.hemisphere.intensity,
 	rim: SUNLIT_STUDY_LIGHTS.rim.intensity,
+	dappled: SUNLIT_STUDY_LIGHTS.dappledSun.intensity,
 	environment: LOOKDEV_RENDERER_CONFIG.environmentIntensity,
 	exposure: LOOKDEV_RENDERER_CONFIG.exposure,
 	dust: 1
@@ -164,6 +177,7 @@ export const STUDY_LIGHTING: Readonly<Record<'shelf' | 'inspect' | 'reading', St
 		sky: 0.52,
 		ambient: 0.6,
 		rim: 1.15,
+		dappled: 0.35,
 		environment: 0.45,
 		exposure: 0.96,
 		dust: 0
@@ -174,6 +188,7 @@ export const STUDY_LIGHTING: Readonly<Record<'shelf' | 'inspect' | 'reading', St
 		sky: 0.84,
 		ambient: 0.96,
 		rim: 0.08,
+		dappled: 0,
 		environment: 0.31,
 		exposure: 0.98,
 		dust: 0
@@ -196,12 +211,12 @@ export const STUDY_WINDOW = {
  */
 export const LOOKDEV_PALETTE = {
 	architecture: {
-		plasterWall: '#efe7d8',
-		baseboard: '#f3ede0',
-		hardwoodFloor: '#9d7652',
-		woodPrimary: '#8c5e38',
-		woodTrim: '#7a502f',
-		woodBackPanel: '#6d472a'
+		plasterWall: '#cfc0a9',
+		baseboard: '#d8ccb7',
+		hardwoodFloor: '#8a6342',
+		woodPrimary: '#80512d',
+		woodTrim: '#6e4324',
+		woodBackPanel: '#54321a'
 	},
 	paperAndInk: {
 		archivalPaper: '#f5eedf',

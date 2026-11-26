@@ -11,7 +11,10 @@
 
 	useTask((delta) => {
 		const dt = Math.min(delta, 0.05);
-		dust.material.visible = animate && lighting.dust > 0.015;
+		const beamVisible = lighting.dust > 0.015;
+		dust.scattering.visible = beamVisible;
+		dust.scattering.uniforms.intensity.value = lighting.dust;
+		dust.material.visible = animate && beamVisible;
 		if (!dust.material.visible) return;
 		const uniforms = dust.material.uniforms;
 		uniforms.time.value += dt;
@@ -20,4 +23,5 @@
 	});
 </script>
 
+<T.Mesh name="window-sunlight" geometry={dust.shaft} material={dust.scattering} dispose={false} />
 <T.Points name="sunlit-dust" geometry={dust.geometry} material={dust.material} dispose={false} />
