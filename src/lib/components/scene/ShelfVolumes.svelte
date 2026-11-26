@@ -22,9 +22,9 @@
 	const dominoSim = createShelfDominoSimulation(placedVolumes);
 
 	// Release Shelf domino physics only once the pulled Volume has cleared its slot,
-	// and begin righting neighbors immediately when the Volume starts returning.
+	// keep neighbors resting through Reading Mode, and right them when returning.
 	const removedVolumeId = $derived(
-		getSceneMode() === 'inspect' &&
+		(getSceneMode() === 'inspect' || getSceneMode() === 'reading') &&
 			getInspectPhase() !== 'returning' &&
 			getInspectShelfCleared()
 			? getInspectedVolumeId()

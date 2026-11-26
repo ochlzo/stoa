@@ -1,5 +1,14 @@
 import type { Volume } from '#lib/catalog/types.ts';
+import {
+	clampSpreadIndex,
+	getCanonicalPageIndexForSpread,
+	getSpreadIndexForPage,
+	getVolumeReadingModel,
+	type PageSide
+} from '#lib/catalog/reading.ts';
 import type { InspectPhase } from '#lib/physics/inspect-volume.ts';
+import type { ReadingPhase } from '#lib/physics/reading-volume.ts';
+import { getLastReadPage, setLastReadPage } from '#lib/state/reading-progress.svelte.ts';
 
 export type SceneMode = 'shelf' | 'inspect' | 'reading';
 export type PeekSource = 'hover' | 'tap';
@@ -18,9 +27,8 @@ export interface PeekAnchor {
 /**
  * Shared reactive scene interaction state using Svelte 5 `$state` runes.
  * Owns the active SceneMode, the currently peeked Volume in Shelf Mode,
- * the inspected Volume & orbit state in Inspect Mode, whether the user is
- * actively panning/pinching the Bookcase, and the screen-space anchor for
- * the floating Peek cue.
+ * the inspected Volume & orbit state in Inspect Mode, and the active
+ * Reading Mode phase, Spread index, and mobile single-Page focus side.
  */
 let sceneMode = $state<SceneMode>('shelf');
 let peekedVolume = $state<Volume | null>(null);
@@ -31,6 +39,11 @@ let inspectedVolume = $state<Volume | null>(null);
 let inspectPhase = $state<InspectPhase>('idle');
 let isInspectOrbiting = $state(false);
 let inspectShelfCleared = $state(false);
+
+let readingPhase = $state<ReadingPhase>('idle');
+let readingUnfolding = $state(false);
+let currentSpreadIndex = $state(0);
+let focusedPageSide = $state<PageSide>('right');
 
 export function getSceneMode(): SceneMode {
 	return sceneMode;
@@ -74,6 +87,22 @@ export function getIsInspectOrbiting(): boolean {
 
 export function getInspectShelfCleared(): boolean {
 	return inspectShelfCleared;
+}
+
+export function getReadingPhase(): ReadingPhase {
+	return readingPhase;
+}
+
+export function getReadingUnfolding(): boolean {
+	return readingUnfolding;
+}
+
+export function getCurrentSpreadIndex(): number {
+	return currentSpreadIndex;
+}
+
+export function getFocusedPageSide(): PageSide {
+	return focusedPageSide;
 }
 
 export function setInspectShelfCleared(cleared: boolean): void {
@@ -138,6 +167,8 @@ export function enterInspectMode(volume: Volume): boolean {
 	inspectPhase = 'entering';
 	isInspectOrbiting = false;
 	inspectShelfCleared = false;
+	readingPhase = 'idle';
+	readingUnfolding = false;
 	sceneMode = 'inspect';
 	return true;
 }
@@ -169,12 +200,127 @@ export function completeReturnToShelf(): void {
 	inspectPhase = 'idle';
 	isInspectOrbiting = false;
 	inspectShelfCleared = false;
+	readingPhase = 'idle';
+	readingUnfolding = false;
 	sceneMode = 'shelf';
 }
 
 /**
- * Hook for Issue #11 (Reading Mode). Returns false until Reading Mode is implemented.
+ * Transitions from Inspect Mode into Reading Mode for the inspected Readable Volume.
+ * First open lands on Spread 0 (front title Spread); subsequent opens resume the
+ * reader's last-read Spread from localStorage independently of Bookmark Ribbons.
  */
 export function openReadingMode(): boolean {
-	return false;
+	if (sceneMode !== 'inspect' || !inspectedVolume || inspectedVolume.kind !== 'readable') {
+		return false;
+	}
+	if (inspectPhase === 'returning' || inspectPhase === 'idle') {
+		return false;
+	}
+
+	const model = getVolumeReadingModel(inspectedVolume);
+	const savedPage = getLastReadPage(inspectedVolume.id);
+
+	if (savedPage === undefined) {
+		currentSpreadIndex = 0;
+		focusedPageSide = 'right';
+		setLastReadPage(inspectedVolume.id, getCanonicalPageIndexForSpread(model, 0));
+	} else {
+		const resumedSpread = getSpreadIndexForPage(model, savedPage);
+		currentSpreadIndex = resumedSpread;
+		focusedPageSide = resumedSpread === 0 ? 'right' : savedPage % 2 === 1 ? 'right' : 'left';
+	}
+
+	isInspectOrbiting = false;
+	readingUnfolding = false;
+	readingPhase = 'opening';
+	sceneMode = 'reading';
+	return true;
+}
+
+export function setReadingUnfolding(unfolding: boolean): void {
+	if (readingUnfolding === unfolding) return;
+	readingUnfolding = unfolding;
+}
+
+export function completeReadingOpen(): void {
+	if (sceneMode !== 'reading' || readingPhase !== 'opening') return;
+	readingPhase = 'reading';
+}
+
+/**
+ * Navigates to a specific Spread in Reading Mode and auto-saves the reader's
+ * last-read Page in localStorage (separate from Bookmark Ribbons).
+ */
+export function setReadingSpread(spreadIndex: number): void {
+	if (sceneMode !== 'reading' || !inspectedVolume) return;
+	const model = getVolumeReadingModel(inspectedVolume);
+	const clamped = clampSpreadIndex(model, spreadIndex);
+	currentSpreadIndex = clamped;
+	setLastReadPage(inspectedVolume.id, getCanonicalPageIndexForSpread(model, clamped));
+}
+
+export function stepReadingSpread(delta: -1 | 1): void {
+	if (sceneMode !== 'reading' || !inspectedVolume) return;
+	const model = getVolumeReadingModel(inspectedVolume);
+	const next = clampSpreadIndex(model, currentSpreadIndex + delta);
+	if (next === currentSpreadIndex) return;
+	currentSpreadIndex = next;
+	focusedPageSide = next === 0 ? 'right' : delta > 0 ? 'left' : 'right';
+	setLastReadPage(inspectedVolume.id, getCanonicalPageIndexForSpread(model, next));
+}
+
+export function setFocusedPageSide(side: PageSide): void {
+	if (focusedPageSide === side) return;
+	focusedPageSide = side;
+	if (sceneMode === 'reading' && inspectedVolume) {
+		const model = getVolumeReadingModel(inspectedVolume);
+		const spread = model.spreads[clampSpreadIndex(model, currentSpreadIndex)];
+		if (spread) {
+			const activePage = side === 'left' ? spread.leftPage : spread.rightPage;
+			setLastReadPage(inspectedVolume.id, activePage.index);
+		}
+	}
+}
+
+/**
+ * Requests folding the open Volume back into Inspect Mode.
+ */
+export function requestCloseToInspect(): void {
+	if (sceneMode !== 'reading') return;
+	if (readingPhase === 'closing-to-inspect' || readingPhase === 'closing-to-shelf') return;
+	if (!readingUnfolding) {
+		completeCloseToInspect();
+		return;
+	}
+	readingPhase = 'closing-to-inspect';
+}
+
+export function completeCloseToInspect(): void {
+	readingPhase = 'idle';
+	readingUnfolding = false;
+	sceneMode = 'inspect';
+	inspectPhase = 'inspecting';
+}
+
+/**
+ * Requests folding the open Volume shut and returning it directly to its Shelf slot.
+ */
+export function requestReturnToShelfFromReading(): void {
+	if (sceneMode !== 'reading') return;
+	if (readingPhase === 'closing-to-shelf') return;
+	if (!readingUnfolding) {
+		completeCloseToShelf();
+		return;
+	}
+	readingPhase = 'closing-to-shelf';
+}
+
+export function completeCloseToShelf(): void {
+	readingPhase = 'idle';
+	readingUnfolding = false;
+	sceneMode = 'inspect';
+	inspectPhase = 'returning';
+	isInspectOrbiting = false;
+	inspectShelfCleared = false;
 }

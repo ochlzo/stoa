@@ -52,7 +52,12 @@
 
 	// Keep the canvas cursor aligned with the active SceneMode, panning/orbiting state, and hovered Volume.
 	$effect(() => {
-		if (getSceneMode() === 'inspect') {
+		const mode = getSceneMode();
+		if (mode === 'reading') {
+			canvas.style.cursor = 'default';
+			return;
+		}
+		if (mode === 'inspect') {
 			canvas.style.cursor = getIsInspectOrbiting() ? 'grabbing' : 'grab';
 			return;
 		}

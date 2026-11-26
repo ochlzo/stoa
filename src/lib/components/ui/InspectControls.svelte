@@ -13,15 +13,6 @@
 		getSceneMode() === 'inspect' && volume !== null && phase !== 'returning'
 	);
 
-	let readingPendingNotice = $state(false);
-
-	// Reset the Reading Mode notice whenever Inspect Mode opens or closes.
-	$effect(() => {
-		if (!isVisible) {
-			readingPendingNotice = false;
-		}
-	});
-
 	// Allow pressing Escape anywhere to smoothly return the Volume to its Shelf slot.
 	$effect(() => {
 		if (getSceneMode() !== 'inspect') return;
@@ -40,14 +31,11 @@
 	});
 
 	function handleOpenToRead(): void {
-		const opened = openReadingMode();
-		if (!opened) {
-			readingPendingNotice = true;
-		}
+		openReadingMode();
 	}
 </script>
 
-{#if volume}
+{#if volume && getSceneMode() === 'inspect'}
 	<div
 		data-testid="inspect-controls"
 		data-volume-id={volume.id}
@@ -69,15 +57,6 @@
 
 		<!-- Floating action controls -->
 		<div class="flex flex-col items-center gap-2">
-			{#if readingPendingNotice}
-				<p
-					role="status"
-					class="rounded-full border border-stone-600/60 bg-stone-900/90 px-3 py-1 text-[11px] tracking-wide text-stone-200 shadow-sm backdrop-blur-xs"
-				>
-					Reading Mode arrives in the next milestone
-				</p>
-			{/if}
-
 			<div
 				class="pointer-events-auto flex items-center gap-2 rounded-full border border-stone-600/50 bg-stone-900/85 p-1.5 shadow-lg backdrop-blur-md"
 			>

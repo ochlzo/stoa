@@ -13,10 +13,12 @@
 		createInspectOrbitGestures,
 		createInspectVolumeState,
 		evaluateInspectTransform,
+		normalizeAngle,
 		startInspectEnter,
 		startInspectReturn,
 		stepInspectVolume
 	} from '#lib/physics/inspect-volume.ts';
+	import { READING_VOLUME_CONFIG, computeReadingPose } from '#lib/physics/reading-volume.ts';
 	import { SHELF_CAMERA_CONFIG, clampDelta, getShelfCameraFov } from '#lib/physics/shelf-camera.ts';
 	import {
 		getShelfDominoPose,
@@ -28,14 +30,19 @@
 		clearPeek,
 		completeReturnToShelf,
 		enterInspectMode,
+		getFocusedPageSide,
 		getInspectPhase,
 		getPeekSource,
+		getReadingPhase,
+		getReadingUnfolding,
 		getSceneMode,
+		requestCloseToInspect,
 		requestReturnToShelf,
 		setInspectOrbiting,
 		setInspectPhase,
 		setInspectShelfCleared,
 		setPeekedVolume,
+		setReadingUnfolding,
 		updatePeekAnchor
 	} from '#lib/state/library.svelte.ts';
 
@@ -95,6 +102,13 @@
 	let backdropMeshRef: Mesh | undefined;
 	let backdropMaterialRef: MeshBasicMaterial | undefined;
 	let lastPointerType = 'mouse';
+	let readingAlignProgress = 0;
+	let readingAlignStartYaw = -Math.PI / 2;
+	let readingAlignStartPitch = 0;
+
+	const hideClosedForReading = $derived(
+		isInspected && getSceneMode() === 'reading' && getReadingUnfolding()
+	);
 
 	function applyRestingTransform(): void {
 		if (!motionGroupRef) return;
@@ -102,6 +116,18 @@
 		motionGroupRef.rotation.order = 'XYZ';
 		motionGroupRef.rotation.set(0, 0, placed.rotationZ);
 	}
+
+	// Capture starting orbit angles when transitioning from Inspect Mode into Reading Mode.
+	$effect(() => {
+		if (isInspected && getSceneMode() === 'reading' && getReadingPhase() === 'opening' && !getReadingUnfolding()) {
+			readingAlignProgress = 0;
+			readingAlignStartYaw = normalizeAngle(inspectState.yaw);
+			readingAlignStartPitch = inspectState.pitch;
+			inspectState.yawVelocity = 0;
+			inspectState.pitchVelocity = 0;
+			inspectState.isDragging = false;
+		}
+	});
 
 	// React to Inspect Mode phase changes (entering / returning) when this Volume is inspected.
 	$effect(() => {
@@ -121,7 +147,7 @@
 
 	// Attach 3D orbit pointer gestures while this Volume is active in Inspect Mode.
 	$effect(() => {
-		if (!isInspected) return;
+		if (!isInspected || getSceneMode() !== 'inspect') return;
 		const gestures = createInspectOrbitGestures(inspectState);
 
 		function onPointerDown(event: PointerEvent): void {
@@ -176,6 +202,88 @@
 		const dt = clampDelta(delta);
 
 		if (isInspected || inspectState.phase !== 'idle') {
+			const activeCamera = camera.current as PerspectiveCamera;
+			const viewport = size.current;
+			const fov = activeCamera.fov || getShelfCameraFov(viewport);
+			const camPos: readonly [number, number, number] = [
+				activeCamera.position.x,
+				activeCamera.position.y,
+				activeCamera.position.z
+			];
+			const pose = computeInspectPose(camPos, fov, viewport, placed.volume.dimensions);
+
+			if (isInspected && getSceneMode() === 'reading') {
+				const readingPose = computeReadingPose(
+					camPos,
+					fov,
+					viewport,
+					placed.volume.dimensions,
+					getFocusedPageSide(),
+					placed.volume.spineProfile,
+					placed.volume.bindingStyle
+				);
+
+				if (!getReadingUnfolding()) {
+					// Smoothly align the closed Volume to front-cover-facing (-π/2 yaw, 0 pitch) before unfolding.
+					readingAlignProgress = Math.min(
+						1,
+						readingAlignProgress + dt / Math.max(0.05, READING_VOLUME_CONFIG.alignDuration)
+					);
+					const t =
+						readingAlignProgress < 0.5
+							? 4 * readingAlignProgress * readingAlignProgress * readingAlignProgress
+							: 1 - Math.pow(-2 * readingAlignProgress + 2, 3) / 2;
+					const targetYaw = -Math.PI / 2;
+					const deltaYaw = normalizeAngle(targetYaw - readingAlignStartYaw);
+					inspectState.yaw = readingAlignStartYaw + deltaYaw * t;
+					inspectState.pitch = readingAlignStartPitch * (1 - t);
+					inspectState.progress = 1;
+
+					if (motionGroupRef) {
+						motionGroupRef.position.set(pose.center[0], pose.center[1], pose.center[2]);
+						motionGroupRef.rotation.order = 'XYZ';
+						motionGroupRef.rotation.set(inspectState.pitch, inspectState.yaw, 0);
+					}
+					if (backdropMeshRef) {
+						backdropMeshRef.position.set(
+							activeCamera.position.x,
+							activeCamera.position.y,
+							pose.backdropZ + (readingPose.backdropZ - pose.backdropZ) * t
+						);
+						backdropMeshRef.scale.set(
+							pose.backdropWidth + (readingPose.backdropWidth - pose.backdropWidth) * t,
+							pose.backdropHeight + (readingPose.backdropHeight - pose.backdropHeight) * t,
+							1
+						);
+					}
+					if (backdropMaterialRef) {
+						backdropMaterialRef.opacity =
+							INSPECT_VOLUME_CONFIG.backdropMaxOpacity +
+							(READING_VOLUME_CONFIG.backdropOpacity - INSPECT_VOLUME_CONFIG.backdropMaxOpacity) *
+								t;
+					}
+
+					if (readingAlignProgress >= 1) {
+						inspectState.yaw = targetYaw;
+						inspectState.pitch = 0;
+						setReadingUnfolding(true);
+					}
+				} else {
+					if (backdropMeshRef) {
+						backdropMeshRef.position.set(
+							activeCamera.position.x,
+							activeCamera.position.y,
+							readingPose.backdropZ
+						);
+						backdropMeshRef.scale.set(readingPose.backdropWidth, readingPose.backdropHeight, 1);
+					}
+					if (backdropMaterialRef) {
+						backdropMaterialRef.opacity = READING_VOLUME_CONFIG.backdropOpacity;
+					}
+				}
+				return;
+			}
+
 			const step = stepInspectVolume(inspectState, dt);
 			if (step.clearedShelf) {
 				setInspectShelfCleared(true);
@@ -184,15 +292,6 @@
 				setInspectPhase('inspecting');
 			}
 
-			const activeCamera = camera.current as PerspectiveCamera;
-			const viewport = size.current;
-			const fov = activeCamera.fov || getShelfCameraFov(viewport);
-			const pose = computeInspectPose(
-				[activeCamera.position.x, activeCamera.position.y, activeCamera.position.z],
-				fov,
-				viewport,
-				placed.volume.dimensions
-			);
 			const transform = evaluateInspectTransform(inspectState, placed, pose.center);
 
 			if (motionGroupRef) {
@@ -297,12 +396,16 @@
 	function onBackdropClick(event: IntersectionEvent<MouseEvent>): void {
 		if (event.delta > INSPECT_VOLUME_CONFIG.dragThresholdPx) return;
 		event.stopPropagation();
+		if (getSceneMode() === 'reading') {
+			requestCloseToInspect();
+			return;
+		}
 		requestReturnToShelf();
 	}
 </script>
 
 {#if isInspected}
-	<!-- Dimmed Bookcase backdrop plane placed behind the orbiting Volume in world space -->
+	<!-- Dimmed Bookcase backdrop plane placed behind the orbiting/open Volume in world space -->
 	<T.Mesh
 		name={`inspect-backdrop-${placed.volume.id}`}
 		renderOrder={1}
@@ -326,6 +429,7 @@
 
 <T.Group
 	name={`volume-${placed.volume.id}`}
+	visible={!hideClosedForReading}
 	position={[shelfCenter[0], shelfCenter[1], shelfCenter[2]]}
 	rotation={[0, 0, placed.rotationZ]}
 	oncreate={(group) => {
