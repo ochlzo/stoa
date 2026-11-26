@@ -14,6 +14,10 @@ import {
 	createReadingTiltGestures,
 	type ReadingVolumeState
 } from '#lib/physics/reading-volume.ts';
+import { normalizeWheelDelta } from '#lib/physics/shelf-camera.ts';
+
+const WHEEL_TURN_THRESHOLD_PX = 32;
+const WHEEL_GESTURE_GAP_MS = 180;
 
 export interface OpenVolumeGestureOptions {
 	readonly canvas: HTMLCanvasElement;
@@ -21,6 +25,7 @@ export interface OpenVolumeGestureOptions {
 	readonly getRootGroup: () => Group | undefined;
 	readonly getPageWidth: () => number;
 	readonly readingState: ReadingVolumeState;
+	readonly wheelTurnsPages: boolean;
 	readonly getLeafTurn: () => LeafTurn | null;
 	readonly startLeafTurn: (direction: TurnDirection, drag?: boolean) => LeafTurn | null;
 	readonly getFocusedPageSide: () => PageSide;
@@ -64,6 +69,7 @@ export function attachOpenVolumeGestures(options: OpenVolumeGestureOptions): () 
 		getRootGroup,
 		getPageWidth,
 		readingState,
+		wheelTurnsPages,
 		getLeafTurn,
 		startLeafTurn,
 		getFocusedPageSide,
@@ -78,6 +84,9 @@ export function attachOpenVolumeGestures(options: OpenVolumeGestureOptions): () 
 	let swipe: ReturnType<typeof createReadingSwipe> | undefined;
 	let swipeOwner: number | undefined;
 	let pressedVolume = false;
+	let lastWheelTime = -Infinity;
+	let wheelTravel = 0;
+	let wheelConsumed = false;
 	let pendingTap: { id: number; x: number; y: number } | undefined;
 
 	function onClick(event: MouseEvent): void {
@@ -176,7 +185,29 @@ export function attachOpenVolumeGestures(options: OpenVolumeGestureOptions): () 
 
 	function onWheel(event: WheelEvent): void {
 		event.preventDefault();
-		applyReadingWheelZoom(readingState, event.deltaY, event.deltaMode);
+		if (!wheelTurnsPages || event.ctrlKey) {
+			applyReadingWheelZoom(readingState, event.deltaY, event.deltaMode);
+			return;
+		}
+
+		const deltaMode = event.deltaMode;
+		const delta = normalizeWheelDelta(event.deltaY, deltaMode, canvas.clientHeight);
+		if (!delta || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
+		if (event.timeStamp - lastWheelTime >= WHEEL_GESTURE_GAP_MS) {
+			wheelTravel = 0;
+			wheelConsumed = false;
+		}
+		lastWheelTime = event.timeStamp;
+
+		// Treat trackpad momentum as part of the same gesture, including during a Leaf turn.
+		if (getLeafTurn() || activePointers.size > 0) {
+			wheelConsumed = true;
+		}
+		if (wheelConsumed) return;
+		wheelTravel += delta;
+		if (Math.abs(wheelTravel) < WHEEL_TURN_THRESHOLD_PX) return;
+		wheelConsumed = true;
+		startLeafTurn(wheelTravel > 0 ? 1 : -1);
 	}
 
 	canvas.addEventListener('click', onClick, true);

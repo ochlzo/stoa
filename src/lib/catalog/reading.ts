@@ -1,5 +1,6 @@
 import { getReadableVolumePackage } from '#lib/catalog/readable/index.ts';
 import type {
+	IllustrationMotion,
 	ProseSection,
 	VerseSection,
 	VolumeContent
@@ -51,7 +52,9 @@ export interface Page {
 	/** Pre-paginated literary text lines for deterministic prose/verse rendering (ADR 0004). */
 	readonly lines?: readonly PageTextLine[];
 	readonly epigraph?: string;
+	readonly stanzaNumber?: number;
 	readonly illustrationSrc?: string;
+	readonly illustrationMotion?: IllustrationMotion;
 	readonly illustrationCaption?: string;
 }
 
@@ -283,7 +286,6 @@ export function buildVolumeReadingModel(
 ): VolumeReadingModel {
 	const pages: Page[] = [];
 	const chapters: Chapter[] = [];
-	const hasContent = Boolean(content && content.sections.length > 0);
 	const resolvedTitle = content?.title ?? volume.title;
 	const resolvedAuthor = content?.author ?? volume.author;
 
@@ -323,9 +325,47 @@ export function buildVolumeReadingModel(
 
 	let folio = 1;
 
-	if (hasContent && content) {
-		for (let s = 0; s < content.sections.length; s += 1) {
-			const section = content.sections[s];
+	if (content?.illustratedStanzas) {
+		for (const [stanzaIndex, stanza] of content.illustratedStanzas.entries()) {
+			const pageIndex = pages.length;
+			const stanzaPage = {
+				chapterIndex: null,
+				chapterNumber: null,
+				chapterRomanNumeral: null,
+				chapterTitle: null,
+				volumeTitle: resolvedTitle,
+				volumeAuthor: resolvedAuthor,
+				paragraphBreaks: [],
+				stanzaNumber: stanzaIndex + 1
+			};
+			const lines = stanza.lines.map((text) => ({ text }));
+			pages.push(
+				{
+					...stanzaPage,
+					index: pageIndex,
+					pageNumber: folio,
+					side: 'left',
+					kind: 'illustration',
+					contentMode: 'illustration',
+					lineCount: 0,
+					illustrationSrc: stanza.illustrationSrc,
+					illustrationMotion: stanza.motion
+				},
+				{
+					...stanzaPage,
+					index: pageIndex + 1,
+					pageNumber: folio + 1,
+					side: 'right',
+					kind: 'body',
+					contentMode: 'verse',
+					lineCount: lines.length,
+					lines
+				}
+			);
+			folio += 2;
+		}
+	} else if (content?.sections?.length) {
+		for (const section of content.sections) {
 			const chapterIndex = chapters.length;
 			const chapterNumber = chapterIndex + 1;
 			const roman = toRomanNumeral(chapterNumber);

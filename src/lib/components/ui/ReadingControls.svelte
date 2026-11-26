@@ -170,6 +170,8 @@
 	const spreadLabel = $derived.by(() => {
 		if (!spread) return '';
 		if (spread.index === 0) return 'Title Spread';
+		const stanzaNumber = spread.rightPage.stanzaNumber;
+		if (stanzaNumber !== undefined) return 'Stanza ' + stanzaNumber;
 		if (isMobilePortrait && activeMobilePage?.pageNumber !== null && activeMobilePage) {
 			return `p. ${activeMobilePage.pageNumber}`;
 		}
@@ -226,7 +228,12 @@
 			<h1 class="font-volume text-xl leading-tight sm:text-2xl">
 				{volume.title}
 			</h1>
-			<div data-chapters class="pointer-events-auto relative mt-1">
+			{#if !model?.chapters.length}
+				<p class="study-action mt-1 border-b border-brass/60 bg-ink/95">
+					{volume.author}, {spreadLabel}
+				</p>
+			{/if}
+			<div data-chapters hidden={!model?.chapters.length} class="pointer-events-auto relative mt-1">
 				<button
 					type="button"
 					bind:this={indicator}

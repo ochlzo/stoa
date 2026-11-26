@@ -1,6 +1,6 @@
 import { CanvasTexture, ClampToEdgeWrapping } from 'three';
 import type { Page } from '#lib/catalog/reading.ts';
-import type { EndpaperPaintInfo, VolumeDesign } from '#lib/catalog/readable/types.ts';
+import type { EndpaperPaintInfo, IllustrationMotion, VolumeDesign } from '#lib/catalog/readable/types.ts';
 import { LOOKDEV_PALETTE, createSeededRandom } from '#lib/catalog/lookdev.ts';
 import { drawStoaCombinationMark } from '#lib/textures/brand-mark.ts';
 import { configurePbrTexture, wrapCanvasLines } from '#lib/textures/pbr-texture-cache.ts';
@@ -372,6 +372,106 @@ function drawGutterShadow(ctx: CanvasRenderingContext2D, side: Page['side']) {
 	ctx.fillRect(0, 0, width, height);
 }
 
+function drawStanza(
+	ctx: CanvasRenderingContext2D,
+	page: Page,
+	left: number,
+	right: number,
+	theme: PageTheme
+) {
+	const lines = page.lines ?? [];
+	const cx = (left + right) / 2;
+	const maxWidth = right - left;
+	const leading = Math.min(48, 640 / Math.max(1, lines.length));
+	const startY = 565 - (lines.length - 1) * leading / 2;
+
+	ctx.font = '600 28px ' + theme.font;
+	ctx.fillStyle = theme.inkMuted;
+	ctx.fillText('Stanza ' + page.stanzaNumber, cx, 164);
+	ornament(ctx, cx, 195, theme);
+
+	ctx.font = '34px ' + theme.font;
+	const widest = Math.max(1, ...lines.map(({ text }) => ctx.measureText(text).width));
+	const fontSize = Math.min(34, 34 * maxWidth / widest, leading * 0.78);
+	ctx.font = fontSize + 'px ' + theme.font;
+	const textWidth = Math.max(0, ...lines.map(({ text }) => ctx.measureText(text).width));
+	ctx.fillStyle = theme.inkPrimary;
+	ctx.textAlign = 'left';
+	for (const [index, line] of lines.entries()) {
+		ctx.fillText(line.text, cx - textWidth / 2, startY + index * leading);
+	}
+
+	ctx.textAlign = 'center';
+	ctx.font = '600 25px ' + theme.font;
+	ctx.fillText(String(page.pageNumber), cx, height - 49);
+}
+
+type StepIllustration = (delta: number) => void;
+
+function loadIllustrationMotion(
+	ctx: CanvasRenderingContext2D,
+	texture: CanvasTexture,
+	motion: IllustrationMotion,
+	drawX: number,
+	drawY: number,
+	scale: number,
+	drawStill: () => void,
+	side: Page['side'],
+	activeIllustrations: Map<CanvasTexture, StepIllustration>,
+	reducedMotion: MediaQueryList
+) {
+	const sheet = new Image();
+	const stop = () => {
+		sheet.onload = null;
+		activeIllustrations.delete(texture);
+		texture.removeEventListener('dispose', stop);
+	};
+	texture.addEventListener('dispose', stop);
+	sheet.onload = () => {
+		const rows = Math.ceil(motion.frameCount / motion.columns);
+		const frameWidth = sheet.naturalWidth / motion.columns;
+		const frameHeight = sheet.naturalHeight / rows;
+		const [x, y] = motion.origin;
+		const destX = drawX + x * scale;
+		const destY = drawY + y * scale;
+		let elapsed = 0;
+		let lastFrame = -1;
+
+		activeIllustrations.set(texture, (delta) => {
+			if (reducedMotion.matches) {
+				if (lastFrame !== -1) drawStill();
+				lastFrame = -1;
+				elapsed = 0;
+				return;
+			}
+			elapsed = (elapsed + delta) % (motion.frameCount / motion.framesPerSecond);
+			const frame = Math.floor(elapsed * motion.framesPerSecond);
+			if (frame === lastFrame) return;
+			lastFrame = frame;
+
+			ctx.save();
+			ctx.beginPath();
+			ctx.rect(destX, destY, frameWidth * scale, frameHeight * scale);
+			ctx.clip();
+			ctx.drawImage(
+				sheet,
+				(frame % motion.columns) * frameWidth,
+				Math.floor(frame / motion.columns) * frameHeight,
+				frameWidth,
+				frameHeight,
+				destX,
+				destY,
+				frameWidth * scale,
+				frameHeight * scale
+			);
+			drawGutterShadow(ctx, side);
+			ctx.restore();
+			texture.needsUpdate = true;
+		});
+	};
+	sheet.src = new URL(motion.src, document.baseURI).href;
+}
+
 function drawIllustrationPlate(
 	ctx: CanvasRenderingContext2D,
 	page: Page,
@@ -379,19 +479,24 @@ function drawIllustrationPlate(
 	right: number,
 	cx: number,
 	texture: CanvasTexture,
-	theme: PageTheme
+	theme: PageTheme,
+	activeIllustrations: Map<CanvasTexture, StepIllustration>,
+	reducedMotion: MediaQueryList
 ) {
-	const frameX = left + 14;
-	const frameY = 148;
-	const frameW = right - left - 28;
-	const frameH = 710;
+	const fullPage = page.stanzaNumber !== undefined;
+	const frameX = fullPage ? 0 : left + 14;
+	const frameY = fullPage ? 0 : 148;
+	const frameW = fullPage ? width : right - left - 28;
+	const frameH = fullPage ? height : 710;
 
-	// Outer & inner archival plate border
-	ctx.strokeStyle = theme.inkMuted;
-	ctx.lineWidth = 1.6;
-	ctx.strokeRect(frameX, frameY, frameW, frameH);
-	ctx.lineWidth = 0.8;
-	ctx.strokeRect(frameX + 8, frameY + 8, frameW - 16, frameH - 16);
+	if (!fullPage) {
+		// Outer & inner archival plate border
+		ctx.strokeStyle = theme.inkMuted;
+		ctx.lineWidth = 1.6;
+		ctx.strokeRect(frameX, frameY, frameW, frameH);
+		ctx.lineWidth = 0.8;
+		ctx.strokeRect(frameX + 8, frameY + 8, frameW - 16, frameH - 16);
+	}
 
 	if (page.illustrationCaption) {
 		ctx.textAlign = 'center';
@@ -400,7 +505,7 @@ function drawIllustrationPlate(
 		heading(ctx, page.illustrationCaption, cx, frameY + frameH + 46, frameW, 30);
 	}
 
-	if (page.pageNumber !== null) {
+	if (!fullPage && page.pageNumber !== null) {
 		ctx.textAlign = 'center';
 		ctx.font = '600 25px ' + theme.font;
 		ctx.fillStyle = theme.inkPrimary;
@@ -411,30 +516,51 @@ function drawIllustrationPlate(
 	const resolvedSrc = new URL(page.illustrationSrc.replace(/^\/+/, ''), document.baseURI).href;
 	const img = new Image();
 	img.crossOrigin = 'anonymous';
+	const cancelLoad = () => {
+		img.onload = null;
+		texture.removeEventListener('dispose', cancelLoad);
+	};
+	texture.addEventListener('dispose', cancelLoad);
 	img.onload = () => {
-		const pad = 20;
-		const boxW = frameW - pad * 2;
-		const boxH = frameH - pad * 2;
-		const scale = Math.min(boxW / img.naturalWidth, boxH / img.naturalHeight);
+		texture.removeEventListener('dispose', cancelLoad);
+		const pad = fullPage ? 0 : 20;
+		const scaleImage = fullPage ? Math.max : Math.min;
+		const scale = scaleImage(
+			(frameW - pad * 2) / img.naturalWidth,
+			(frameH - pad * 2) / img.naturalHeight
+		);
 		const drawW = img.naturalWidth * scale;
 		const drawH = img.naturalHeight * scale;
 		const drawX = frameX + (frameW - drawW) / 2;
 		const drawY = frameY + (frameH - drawH) / 2;
 
-		ctx.save();
-		ctx.globalCompositeOperation = 'multiply';
-		ctx.globalAlpha = 0.92;
-		ctx.drawImage(img, drawX, drawY, drawW, drawH);
-		ctx.restore();
+		const drawStill = () => {
+			ctx.save();
+			if (!fullPage) {
+				ctx.globalCompositeOperation = 'multiply';
+				ctx.globalAlpha = 0.92;
+			}
+			ctx.drawImage(img, drawX, drawY, drawW, drawH);
+			ctx.restore();
 
-		drawGutterShadow(ctx, page.side);
-		texture.needsUpdate = true;
+			drawGutterShadow(ctx, page.side);
+			texture.needsUpdate = true;
+		};
+		drawStill();
+		if (page.illustrationMotion) {
+			loadIllustrationMotion(
+				ctx, texture, page.illustrationMotion, drawX, drawY, scale, drawStill, page.side,
+				activeIllustrations, reducedMotion
+			);
+		}
 	};
 	img.src = resolvedSrc;
 }
 
 // One stock tile per tint per open Volume. Each face owns its CanvasTexture, including a turning Leaf's reverse.
 export function createReadingPagePainter() {
+	const activeIllustrations = new Map<CanvasTexture, StepIllustration>();
+	const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 	const stockByTint = new Map<string, HTMLCanvasElement>();
 	function getStock(tint: string) {
 		let tile = stockByTint.get(tint);
@@ -445,7 +571,7 @@ export function createReadingPagePainter() {
 		return tile;
 	}
 
-	return (page: Page, chapterCount: number, clay: boolean, design?: VolumeDesign) => {
+	function paintPage(page: Page, chapterCount: number, clay: boolean, design?: VolumeDesign) {
 		if (clay) return createClayPageTexture(page, chapterCount);
 		const theme = resolvePageTheme(design);
 		const canvas = document.createElement('canvas');
@@ -527,8 +653,10 @@ export function createReadingPagePainter() {
 			ctx.font = '23px ' + theme.font;
 			ctx.fillStyle = theme.inkMuted;
 			if (title) {
-				const unit = chapterCount === 1 ? 'Section' : 'Chapters';
-				ctx.fillText(chapterCount + ' ' + unit, cx, 820);
+				if (chapterCount > 0) {
+					const unit = chapterCount === 1 ? 'Section' : 'Chapters';
+					ctx.fillText(chapterCount + ' ' + unit, cx, 820);
+				}
 			} else if (page.colophonNote) {
 				heading(ctx, page.colophonNote, cx, 780, right - left - 40, 28);
 			} else {
@@ -541,10 +669,16 @@ export function createReadingPagePainter() {
 				heading(ctx, page.sourceNote, cx, 932, right - left - 44, 26);
 			}
 		} else if (page.kind === 'illustration') {
-			ctx.font = 'italic 600 25px ' + theme.font;
-			ctx.fillStyle = theme.inkMuted;
-			ctx.fillText(page.chapterTitle ?? page.volumeTitle, cx, 64);
-			drawIllustrationPlate(ctx, page, left, right, cx, texture, theme);
+			if (page.stanzaNumber === undefined) {
+				ctx.font = 'italic 600 25px ' + theme.font;
+				ctx.fillStyle = theme.inkMuted;
+				ctx.fillText(page.chapterTitle ?? page.volumeTitle, cx, 64);
+			}
+			drawIllustrationPlate(
+				ctx, page, left, right, cx, texture, theme, activeIllustrations, reducedMotion
+			);
+		} else if (page.stanzaNumber !== undefined) {
+			drawStanza(ctx, page, left, right, theme);
 		} else {
 			const opener = page.kind === 'chapter-start';
 			ctx.font = 'italic 600 25px ' + theme.font;
@@ -585,5 +719,12 @@ export function createReadingPagePainter() {
 		drawGutterShadow(ctx, page.side);
 		texture.needsUpdate = true;
 		return texture;
+	}
+
+	return {
+		paintPage,
+		stepIllustrations(delta: number) {
+			for (const step of activeIllustrations.values()) step(delta);
+		}
 	};
 }
