@@ -14,6 +14,18 @@ const tau = 2 * Math.PI;
 const BOOKPLATE_PAPER = '#E7E1D2';
 const BOOKPLATE_INK = '#473929';
 
+const bundledIllustrations = import.meta.glob<string>('../catalog/readable/*/art/*.webp', {
+	eager: true,
+	import: 'default',
+	query: '?url'
+});
+
+function resolveIllustrationSrc(src: string): string {
+	const relativeSrc = src.replace(/^\/+/, '');
+	const bundledSrc = bundledIllustrations['../catalog/' + relativeSrc];
+	return bundledSrc ?? new URL(relativeSrc, document.baseURI).href;
+}
+
 interface PageTheme {
 	paperTint: string;
 	inkPrimary: string;
@@ -469,7 +481,7 @@ function loadIllustrationMotion(
 			texture.needsUpdate = true;
 		});
 	};
-	sheet.src = new URL(motion.src, document.baseURI).href;
+	sheet.src = resolveIllustrationSrc(motion.src);
 }
 
 function drawIllustrationPlate(
@@ -513,7 +525,7 @@ function drawIllustrationPlate(
 	}
 
 	if (!page.illustrationSrc || typeof Image === 'undefined') return;
-	const resolvedSrc = new URL(page.illustrationSrc.replace(/^\/+/, ''), document.baseURI).href;
+	const resolvedSrc = resolveIllustrationSrc(page.illustrationSrc);
 	const img = new Image();
 	img.crossOrigin = 'anonymous';
 	const cancelLoad = () => {
