@@ -6,10 +6,12 @@
 	import VolumePeekCue from '#lib/components/ui/VolumePeekCue.svelte';
 </script>
 
-<main class="relative h-dvh w-dvw overflow-hidden select-none touch-none">
-	<Canvas>
-		<LibraryScene />
-	</Canvas>
+<main class="relative h-dvh w-dvw overflow-hidden select-none">
+	<div class="h-full w-full touch-none">
+		<Canvas>
+			<LibraryScene />
+		</Canvas>
+	</div>
 	<VolumePeekCue />
 	<InspectControls />
 	<ReadingControls />

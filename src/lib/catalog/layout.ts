@@ -3,7 +3,6 @@ import { CATALOG } from '#lib/catalog/volumes.ts';
 import type {
 	BindingStyleId,
 	BindingStylePreset,
-	BookmarkRibbonSpec,
 	HeadbandSpec,
 	PlacedVolume,
 	SpineBandSpec,
@@ -112,7 +111,7 @@ export const BINDING_STYLE_PRESETS: Record<BindingStyleId, BindingStylePreset> =
 /**
  * Computes non-overlapping local geometry specs for a parametric clay Volume silhouette:
  * front board, back board, spine (rounded, shallow, or flat), recessed page block,
- * Binding Style raised spine bands and headbands, and procedural Bookmark Ribbon path.
+ * Binding Style raised spine bands and headbands.
  *
  * Local pivot convention:
  * - x = 0: horizontal center of the Volume
@@ -182,25 +181,6 @@ export function getVolumeGeometryParts(
 		);
 	}
 
-	// Procedural Bookmark Ribbon tail emerging from the bottom edge of the page block
-	// and resting gently on the Shelf surface in front of the spine.
-	const pageBottomY = height / 2 - pageHeight / 2;
-	const ribbonWidth = Math.min(0.0075, Math.max(0.005, pageWidth * 0.28));
-	const ribbonThickness = 0.0008;
-	const ribbonFloorY = ribbonThickness / 2 + 0.0004;
-	const bookmarkRibbon: BookmarkRibbonSpec = {
-		width: ribbonWidth,
-		thickness: ribbonThickness,
-		notchDepth: 0.0045,
-		points: [
-			[0, pageBottomY + 0.002, -(spineDepth + 0.012)],
-			[0.0004, Math.max(ribbonFloorY + 0.001, pageBottomY * 0.55), -(spineDepth * 0.35)],
-			[0.0012, ribbonFloorY + 0.0008, 0.008],
-			[0.0018, ribbonFloorY + 0.0003, 0.018],
-			[0.0012, ribbonFloorY, 0.027]
-		]
-	};
-
 	return {
 		spine: {
 			shape: isFlat ? 'flat' : 'rounded',
@@ -224,8 +204,7 @@ export function getVolumeGeometryParts(
 			position: [0, height / 2, pageCenterZ]
 		},
 		spineBands,
-		headbands,
-		bookmarkRibbon
+		headbands
 	};
 }
 

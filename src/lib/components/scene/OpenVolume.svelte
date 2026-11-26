@@ -5,14 +5,15 @@
 	import type { Volume } from '#lib/catalog/types.ts';
 	import { VOLUME_CLAY_COLORS } from '#lib/catalog/volumes.ts';
 	import { createPageStackGeometry } from '#lib/components/scene/open-volume-geometry.ts';
+	import { createLeafGeometry } from '#lib/components/scene/leaf-geometry.ts';
+	import { attachOpenVolumeGestures } from '#lib/components/scene/open-volume-gestures.ts';
+	import { stepLeafTurn } from '#lib/physics/leaf-turn.ts';
 	import { computeInspectPose } from '#lib/physics/inspect-volume.ts';
 	import {
 		READING_VOLUME_CONFIG,
-		applyReadingWheelZoom,
 		computeOpenVolumeDimensions,
 		computePageStackSplit,
 		computeReadingPose,
-		createReadingTiltGestures,
 		createReadingVolumeState,
 		evaluateOpenVolumePose,
 		startReadingClose,
@@ -24,10 +25,15 @@
 		completeCloseToInspect,
 		completeCloseToShelf,
 		completeReadingOpen,
+		finishLeafTurn,
 		getCurrentSpreadIndex,
 		getFocusedPageSide,
+		getLeafTurn,
 		getReadingPhase,
-		getReadingUnfolding
+		getReadingUnfolding,
+		setFocusedPageSide,
+		startLeafTurn,
+		toggleReadingHud
 	} from '#lib/state/library.svelte.ts';
 	import { createClayPageTexture } from '#lib/textures/page-clay-texture.ts';
 
@@ -50,14 +56,47 @@
 	);
 	const gutterDepth = $derived(Math.min(stackSplit.leftThickness, stackSplit.rightThickness));
 	let unfold = $state(0);
+	const turn = $derived(getLeafTurn());
+	const adjacent = $derived(turn ? getSpread(readingModel, activeSpread.index + turn.direction) : null);
+	const leaf = $derived.by(() => {
+		if (!turn || !adjacent) return null;
+		const forward = turn.direction === 1;
+		return createLeafGeometry({
+			width: openDims.pageWidth,
+			height: openDims.pageHeight,
+			leftThickness: stackSplit.leftThickness,
+			rightThickness: stackSplit.rightThickness,
+			turn,
+			frontTexture: createClayPageTexture(
+				forward ? activeSpread.rightPage : activeSpread.leftPage,
+				readingModel.chapters.length
+			),
+			backTexture: createClayPageTexture(
+				forward ? adjacent.leftPage : adjacent.rightPage,
+				readingModel.chapters.length
+			)
+		});
+	});
+	$effect(() => {
+		const current = leaf;
+		return () => current?.dispose();
+	});
 	const halves = $derived.by(() => {
 		return (['left', 'right'] as const).map((side) => {
 			const left = side === 'left';
 			const thickness = left ? stackSplit.leftThickness : stackSplit.rightThickness;
-			const page = left ? activeSpread.leftPage : activeSpread.rightPage;
+			const exposed = adjacent && (left ? turn?.direction === -1 : turn?.direction === 1) ? adjacent : activeSpread;
+			const page = left ? exposed.leftPage : exposed.rightPage;
 			const texture = createClayPageTexture(page, readingModel.chapters.length);
-			const stack = createPageStackGeometry(openDims.pageWidth, openDims.pageHeight,
-				thickness, gutterDepth, READING_VOLUME_CONFIG.pageGutterArch, side, texture);
+			const stack = createPageStackGeometry(
+				openDims.pageWidth,
+				openDims.pageHeight,
+				thickness,
+				gutterDepth,
+				READING_VOLUME_CONFIG.pageGutterArch,
+				side,
+				texture
+			);
 			return { side, sign: left ? -1 : 1, thickness, texture, stack };
 		});
 	});
@@ -73,6 +112,7 @@
 	});
 
 	const readingState = createReadingVolumeState();
+	let panOffsetRatio = 0;
 	let rootGroupRef: Group | undefined;
 	let spineGroupRef: Group | undefined;
 	let leftHingeRef: Group | undefined;
@@ -100,50 +140,24 @@
 		}
 	});
 
-	// Attach subtle spring-back drag-to-tilt gestures while actively reading.
+	// Delegate Reading Mode pointer, Leaf curl, gutter pan, tilt, and zoom gestures to helper.
 	$effect(() => {
 		if (getReadingPhase() !== 'reading') return;
-		const tiltGestures = createReadingTiltGestures(readingState);
-
-		function onPointerDown(event: PointerEvent): void {
-			if (event.pointerType === 'mouse' && event.button !== 0) return;
-			tiltGestures.start(event.pointerId, event.clientX, event.clientY);
-		}
-
-		function onPointerMove(event: PointerEvent): void {
-			const moved = tiltGestures.move(event.pointerId, event.clientX, event.clientY);
-			if (moved) {
-				canvas.style.cursor = 'grabbing';
-			}
-		}
-
-		function onPointerEnd(event: PointerEvent): void {
-			tiltGestures.end(event.pointerId);
-			if (!readingState.isTilting) {
-				canvas.style.cursor = 'default';
-			}
-		}
-
-		function onWheel(event: WheelEvent): void {
-			event.preventDefault();
-			applyReadingWheelZoom(readingState, event.deltaY, event.deltaMode);
-		}
-
-		canvas.addEventListener('pointerdown', onPointerDown);
-		canvas.addEventListener('wheel', onWheel, { passive: false });
-		window.addEventListener('pointermove', onPointerMove);
-		window.addEventListener('pointerup', onPointerEnd);
-		window.addEventListener('pointercancel', onPointerEnd);
-
-		return () => {
-			tiltGestures.reset();
-			canvas.style.cursor = 'default';
-			canvas.removeEventListener('pointerdown', onPointerDown);
-			canvas.removeEventListener('wheel', onWheel);
-			window.removeEventListener('pointermove', onPointerMove);
-			window.removeEventListener('pointerup', onPointerEnd);
-			window.removeEventListener('pointercancel', onPointerEnd);
-		};
+		return attachOpenVolumeGestures({
+			canvas,
+			getCamera: () => camera.current,
+			getRootGroup: () => rootGroupRef,
+			getPageWidth: () => openDims.pageWidth,
+			readingState,
+			getLeafTurn,
+			startLeafTurn,
+			getFocusedPageSide,
+			setFocusedPageSide,
+			onPanOffsetChange: (ratio) => {
+				panOffsetRatio = ratio;
+			},
+			onToggleHud: toggleReadingHud
+		});
 	});
 
 	function easeInOutCubic(t: number): number {
@@ -154,6 +168,11 @@
 	useTask((delta) => {
 		const dt = clampDelta(delta);
 		if (!getReadingUnfolding()) return;
+
+		if (turn && leaf) {
+			if (stepLeafTurn(turn, dt)) finishLeafTurn();
+			else leaf.update();
+		}
 
 		const activeCamera = camera.current as PerspectiveCamera;
 		const viewport = size.current;
@@ -177,7 +196,19 @@
 			readingState.zoom
 		);
 
-		const step = stepReadingVolume(readingState, dt, readingPose.focusOffsetX);
+		const maxFocusOffset = openDims.boardWidth * 0.5;
+		const targetFocusOffsetX = readingPose.isMobileSinglePage
+			? Math.max(
+					-maxFocusOffset,
+					Math.min(maxFocusOffset, readingPose.focusOffsetX + panOffsetRatio * openDims.boardWidth)
+				)
+			: readingPose.focusOffsetX;
+
+		if (readingPose.isMobileSinglePage && panOffsetRatio !== 0) {
+			readingState.currentFocusOffsetX = targetFocusOffsetX;
+		}
+
+		const step = stepReadingVolume(readingState, dt, targetFocusOffsetX);
 		const openT = easeInOutCubic(readingState.openProgress);
 		unfold = openT;
 		const pose = evaluateOpenVolumePose(readingState.openProgress, openDims);
@@ -199,7 +230,7 @@
 		if (spineGroupRef) {
 			const spineX = (-openDims.boardThickness / 2) * (1 - openT);
 			const spineZ = closedSpineCenterZ * (1 - openT) + openSpineZ * openT;
-			spineGroupRef.scale.x = 1 - openT * (1 - 2 * openDims.boardThickness / openDims.spineWidth);
+			spineGroupRef.scale.x = 1 - openT * (1 - (2 * openDims.boardThickness) / openDims.spineWidth);
 			spineGroupRef.position.set(spineX, 0, spineZ);
 			spineGroupRef.rotation.set(0, (Math.PI / 2) * (1 - openT), 0);
 		}
@@ -242,6 +273,10 @@
 			</T.Mesh>
 		</T.Group>
 
+		{#if leaf}
+			<T.Mesh name="turning-leaf" args={[leaf.geometry, leaf.materials]} frustumCulled={false} />
+		{/if}
+
 		{#each halves as half (half)}
 			<T.Group
 				name={'open-' + half.side + '-half'}
@@ -254,14 +289,18 @@
 			>
 				<T.Mesh
 					name={half.side + '-cover-board'}
-					position={[half.sign * openDims.boardWidth / 2, 0,
-						-(half.thickness * (1 - unfold) + gutterDepth * unfold + openDims.boardThickness / 2)]}
+					position={[
+						(half.sign * openDims.boardWidth) / 2,
+						0,
+						-(half.thickness * (1 - unfold) + gutterDepth * unfold + openDims.boardThickness / 2)
+					]}
 				>
 					<T.BoxGeometry args={[openDims.boardWidth, openDims.boardHeight, openDims.boardThickness]} />
 					<T.MeshStandardMaterial color={coverColor} roughness={0.9} />
 				</T.Mesh>
 				<T.Mesh
 					name={half.side + '-page-stack'}
+					userData={{ pageSide: half.side }}
 					args={[half.stack.geometry, half.stack.materials]}
 					morphTargetInfluences={[unfold]}
 				/>

@@ -223,7 +223,7 @@ describe('Catalog & Volume placement invariants', () => {
 		}
 	});
 
-	it('builds valid non-overlapping Volume geometry, Binding Style trim, and Bookmark Ribbon for every Catalog entry', () => {
+	it('builds valid non-overlapping Volume geometry and Binding Style trim for every Catalog entry', () => {
 		for (const volume of CATALOG) {
 			const parts = getVolumeGeometryParts(
 				volume.dimensions,
@@ -256,14 +256,6 @@ describe('Catalog & Volume placement invariants', () => {
 				assert.ok(
 					headband.width <= parts.pageBlock.size[0] + EPS,
 					`${volume.id} ${headband.id} clips cover boards`
-				);
-			}
-
-			const ribbonHalfT = parts.bookmarkRibbon.thickness / 2;
-			for (const [, y] of parts.bookmarkRibbon.points) {
-				assert.ok(
-					y - ribbonHalfT >= -EPS,
-					`${volume.id} Bookmark Ribbon dips below Shelf surface (y=${y})`
 				);
 			}
 		}

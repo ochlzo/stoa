@@ -8,7 +8,6 @@
 		startShelfDominoReturn,
 		stepShelfDomino
 	} from '#lib/physics/shelf-domino.ts';
-	import { hasBookmark } from '#lib/state/bookmarks.svelte.ts';
 	import {
 		getInspectPhase,
 		getInspectShelfCleared,
@@ -50,7 +49,6 @@
 	{#each placedVolumes as placed (placed.volume.id)}
 		<Volume
 			{placed}
-			hasBookmark={hasBookmark(placed.volume.id)}
 			isPeeked={getPeekedVolumeId() === placed.volume.id}
 			isInspected={getInspectedVolumeId() === placed.volume.id}
 			{dominoSim}

@@ -150,7 +150,7 @@ export interface ReadingVolumeState {
 
 export interface ReadingTiltGestures {
 	start(pointerId: number, x: number, y: number): void;
-	move(pointerId: number, x: number, y: number): boolean;
+	move(pointerId: number, x: number, y: number, suppressTilt?: boolean): boolean;
 	end(pointerId: number): void;
 	reset(): void;
 }
@@ -550,7 +550,7 @@ export function createReadingTiltGestures(
 		state.tiltPitchVelocity = 0;
 	}
 
-	function move(pointerId: number, x: number, y: number): boolean {
+	function move(pointerId: number, x: number, y: number, suppressTilt = false): boolean {
 		if (!pointers.has(pointerId) || state.phase !== 'reading') return false;
 		pointers.set(pointerId, { x, y });
 
@@ -563,7 +563,7 @@ export function createReadingTiltGestures(
 			return false;
 		}
 
-		if (activePointerId !== pointerId) return false;
+		if (suppressTilt || activePointerId !== pointerId) return false;
 		const dx = x - startX;
 		const dy = y - startY;
 
