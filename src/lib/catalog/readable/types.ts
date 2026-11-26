@@ -151,7 +151,12 @@ export interface IllustrationSection {
 
 export type VolumeContentSection = ProseSection | VerseSection | IllustrationSection;
 
-export interface VolumeContent {
+export interface IllustratedStanza {
+	readonly illustrationSrc: string;
+	readonly lines: readonly string[];
+}
+
+interface VolumeMetadata {
 	/** Optional display title override (replaces the default Catalog title everywhere). */
 	readonly title?: string;
 	/** Optional author override (replaces the default Catalog author everywhere). */
@@ -161,12 +166,21 @@ export interface VolumeContent {
 	/** Source / edition attribution shown on the back cover, 1st title Page, and closing colophon. */
 	readonly sourceNote?: string;
 	readonly colophonNote?: string;
-	/**
-	 * Ordered literary sections (prose chapters, verse poems/stanzas, or full-page plates).
-	 * Leave empty to fall back to the deterministic specimen layout.
-	 */
-	readonly sections: readonly VolumeContentSection[];
 }
+
+export type VolumeContent = VolumeMetadata &
+	(
+		| {
+				/** Leave empty to fall back to the deterministic specimen layout. */
+				readonly sections: readonly VolumeContentSection[];
+				readonly illustratedStanzas?: never;
+		  }
+		| {
+				/** Each stanza faces its illustration on a Spread without a Chapter. */
+				readonly illustratedStanzas: readonly [IllustratedStanza, ...IllustratedStanza[]];
+				readonly sections?: never;
+		  }
+	);
 
 export interface ReadableVolumePackage {
 	readonly design: VolumeDesign;
