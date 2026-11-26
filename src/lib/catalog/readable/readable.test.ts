@@ -132,21 +132,36 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 });
 
 describe('Agent-agnostic skill registration', () => {
-	it('keeps .agents and .claude contribute-volume skills identical and pointing to docs/CONTRIBUTING_VOLUME.md', () => {
+	const TOOLKIT_SKILLS = [
+		'contribute-volume',
+		'volume-explore',
+		'volume-design',
+		'volume-content',
+		'volume-verify',
+		'grilling'
+	] as const;
+
+	it('keeps all 6 toolkit skills identical across .agents and .claude and indexed in docs/CONTRIBUTING_VOLUME.md', () => {
 		const root = process.cwd();
 		const guide = readFileSync(resolve(root, 'docs/CONTRIBUTING_VOLUME.md'), 'utf8');
-		const agentsSkill = readFileSync(
-			resolve(root, '.agents/skills/contribute-volume/SKILL.md'),
-			'utf8'
-		);
-		const claudeSkill = readFileSync(
-			resolve(root, '.claude/skills/contribute-volume/SKILL.md'),
-			'utf8'
-		);
 		const claudeMd = readFileSync(resolve(root, 'CLAUDE.md'), 'utf8');
 
-		assert.equal(agentsSkill, claudeSkill);
-		assert.ok(agentsSkill.includes('docs/CONTRIBUTING_VOLUME.md'));
+		for (const skill of TOOLKIT_SKILLS) {
+			const agentsSkill = readFileSync(
+				resolve(root, `.agents/skills/${skill}/SKILL.md`),
+				'utf8'
+			);
+			const claudeSkill = readFileSync(
+				resolve(root, `.claude/skills/${skill}/SKILL.md`),
+				'utf8'
+			);
+			assert.equal(agentsSkill, claudeSkill, `Skill ${skill} drifted between .agents and .claude`);
+			assert.ok(
+				guide.includes(skill),
+				`docs/CONTRIBUTING_VOLUME.md must index the ${skill} skill`
+			);
+		}
+
 		assert.ok(claudeMd.includes('AGENTS.md'));
 		assert.ok(guide.includes('Ode on a Grecian Urn'));
 		assert.ok(guide.includes("Gulliver's Travels"));
