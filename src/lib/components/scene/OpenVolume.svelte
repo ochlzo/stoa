@@ -163,6 +163,7 @@
 			getRootGroup: () => rootGroupRef,
 			getPageWidth: () => openDims.pageWidth,
 			readingState,
+			wheelTurnsPages: readingModel.chapters.length === 0,
 			getLeafTurn,
 			startLeafTurn,
 			getFocusedPageSide,
