@@ -32,9 +32,6 @@ function writeStoredProgress(map: Record<string, number>): void {
 
 /**
  * Reactive map of auto-saved reading progress keyed by Volume ID -> last-read Page index.
- * Stored separately from explicit Bookmark Ribbons (`stoa:bookmarks`) so closing and
- * reopening a Volume automatically resumes the reader's last-read Spread without
- * creating or modifying Bookmark Ribbons.
  */
 let lastReadPages = $state<Record<string, number>>(readStoredProgress());
 

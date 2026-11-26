@@ -6,6 +6,7 @@ import {
 	getVolumeReadingModel,
 	type PageSide
 } from '#lib/catalog/reading.ts';
+import { createLeafTurn, type LeafTurn, type TurnDirection } from '#lib/physics/leaf-turn.ts';
 import type { InspectPhase } from '#lib/physics/inspect-volume.ts';
 import type { ReadingPhase } from '#lib/physics/reading-volume.ts';
 import { getLastReadPage, setLastReadPage } from '#lib/state/reading-progress.svelte.ts';
@@ -40,8 +41,24 @@ let inspectPhase = $state<InspectPhase>('idle');
 let isInspectOrbiting = $state(false);
 let inspectShelfCleared = $state(false);
 
+export const readingHud = $state<{
+	visible: boolean;
+	dismissPoint: { x: number; y: number } | null;
+}>({ visible: true, dismissPoint: null });
+
+export function toggleReadingHud(clientX?: number, clientY?: number): void {
+	if (readingHud.visible) {
+		readingHud.visible = false;
+		readingHud.dismissPoint =
+			clientX !== undefined && clientY !== undefined ? { x: clientX, y: clientY } : null;
+	} else {
+		readingHud.visible = true;
+		readingHud.dismissPoint = null;
+	}
+}
 let readingPhase = $state<ReadingPhase>('idle');
 let readingUnfolding = $state(false);
+let leafTurn = $state.raw<LeafTurn | null>(null);
 let currentSpreadIndex = $state(0);
 let focusedPageSide = $state<PageSide>('right');
 
@@ -208,7 +225,7 @@ export function completeReturnToShelf(): void {
 /**
  * Transitions from Inspect Mode into Reading Mode for the inspected Readable Volume.
  * First open lands on Spread 0 (front title Spread); subsequent opens resume the
- * reader's last-read Spread from localStorage independently of Bookmark Ribbons.
+ * reader's last-read Spread from localStorage.
  */
 export function openReadingMode(): boolean {
 	if (sceneMode !== 'inspect' || !inspectedVolume || inspectedVolume.kind !== 'readable') {
@@ -228,11 +245,13 @@ export function openReadingMode(): boolean {
 	} else {
 		const resumedSpread = getSpreadIndexForPage(model, savedPage);
 		currentSpreadIndex = resumedSpread;
-		focusedPageSide = resumedSpread === 0 ? 'right' : savedPage % 2 === 1 ? 'right' : 'left';
+		focusedPageSide = model.pages[savedPage]?.side ?? 'right';
 	}
 
 	isInspectOrbiting = false;
 	readingUnfolding = false;
+	readingHud.visible = true;
+	readingHud.dismissPoint = null;
 	readingPhase = 'opening';
 	sceneMode = 'reading';
 	return true;
@@ -250,14 +269,43 @@ export function completeReadingOpen(): void {
 
 /**
  * Navigates to a specific Spread in Reading Mode and auto-saves the reader's
- * last-read Page in localStorage (separate from Bookmark Ribbons).
+ * last-read Page in localStorage.
  */
 export function setReadingSpread(spreadIndex: number): void {
 	if (sceneMode !== 'reading' || !inspectedVolume) return;
 	const model = getVolumeReadingModel(inspectedVolume);
 	const clamped = clampSpreadIndex(model, spreadIndex);
+	leafTurn = null;
 	currentSpreadIndex = clamped;
 	setLastReadPage(inspectedVolume.id, getCanonicalPageIndexForSpread(model, clamped));
+}
+
+export function jumpToReadingPage(pageIndex: number) {
+	if (readingPhase !== 'reading' || leafTurn || !inspectedVolume) return;
+	const model = getVolumeReadingModel(inspectedVolume);
+	const page = model.pages[pageIndex];
+	if (!page) return;
+	currentSpreadIndex = getSpreadIndexForPage(model, pageIndex);
+	focusedPageSide = page.side;
+	setLastReadPage(inspectedVolume.id, pageIndex);
+}
+
+export function getLeafTurn() {
+	return leafTurn;
+}
+
+export function startLeafTurn(direction: TurnDirection, drag = false) {
+	if (leafTurn || readingPhase !== 'reading' || !inspectedVolume) return null;
+	const model = getVolumeReadingModel(inspectedVolume);
+	if (!model.spreads[currentSpreadIndex + direction]) return null;
+	leafTurn = createLeafTurn(direction, drag);
+	return leafTurn;
+}
+
+export function finishLeafTurn() {
+	const turn = leafTurn;
+	leafTurn = null;
+	if (turn?.target === 1 && readingPhase === 'reading') stepReadingSpread(turn.direction);
 }
 
 export function stepReadingSpread(delta: -1 | 1): void {
@@ -265,9 +313,11 @@ export function stepReadingSpread(delta: -1 | 1): void {
 	const model = getVolumeReadingModel(inspectedVolume);
 	const next = clampSpreadIndex(model, currentSpreadIndex + delta);
 	if (next === currentSpreadIndex) return;
+	leafTurn = null;
 	currentSpreadIndex = next;
 	focusedPageSide = next === 0 ? 'right' : delta > 0 ? 'left' : 'right';
-	setLastReadPage(inspectedVolume.id, getCanonicalPageIndexForSpread(model, next));
+	const spread = model.spreads[next];
+	setLastReadPage(inspectedVolume.id, focusedPageSide === 'right' ? spread.rightPage.index : spread.leftPage.index);
 }
 
 export function setFocusedPageSide(side: PageSide): void {
@@ -287,6 +337,7 @@ export function setFocusedPageSide(side: PageSide): void {
  * Requests folding the open Volume back into Inspect Mode.
  */
 export function requestCloseToInspect(): void {
+	leafTurn = null;
 	if (sceneMode !== 'reading') return;
 	if (readingPhase === 'closing-to-inspect' || readingPhase === 'closing-to-shelf') return;
 	if (!readingUnfolding) {
@@ -307,6 +358,7 @@ export function completeCloseToInspect(): void {
  * Requests folding the open Volume shut and returning it directly to its Shelf slot.
  */
 export function requestReturnToShelfFromReading(): void {
+	leafTurn = null;
 	if (sceneMode !== 'reading') return;
 	if (readingPhase === 'closing-to-shelf') return;
 	if (!readingUnfolding) {

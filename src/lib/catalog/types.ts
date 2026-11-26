@@ -119,17 +119,6 @@ export interface HeadbandSpec {
 	readonly position: readonly [x: number, y: number, z: number];
 }
 
-export interface BookmarkRibbonSpec {
-	/** Width of the woven ribbon strip across X (meters). */
-	readonly width: number;
-	/** Thickness of the ribbon strip (meters). */
-	readonly thickness: number;
-	/** Depth of the swallowtail V-notch at the ribbon tip (meters). */
-	readonly notchDepth: number;
-	/** Centerline points in Volume-local [x, y, z] coordinates from page block to Shelf surface. */
-	readonly points: readonly (readonly [x: number, y: number, z: number])[];
-}
-
 export interface VolumeGeometryParts {
 	readonly spine: {
 		readonly shape: 'rounded' | 'flat';
@@ -158,5 +147,4 @@ export interface VolumeGeometryParts {
 	};
 	readonly spineBands: readonly SpineBandSpec[];
 	readonly headbands: readonly HeadbandSpec[];
-	readonly bookmarkRibbon: BookmarkRibbonSpec;
 }

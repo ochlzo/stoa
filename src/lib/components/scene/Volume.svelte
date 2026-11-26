@@ -6,7 +6,6 @@
 	import { PAGE_BLOCK_CLAY_COLOR, VOLUME_CLAY_COLORS } from '#lib/catalog/volumes.ts';
 	import type { PlacedVolume } from '#lib/catalog/types.ts';
 	import { createSpineGeometry } from '#lib/components/scene/spine-geometry.ts';
-	import { createBookmarkRibbonGeometry } from '#lib/components/scene/volume-ribbon-geometry.ts';
 	import {
 		INSPECT_VOLUME_CONFIG,
 		applyInspectWheelZoom,
@@ -50,7 +49,6 @@
 
 	interface Props {
 		placed: PlacedVolume;
-		hasBookmark?: boolean;
 		isPeeked?: boolean;
 		isInspected?: boolean;
 		dominoSim?: ShelfDominoSimulation | null;
@@ -58,7 +56,6 @@
 
 	let {
 		placed,
-		hasBookmark = false,
 		isPeeked = false,
 		isInspected = false,
 		dominoSim = null
@@ -80,7 +77,6 @@
 		return () => bundle?.dispose();
 	});
 	const coverColor = $derived(VOLUME_CLAY_COLORS[placed.volume.clayTone]);
-	const showRibbon = $derived(placed.volume.kind === 'readable' && hasBookmark);
 	const highlightReadable = $derived(isPeeked && !isInspected && placed.volume.kind === 'readable');
 	const coverEmissive = $derived(highlightReadable ? '#f4ede0' : '#000000');
 	const coverEmissiveIntensity = $derived(highlightReadable ? 0.16 : 0);
@@ -89,18 +85,6 @@
 	const shelfCenter = $derived(computeVolumeShelfCenter(placed, 0));
 	const halfHeight = $derived(placed.volume.dimensions.height / 2);
 	const halfDepth = $derived(placed.volume.dimensions.depth / 2);
-
-	// Lazily construct and dispose the procedural Bookmark Ribbon only when active.
-	const ribbonBundle = $derived(
-		showRibbon ? createBookmarkRibbonGeometry(parts.bookmarkRibbon) : null
-	);
-
-	$effect(() => {
-		const bundle = ribbonBundle;
-		return () => {
-			bundle?.dispose();
-		};
-	});
 
 	const peekState = createVolumePeekState();
 	const inspectState = createInspectVolumeState();
@@ -634,13 +618,6 @@
 					<T.MeshStandardMaterial color="#d8d4cc" roughness={0.92} metalness={0} />
 				</T.Mesh>
 			{/each}
-
-			<!-- Procedural Bookmark Ribbon tail (rendered only on bookmarked Readable Volumes) -->
-			{#if ribbonBundle}
-				<T.Mesh name="bookmark-ribbon" geometry={ribbonBundle.geometry}>
-					<T.MeshStandardMaterial color="#b5b0a7" roughness={0.85} metalness={0} />
-				</T.Mesh>
-			{/if}
 		</T.Group>
 	</T.Group>
 </T.Group>
