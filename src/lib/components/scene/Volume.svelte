@@ -7,6 +7,7 @@
 	import { Vector3, type Group, type Mesh, type MeshBasicMaterial, type PerspectiveCamera } from 'three';
 	import { getVolumeGeometryParts } from '#lib/catalog/layout.ts';
 	import type { PlacedVolume } from '#lib/catalog/types.ts';
+	import { createBackdropVignetteMaterial } from '#lib/components/scene/backdrop-vignette-geometry.ts';
 	import { createSpineGeometry } from '#lib/components/scene/spine-geometry.ts';
 	import {
 		INSPECT_VOLUME_CONFIG,
@@ -105,16 +106,32 @@
 	let peekGroupRef = $state<Group | undefined>(undefined);
 	let backdropMeshRef: Mesh | undefined;
 	let backdropMaterialRef: MeshBasicMaterial | undefined;
-	const inspectBackdrop = $derived(
-		isClayMode() ? INSPECT_VOLUME_CONFIG.backdropMaxOpacity : LOOKDEV_BACKDROP.inspectOpacity
-	);
-	const readingBackdrop = $derived(
-		isClayMode() ? READING_VOLUME_CONFIG.backdropOpacity : LOOKDEV_BACKDROP.readingOpacity
-	);
-	const backdropColor = $derived(
-		isClayMode() ? LOOKDEV_BACKDROP.clayColor : LOOKDEV_BACKDROP.lookdevColor
-	);
+	const vignette = $derived(isInspected && !isClayMode() ? createBackdropVignetteMaterial() : null);
+	$effect(() => {
+		const bundle = vignette;
+		return () => bundle?.dispose();
+	});
+	let vignetteCenterOpacity = 0;
+	let vignetteEdgeOpacity = 0;
 	const shadowsEnabled = $derived(!isClayMode());
+
+	function stepLookdevVignette(dt: number): void {
+		if (!vignette) return;
+		const mode = getSceneMode();
+		const readingPhase = getReadingPhase();
+		const returning =
+			readingPhase === 'closing-to-shelf' ||
+			inspectState.phase === 'returning' ||
+			getInspectPhase() === 'returning';
+		const target = returning
+			? { centerOpacity: 0, edgeOpacity: 0 }
+			: mode === 'reading' && readingPhase !== 'closing-to-inspect'
+				? LOOKDEV_BACKDROP.reading
+				: LOOKDEV_BACKDROP.inspect;
+		vignetteCenterOpacity = stepBackdropOpacity(vignetteCenterOpacity, target.centerOpacity, dt);
+		vignetteEdgeOpacity = stepBackdropOpacity(vignetteEdgeOpacity, target.edgeOpacity, dt);
+		vignette.setLevels(vignetteCenterOpacity, vignetteEdgeOpacity);
+	}
 
 	$effect(() => {
 		const group = peekGroupRef;
@@ -164,6 +181,9 @@
 		const phase = getInspectPhase();
 		if (phase === 'entering' && inspectState.phase === 'idle') {
 			startInspectEnter(inspectState, peekState.offset);
+			vignetteCenterOpacity = 0;
+			vignetteEdgeOpacity = 0;
+			vignette?.setLevels(0, 0);
 			peekState.offset = 0;
 			peekState.velocity = 0;
 			if (peekGroupRef) {
@@ -313,10 +333,12 @@
 							1
 						);
 					}
-					if (backdropMaterialRef) {
+					if (vignette) {
+						stepLookdevVignette(dt);
+					} else if (backdropMaterialRef) {
 						backdropMaterialRef.opacity =
-							inspectBackdrop +
-							(readingBackdrop - inspectBackdrop) *
+							INSPECT_VOLUME_CONFIG.backdropMaxOpacity +
+							(READING_VOLUME_CONFIG.backdropOpacity - INSPECT_VOLUME_CONFIG.backdropMaxOpacity) *
 								t;
 					}
 
@@ -334,8 +356,12 @@
 						);
 						backdropMeshRef.scale.set(readingPose.backdropWidth, readingPose.backdropHeight, 1);
 					}
-					if (backdropMaterialRef) {
-						const target = getReadingPhase().startsWith('closing') ? inspectBackdrop : readingBackdrop;
+					if (vignette) {
+						stepLookdevVignette(dt);
+					} else if (backdropMaterialRef) {
+						const target = getReadingPhase().startsWith('closing')
+							? INSPECT_VOLUME_CONFIG.backdropMaxOpacity
+							: READING_VOLUME_CONFIG.backdropOpacity;
 						backdropMaterialRef.opacity = stepBackdropOpacity(backdropMaterialRef.opacity, target, dt);
 					}
 				}
@@ -370,8 +396,10 @@
 				backdropMeshRef.position.set(activeCamera.position.x, activeCamera.position.y, pose.backdropZ);
 				backdropMeshRef.scale.set(pose.backdropWidth, pose.backdropHeight, 1);
 			}
-			if (backdropMaterialRef) {
-				backdropMaterialRef.opacity = transform.backdropOpacity * inspectBackdrop / INSPECT_VOLUME_CONFIG.backdropMaxOpacity;
+			if (vignette) {
+				stepLookdevVignette(dt);
+			} else if (backdropMaterialRef) {
+				backdropMaterialRef.opacity = transform.backdropOpacity;
 			}
 
 			if (step.completedReturn) {
@@ -481,15 +509,19 @@
 		onclick={onBackdropClick}
 	>
 		<T.PlaneGeometry args={[1, 1]} />
-		<T.MeshBasicMaterial
-			color={backdropColor}
-			transparent
-			opacity={0}
-			depthWrite={false}
-			oncreate={(mat) => {
-				backdropMaterialRef = mat;
-			}}
-		/>
+		{#if vignette}
+			<T is={vignette.material} dispose={false} />
+		{:else}
+			<T.MeshBasicMaterial
+				color={LOOKDEV_BACKDROP.clayColor}
+				transparent
+				opacity={0}
+				depthWrite={false}
+				oncreate={(mat) => {
+					backdropMaterialRef = mat;
+				}}
+			/>
+		{/if}
 	</T.Mesh>
 {/if}
 

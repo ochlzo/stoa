@@ -20,7 +20,7 @@ export function stepStudyLighting(current: StudyLighting, target: StudyLighting,
 }
 
 export function stepBackdropOpacity(current: number, target: number, delta: number): number {
-	return current + (target - current) * -Math.expm1(-5 * Math.max(0, Math.min(delta, 0.05)));
+	return current + (target - current) * lightingBlend(delta);
 }
 
 export function seedDustMotes(count: number, seed = 73213) {

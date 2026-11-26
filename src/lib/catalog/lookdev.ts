@@ -74,12 +74,15 @@ const bookcaseCenterY = (bookcaseBounds.minY + bookcaseBounds.maxY) / 2;
 /** Cross-grain width of one procedural wood tile in meters. */
 export const WOOD_GRAIN_TILE_WIDTH = 0.42;
 
-/** Dimmed backdrop styling for Inspect Mode and Reading Mode in Lookdev vs Clay. */
+/**
+ * Dimmed backdrop styling for Inspect Mode (Level 1) and Reading Mode (Level 2).
+ * In Lookdev, a dark radial fisheye vignette keeps the center behind the Volume softly
+ * spotlighted while curving into deep shadow toward the viewport edges.
+ */
 export const LOOKDEV_BACKDROP = {
 	clayColor: '#141210',
-	lookdevColor: '#44382c',
-	inspectOpacity: 0.24,
-	readingOpacity: 0.39
+	inspect: { centerOpacity: 0.14, edgeOpacity: 0.78 },
+	reading: { centerOpacity: 0.52, edgeOpacity: 0.94 }
 } as const;
 
 /**
