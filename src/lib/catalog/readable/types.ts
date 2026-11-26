@@ -130,6 +130,8 @@ export interface ProseSection {
 	readonly kind: 'prose';
 	readonly title: string;
 	readonly epigraph?: string;
+	/** Full-page Chapter opener artwork, followed by prose on the next Page. */
+	readonly openingImageSrc?: string;
 	readonly paragraphs: readonly string[];
 }
 
@@ -137,6 +139,8 @@ export interface VerseSection {
 	readonly kind: 'verse';
 	readonly title: string;
 	readonly epigraph?: string;
+	/** Full-page Chapter opener artwork, followed by verse on the next Page. */
+	readonly openingImageSrc?: string;
 	/** Each stanza is an ordered list of verse lines preserved verbatim. */
 	readonly stanzas: readonly (readonly string[])[];
 }

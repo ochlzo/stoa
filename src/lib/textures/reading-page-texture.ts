@@ -367,7 +367,24 @@ function literaryBody(
 		if (line.stanzaGapBefore) y += leading * 0.65;
 		const indent = line.indent ? (isVerse ? 22 : 28) : 0;
 		const available = Math.max(120, maxWidth - indent);
-		ctx.fillText(line.text, left + indent, y, available);
+		const x = left + indent;
+		if (!isVerse && line.justify) {
+			const words = line.text.split(' ');
+			const wordWidths = words.map((word) => ctx.measureText(word).width);
+			const wordsWidth = wordWidths.reduce((sum, wordWidth) => sum + wordWidth, 0);
+			if (words.length > 1 && ctx.measureText(line.text).width < available) {
+				const space = (available - wordsWidth) / (words.length - 1);
+				let cursor = x;
+				for (let i = 0; i < words.length; i++) {
+					ctx.fillText(words[i], cursor, y);
+					cursor += wordWidths[i] + space;
+				}
+			} else {
+				ctx.fillText(line.text, x, y, available);
+			}
+		} else {
+			ctx.fillText(line.text, x, y, available);
+		}
 		y += leading;
 	}
 }
@@ -502,6 +519,56 @@ function drawIllustrationPlate(
 	img.src = resolvedSrc;
 }
 
+function drawChapterOpener(
+	ctx: CanvasRenderingContext2D,
+	page: Page,
+	left: number,
+	right: number,
+	cx: number,
+	texture: CanvasTexture,
+	theme: PageTheme
+) {
+	const drawTitle = () => {
+		const wash = ctx.createLinearGradient(0, 0, 0, 710);
+		wash.addColorStop(0, 'rgba(255,237,198,0.55)');
+		wash.addColorStop(0.68, 'rgba(255,237,198,0.38)');
+		wash.addColorStop(1, 'rgba(255,237,198,0)');
+		ctx.fillStyle = wash;
+		ctx.fillRect(0, 0, width, 710);
+		ctx.textAlign = 'center';
+		ctx.fillStyle = '#24160e';
+		ctx.font = '600 30px ' + theme.font;
+		ctx.fillText(`CHAPTER ${page.chapterRomanNumeral ?? ''}`, cx, 165);
+		ctx.font = '600 54px ' + theme.font;
+		heading(ctx, page.chapterTitle ?? '', cx, 430, right - left, 62);
+		if (page.pageNumber !== null) {
+			ctx.fillStyle = '#fff0c9';
+			ctx.shadowColor = '#24160e';
+			ctx.shadowBlur = 8;
+			ctx.font = '600 25px ' + theme.font;
+			ctx.fillText(String(page.pageNumber), cx, height - 49);
+			ctx.shadowBlur = 0;
+		}
+		drawGutterShadow(ctx, page.side);
+		texture.needsUpdate = true;
+	};
+
+	// Keep the Chapter readable on paper while its local illustration loads.
+	drawTitle();
+	if (!page.illustrationSrc || typeof Image === 'undefined') return;
+	const img = new Image();
+	img.crossOrigin = 'anonymous';
+	img.onload = () => {
+		const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
+		const drawW = img.naturalWidth * scale;
+		const drawH = img.naturalHeight * scale;
+		ctx.clearRect(0, 0, width, height);
+		ctx.drawImage(img, (width - drawW) / 2, (height - drawH) / 2, drawW, drawH);
+		drawTitle();
+	};
+	img.src = new URL(page.illustrationSrc.replace(/^\/+/, ''), document.baseURI).href;
+}
+
 // One stock tile per tint per open Volume. Each face owns its CanvasTexture, including a turning Leaf's reverse.
 export function createReadingPagePainter() {
 	const motionController = createIllustrationMotionController();
@@ -612,6 +679,8 @@ export function createReadingPagePainter() {
 				ctx.fillStyle = theme.inkMuted;
 				heading(ctx, page.sourceNote, cx, 932, right - left - 44, 26);
 			}
+		} else if (page.kind === 'chapter-opener') {
+			drawChapterOpener(ctx, page, left, right, cx, texture, theme);
 		} else if (page.kind === 'illustration') {
 			if (!page.fullBleed) {
 				ctx.font = 'italic 600 25px ' + theme.font;

@@ -81,6 +81,7 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 				{
 					kind: 'prose',
 					title: 'Commentary',
+					openingImageSrc: 'volumes/ode-on-a-grecian-urn/commentary.webp',
 					paragraphs: [
 						'This is a long prose paragraph designed to wrap deterministically across multiple fixed-layout lines without relying on browser DOM measurements.',
 						'A second paragraph verifies that paragraph indents and folio numbering remain strictly monotonic across every Spread.'
@@ -116,15 +117,24 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 		assert.equal(platePage.illustrationSrc, 'volumes/ode-on-a-grecian-urn/urn.webp');
 		assert.equal(platePage.illustrationCaption, 'Attic red-figure amphora');
 
-		// Prose page
-		const prosePage = model.pages[model.chapters[2].startPageIndex];
+		// An illustrated opener belongs to its prose Chapter; text starts on the next Page.
+		const openerPage = model.pages[model.chapters[2].startPageIndex];
+		assert.equal(openerPage.kind, 'chapter-opener');
+		assert.equal(openerPage.illustrationSrc, 'volumes/ode-on-a-grecian-urn/commentary.webp');
+		const prosePage = model.pages[openerPage.index + 1];
+		assert.equal(prosePage.kind, 'body');
 		assert.equal(prosePage.contentMode, 'prose');
 		assert.ok((prosePage.lines?.length ?? 0) >= 3);
 
 		// Monotonic folios & round-trip spread mapping
 		let expectedFolio = 1;
 		for (const page of model.pages) {
-			if (page.kind === 'chapter-start' || page.kind === 'body' || page.kind === 'illustration') {
+			if (
+				page.kind === 'chapter-start' ||
+				page.kind === 'chapter-opener' ||
+				page.kind === 'body' ||
+				page.kind === 'illustration'
+			) {
 				assert.equal(page.pageNumber, expectedFolio);
 				expectedFolio += 1;
 			}
