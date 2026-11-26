@@ -55,6 +55,7 @@
 	);
 	const cover = $derived(finishes.cover(volume, isClayMode()));
 	const paintPage = createReadingPagePainter();
+	const volumeDesign = $derived(volume.kind === 'readable' ? volume.design : undefined);
 	const readingModel = $derived(getVolumeReadingModel(volume));
 	const activeSpread = $derived(getSpread(readingModel, getCurrentSpreadIndex()));
 	const stackSplit = $derived(
@@ -76,11 +77,15 @@
 			clay: isClayMode(),
 			frontTexture: paintPage(
 				forward ? activeSpread.rightPage : activeSpread.leftPage,
-				readingModel.chapters.length, isClayMode()
+				readingModel.chapters.length,
+				isClayMode(),
+				volumeDesign
 			),
 			backTexture: paintPage(
 				forward ? adjacent.leftPage : adjacent.rightPage,
-				readingModel.chapters.length, isClayMode()
+				readingModel.chapters.length,
+				isClayMode(),
+				volumeDesign
 			)
 		});
 	});
@@ -94,7 +99,7 @@
 			const thickness = left ? stackSplit.leftThickness : stackSplit.rightThickness;
 			const exposed = adjacent && (left ? turn?.direction === -1 : turn?.direction === 1) ? adjacent : activeSpread;
 			const page = left ? exposed.leftPage : exposed.rightPage;
-			const texture = paintPage(page, readingModel.chapters.length, isClayMode());
+			const texture = paintPage(page, readingModel.chapters.length, isClayMode(), volumeDesign);
 			const stack = createPageStackGeometry({
 				width: openDims.pageWidth,
 				height: openDims.pageHeight,

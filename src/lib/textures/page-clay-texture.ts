@@ -245,6 +245,20 @@ export function createClayPageTexture(
 			case 'body':
 				drawRuledLines(ctx, page, 138, PAGE_CANVAS_HEIGHT - 134);
 				break;
+			case 'illustration': {
+				const leftX = (page.side === 'left' ? 74 : 96) + 28;
+				const rightX = (page.side === 'left' ? PAGE_CANVAS_WIDTH - 96 : PAGE_CANVAS_WIDTH - 74) - 28;
+				ctx.strokeStyle = CLAY_BLOCK_DARK;
+				ctx.lineWidth = 4;
+				ctx.strokeRect(leftX, 170, rightX - leftX, 680);
+				if (page.illustrationCaption) {
+					ctx.font = 'italic 22px Georgia, "Times New Roman", serif';
+					ctx.fillStyle = CLAY_INK_MUTED;
+					ctx.textAlign = 'center';
+					drawWrappedCenteredText(ctx, page.illustrationCaption, (leftX + rightX) / 2, 896, rightX - leftX, 28);
+				}
+				break;
+			}
 			case 'colophon':
 				drawColophonPage(ctx, page);
 				break;

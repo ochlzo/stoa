@@ -1,5 +1,6 @@
 import { CanvasTexture, ClampToEdgeWrapping } from 'three';
 import type { Page } from '#lib/catalog/reading.ts';
+import type { VolumeDesign } from '#lib/catalog/readable/types.ts';
 import { LOOKDEV_PALETTE, createSeededRandom } from '#lib/catalog/lookdev.ts';
 import { configurePbrTexture, wrapCanvasLines } from '#lib/textures/pbr-texture-cache.ts';
 import { createClayPageTexture } from '#lib/textures/page-clay-texture.ts';
@@ -41,10 +42,16 @@ function paperStock() {
 	return tile;
 }
 
-function marble(ctx: CanvasRenderingContext2D, index: number) {
+function marble(
+	ctx: CanvasRenderingContext2D,
+	index: number,
+	endpaperColors?: VolumeDesign['endpaperColors']
+) {
 	// Pull alternating pigments through a staggered comb, then feather the narrow veins.
-	const palette = [ink.endpaperBase, volumes.ochreLinen, volumes.oxblood,
-		ink.endpaperBase, volumes.oliveCloth, volumes.navyCloth, ink.goldFoil];
+	const [c1, c2, c3] = endpaperColors
+		? [volumes[endpaperColors[0]], volumes[endpaperColors[1]], volumes[endpaperColors[2]]]
+		: [volumes.ochreLinen, volumes.oxblood, volumes.oliveCloth];
+	const palette = [ink.endpaperBase, c1, c2, ink.endpaperBase, c3, volumes.navyCloth, ink.goldFoil];
 	const stops = [0, 0.32, 0.42, 0.55, 0.62, 0.80, 0.95, 1];
 	const colors = palette.map(hex => parseInt(hex.slice(1), 16));
 	const field = document.createElement('canvas');
@@ -104,7 +111,7 @@ function heading(
 	return y + Math.max(0, wrapped.length - 1) * leading;
 }
 
-function body(ctx: CanvasRenderingContext2D, page: Page, left: number, right: number, startY: number) {
+function specimenBody(ctx: CanvasRenderingContext2D, page: Page, left: number, right: number, startY: number) {
 	let cursor = page.index * 13;
 	const leading = Math.min(34, (height - 135 - startY) / Math.max(1, page.lineCount - 1));
 	ctx.textAlign = 'left';
@@ -125,14 +132,115 @@ function body(ctx: CanvasRenderingContext2D, page: Page, left: number, right: nu
 	}
 }
 
+function literaryBody(ctx: CanvasRenderingContext2D, page: Page, left: number, right: number, startY: number) {
+	const lines = page.lines;
+	if (!lines || lines.length === 0) return;
+	const isVerse = page.contentMode === 'verse';
+	const maxWidth = right - left;
+	let y = startY;
+
+	if (page.epigraph) {
+		ctx.textAlign = 'center';
+		ctx.font = 'italic 22px ' + serif;
+		ctx.fillStyle = ink.inkMuted;
+		y = heading(ctx, page.epigraph, (left + right) / 2, y, maxWidth - 36, 28) + 42;
+	}
+
+	const gapCount = lines.filter((line) => line.stanzaGapBefore).length;
+	const totalUnits = Math.max(1, lines.length - 1 + gapCount * 0.65);
+	const leading = Math.min(35, (height - 128 - y) / totalUnits);
+
+	ctx.textAlign = 'left';
+	ctx.font = (isVerse ? '26px ' : '27px ') + serif;
+	ctx.fillStyle = ink.inkPrimary;
+
+	for (const line of lines) {
+		if (line.stanzaGapBefore) y += leading * 0.65;
+		const indent = line.indent ? (isVerse ? 22 : 28) : 0;
+		const available = Math.max(120, maxWidth - indent);
+		ctx.fillText(line.text, left + indent, y, available);
+		y += leading;
+	}
+}
+
+function drawGutterShadow(ctx: CanvasRenderingContext2D, side: Page['side']) {
+	const gutter = side === 'left' ? width : 0;
+	const shadow = ctx.createLinearGradient(gutter, 0, gutter + (gutter ? -80 : 80), 0);
+	shadow.addColorStop(0, 'rgba(73,47,24,0.19)');
+	shadow.addColorStop(0.36, 'rgba(73,47,24,0.06)');
+	shadow.addColorStop(1, 'rgba(73,47,24,0)');
+	ctx.fillStyle = shadow;
+	ctx.fillRect(0, 0, width, height);
+}
+
+function drawIllustrationPlate(
+	ctx: CanvasRenderingContext2D,
+	page: Page,
+	left: number,
+	right: number,
+	cx: number,
+	texture: CanvasTexture
+) {
+	const frameX = left + 14;
+	const frameY = 148;
+	const frameW = right - left - 28;
+	const frameH = 710;
+
+	// Outer & inner archival plate border
+	ctx.strokeStyle = ink.inkMuted;
+	ctx.lineWidth = 1.6;
+	ctx.strokeRect(frameX, frameY, frameW, frameH);
+	ctx.lineWidth = 0.8;
+	ctx.strokeRect(frameX + 8, frameY + 8, frameW - 16, frameH - 16);
+
+	if (page.illustrationCaption) {
+		ctx.textAlign = 'center';
+		ctx.font = 'italic 23px ' + serif;
+		ctx.fillStyle = ink.inkMuted;
+		heading(ctx, page.illustrationCaption, cx, frameY + frameH + 46, frameW, 30);
+	}
+
+	if (page.pageNumber !== null) {
+		ctx.textAlign = 'center';
+		ctx.font = '600 25px ' + serif;
+		ctx.fillStyle = ink.inkPrimary;
+		ctx.fillText(String(page.pageNumber), cx, height - 49);
+	}
+
+	if (!page.illustrationSrc || typeof Image === 'undefined') return;
+	const resolvedSrc = new URL(page.illustrationSrc.replace(/^\/+/, ''), document.baseURI).href;
+	const img = new Image();
+	img.crossOrigin = 'anonymous';
+	img.onload = () => {
+		const pad = 20;
+		const boxW = frameW - pad * 2;
+		const boxH = frameH - pad * 2;
+		const scale = Math.min(boxW / img.naturalWidth, boxH / img.naturalHeight);
+		const drawW = img.naturalWidth * scale;
+		const drawH = img.naturalHeight * scale;
+		const drawX = frameX + (frameW - drawW) / 2;
+		const drawY = frameY + (frameH - drawH) / 2;
+
+		ctx.save();
+		ctx.globalCompositeOperation = 'multiply';
+		ctx.globalAlpha = 0.92;
+		ctx.drawImage(img, drawX, drawY, drawW, drawH);
+		ctx.restore();
+
+		drawGutterShadow(ctx, page.side);
+		texture.needsUpdate = true;
+	};
+	img.src = resolvedSrc;
+}
+
 // One stock tile per open Volume. Each face owns its CanvasTexture, including a turning Leaf's reverse.
 export function createReadingPagePainter() {
 	let stock: HTMLCanvasElement | undefined;
-	return (page: Page, chapterCount: number, clay: boolean) => {
+	return (page: Page, chapterCount: number, clay: boolean, design?: VolumeDesign) => {
 		if (clay) return createClayPageTexture(page, chapterCount);
 		const canvas = document.createElement('canvas');
 		canvas.width = 1024;
-		canvas.height = Math.round(canvas.width * height / width);
+		canvas.height = Math.round((canvas.width * height) / width);
 		const ctx = canvas.getContext('2d')!;
 		ctx.scale(canvas.width / width, canvas.height / height);
 		stock ??= paperStock();
@@ -143,26 +251,58 @@ export function createReadingPagePainter() {
 		const cx = (left + right) / 2;
 		ctx.textAlign = 'center';
 		ctx.fillStyle = ink.inkPrimary;
+
+		const texture = configurePbrTexture(new CanvasTexture(canvas), 'albedo', {
+			wrapS: ClampToEdgeWrapping,
+			wrapT: ClampToEdgeWrapping
+		});
+
 		if (page.kind === 'endpaper') {
-			marble(ctx, page.index);
+			marble(ctx, page.index, design?.endpaperColors);
 		} else if (page.kind === 'front-title' || page.kind === 'colophon') {
 			const title = page.kind === 'front-title';
 			ctx.font = '22px ' + serif;
-			ctx.fillText('Stoa Library Edition', cx, 238);
+			ctx.fillText(design?.editionLine ?? 'Stoa Library Edition', cx, 238);
 			ornament(ctx, cx, 267);
 			ctx.font = (title ? '600 64px ' : '600 48px ') + serif;
 			const bottom = heading(ctx, title ? page.volumeTitle : 'Finis', cx, 460, right - left, 70);
 			ctx.font = 'italic 33px ' + serif;
 			ctx.fillText(title ? page.volumeAuthor : page.volumeTitle, cx, bottom + 68);
+			if (title && page.volumeSubtitle) {
+				ctx.font = 'italic 24px ' + serif;
+				ctx.fillStyle = ink.inkMuted;
+				heading(ctx, page.volumeSubtitle, cx, bottom + 124, right - left - 30, 30);
+			}
+			if (title && page.volumeTranslator) {
+				ctx.font = '22px ' + serif;
+				ctx.fillStyle = ink.inkMuted;
+				ctx.fillText('Translated by ' + page.volumeTranslator, cx, 756);
+			}
 			ctx.font = '23px ' + serif;
 			ctx.fillStyle = ink.inkMuted;
-			ctx.fillText(title ? chapterCount + ' Chapters' : page.volumeAuthor, cx, 820);
-			ornament(ctx, cx, 860);
+			if (title) {
+				const unit = chapterCount === 1 ? 'Section' : 'Chapters';
+				ctx.fillText(chapterCount + ' ' + unit, cx, 820);
+			} else if (page.colophonNote) {
+				heading(ctx, page.colophonNote, cx, 780, right - left - 40, 28);
+			} else {
+				ctx.fillText(page.volumeAuthor, cx, 820);
+			}
+			ornament(ctx, cx, 872);
+		} else if (page.kind === 'illustration') {
+			ctx.font = 'italic 600 25px ' + serif;
+			ctx.fillStyle = ink.inkMuted;
+			ctx.fillText(page.chapterTitle ?? page.volumeTitle, cx, 64);
+			drawIllustrationPlate(ctx, page, left, right, cx, texture);
 		} else {
 			const opener = page.kind === 'chapter-start';
 			ctx.font = 'italic 600 25px ' + serif;
 			ctx.fillStyle = ink.inkMuted;
-			ctx.fillText(page.side === 'left' ? page.volumeTitle : 'Chapter ' + page.chapterRomanNumeral, cx, 64);
+			ctx.fillText(
+				page.side === 'left' ? page.volumeTitle : 'Chapter ' + page.chapterRomanNumeral,
+				cx,
+				64
+			);
 			let startY = 148;
 			if (opener) {
 				ctx.font = '600 28px ' + serif;
@@ -173,24 +313,26 @@ export function createReadingPagePainter() {
 				ornament(ctx, cx, bottom + 41);
 				startY = bottom + 108;
 			}
-			body(ctx, page, left, right, startY);
+			const isLiterary = page.contentMode === 'prose' || page.contentMode === 'verse';
+			if (isLiterary) {
+				literaryBody(ctx, page, left, right, startY);
+			} else {
+				specimenBody(ctx, page, left, right, startY);
+			}
 			ctx.textAlign = 'center';
 			ctx.font = '600 25px ' + serif;
+			ctx.fillStyle = ink.inkPrimary;
 			ctx.fillText(String(page.pageNumber), cx, height - 49);
-			ctx.textAlign = page.side === 'left' ? 'left' : 'right';
-			ctx.fillStyle = ink.inkMuted;
-			ctx.font = 'italic 21px ' + serif;
-			ctx.fillText('Type specimen', page.side === 'left' ? left : right, height - 49);
+			if (!isLiterary) {
+				ctx.textAlign = page.side === 'left' ? 'left' : 'right';
+				ctx.fillStyle = ink.inkMuted;
+				ctx.font = 'italic 21px ' + serif;
+				ctx.fillText('Type specimen', page.side === 'left' ? left : right, height - 49);
+			}
 		}
-		const gutter = page.side === 'left' ? width : 0;
-		const shadow = ctx.createLinearGradient(gutter, 0, gutter + (gutter ? -80 : 80), 0);
-		shadow.addColorStop(0, 'rgba(73,47,24,0.19)');
-		shadow.addColorStop(0.36, 'rgba(73,47,24,0.06)');
-		shadow.addColorStop(1, 'rgba(73,47,24,0)');
-		ctx.fillStyle = shadow;
-		ctx.fillRect(0, 0, width, height);
-		return configurePbrTexture(new CanvasTexture(canvas), 'albedo', {
-			wrapS: ClampToEdgeWrapping, wrapT: ClampToEdgeWrapping
-		});
+
+		drawGutterShadow(ctx, page.side);
+		texture.needsUpdate = true;
+		return texture;
 	};
 }

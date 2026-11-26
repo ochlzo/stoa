@@ -1,3 +1,4 @@
+import { getReadableVolumePackage } from '#lib/catalog/readable/index.ts';
 import type {
 	BindingStyleId,
 	SpineProfile,
@@ -52,18 +53,32 @@ interface VolumeSpec {
 
 function volume(spec: VolumeSpec): Volume {
 	const [height, thickness, depth] = spec.size;
-	return {
+	const base = {
 		id: spec.id,
 		title: spec.title,
 		author: spec.author,
 		shelfIndex: spec.shelf,
-		kind: spec.readable ? 'readable' : 'placeholder',
 		dimensions: { height, thickness, depth },
-		bindingStyle: spec.binding,
 		clayTone: spec.tone,
-		coverColor: spec.coverColor,
-		spineProfile: spec.spine,
 		placement: spec.placement
+	};
+	if (spec.readable) {
+		const design = getReadableVolumePackage(spec.id)?.design;
+		return {
+			...base,
+			kind: 'readable',
+			bindingStyle: design?.bindingStyle ?? spec.binding,
+			coverColor: design?.coverColor ?? spec.coverColor,
+			spineProfile: design?.spineProfile ?? spec.spine,
+			design
+		};
+	}
+	return {
+		...base,
+		kind: 'placeholder',
+		bindingStyle: spec.binding,
+		coverColor: spec.coverColor,
+		spineProfile: spec.spine
 	};
 }
 
