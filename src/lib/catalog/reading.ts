@@ -1,4 +1,4 @@
-import { getReadableVolumePackage } from '#lib/catalog/readable/index.ts';
+import { getLoadedVolumeContent, loadVolumeContent } from '#lib/catalog/readable/index.ts';
 import type {
 	IllustrationMotion,
 	ProseSection,
@@ -220,6 +220,11 @@ function wrapTextToBudget(text: string, maxChars: number): string[] {
 	return rows;
 }
 
+function getFirstPageLineLimit(hasArtworkOpener: boolean, epigraph?: string): number {
+	const base = hasArtworkOpener ? BODY_LINES_PER_PAGE : OPENER_LINES_PER_PAGE;
+	return Math.max(6, base - (epigraph ? 3 : 0));
+}
+
 function paginateProseSection(
 	section: ProseSection,
 	hasArtworkOpener = false
@@ -233,13 +238,11 @@ function paginateProseSection(
 	}
 	if (allLines.length === 0) return [[]];
 
-	const firstLimit = hasArtworkOpener
-		? BODY_LINES_PER_PAGE - (section.epigraph ? 3 : 0)
-		: OPENER_LINES_PER_PAGE - (section.epigraph ? 3 : 0);
+	const firstLimit = getFirstPageLineLimit(hasArtworkOpener, section.epigraph);
 	const buckets: PageTextLine[][] = [];
 	let cursor = 0;
 	while (cursor < allLines.length) {
-		const limit = buckets.length === 0 ? Math.max(6, firstLimit) : BODY_LINES_PER_PAGE;
+		const limit = buckets.length === 0 ? firstLimit : BODY_LINES_PER_PAGE;
 		buckets.push(allLines.slice(cursor, cursor + limit));
 		cursor += limit;
 	}
@@ -266,13 +269,11 @@ function paginateVerseSection(
 	});
 	if (allLines.length === 0) return [[]];
 
-	const firstLimit = hasArtworkOpener
-		? BODY_LINES_PER_PAGE - (section.epigraph ? 3 : 0)
-		: OPENER_LINES_PER_PAGE - (section.epigraph ? 3 : 0);
+	const firstLimit = getFirstPageLineLimit(hasArtworkOpener, section.epigraph);
 	const buckets: PageTextLine[][] = [];
 	let cursor = 0;
 	while (cursor < allLines.length) {
-		const limit = buckets.length === 0 ? Math.max(6, firstLimit) : BODY_LINES_PER_PAGE;
+		const limit = buckets.length === 0 ? firstLimit : BODY_LINES_PER_PAGE;
 		const slice: PageTextLine[] = [];
 		let units = 0;
 		while (cursor < allLines.length) {
@@ -591,14 +592,33 @@ export function buildVolumeReadingModel(
 
 /**
  * Builds (and caches) a deterministic fixed-layout Chapter / Page / Spread model
- * for a Volume (ADR 0004).
+ * for a Volume (ADR 0004). Uses already-loaded VolumeContent when present, or
+ * falls back to the deterministic specimen layout until `loadVolumeReadingModel` resolves.
  */
 export function getVolumeReadingModel(volume: Volume): VolumeReadingModel {
 	const cached = modelCache.get(volume.id);
 	if (cached) return cached;
 
-	const pkg = getReadableVolumePackage(volume.id);
-	const model = buildVolumeReadingModel(volume, pkg?.content);
+	const content = getLoadedVolumeContent(volume.id);
+	const model = buildVolumeReadingModel(volume, content);
+	if (content || volume.kind !== 'readable') {
+		modelCache.set(volume.id, model);
+	}
+	return model;
+}
+
+/**
+ * Lazy-loads a Readable Volume's `content.ts` chunk, builds its deterministic
+ * reading model, and caches it for synchronous lookups.
+ */
+export async function loadVolumeReadingModel(volume: Volume): Promise<VolumeReadingModel> {
+	if (volume.kind !== 'readable') return getVolumeReadingModel(volume);
+
+	const content = await loadVolumeContent(volume.id);
+	const cached = modelCache.get(volume.id);
+	if (cached) return cached;
+
+	const model = buildVolumeReadingModel(volume, content);
 	modelCache.set(volume.id, model);
 	return model;
 }

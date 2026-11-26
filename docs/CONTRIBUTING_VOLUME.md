@@ -22,8 +22,8 @@ Each teammate owns one isolated `Readable Volume` slot in Stoa's 3D `Bookcase`. 
 
 Only edit files inside these paths for your assigned `<volume-id>`:
 
-- `src/lib/catalog/readable/<volume-id>/design.ts` — 3D binding, finishes, cover artwork, foil/stamps, endpapers, and interior typography.
-- `src/lib/catalog/readable/<volume-id>/content.ts` — Editable `title`/`author`, source attribution, literary text (`prose` / `verse`), and `illustration` plates.
+- `src/lib/catalog/readable/<volume-id>/design.ts` — 3D binding, finishes, cover artwork, foil/stamps, endpapers, interior typography, and optional eager cover/spine metadata (`title`, `author`, `sourceNote`).
+- `src/lib/catalog/readable/<volume-id>/content.ts` — Lazy-loaded `Reading Mode` metadata overrides, source attribution, literary text (`prose` / `verse`), and `illustration` plates.
 - `static/volumes/<volume-id>/` — Optional local images (`.webp`, `.png`, `.jpg`, `<= 1200px`, `<= 400 KB`; never external URLs).
 
 ## 3. Agent Skill Toolkit

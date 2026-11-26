@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { getSpread, getVolumeReadingModel, toRomanNumeral } from '#lib/catalog/reading.ts';
+	import { getSpread, toRomanNumeral } from '#lib/catalog/reading.ts';
 	import { READING_VOLUME_CONFIG } from '#lib/physics/reading-volume.ts';
 	import {
+		getActiveVolumeReadingModel,
 		getCurrentSpreadIndex,
 		getFocusedPageSide,
 		getInspectedVolume,
@@ -32,7 +33,9 @@
 	let drawerOpen = $state(false);
 	const isVisible = $derived(phase === 'reading' && (readingHud.visible || drawerOpen));
 
-	const model = $derived(volume ? getVolumeReadingModel(volume) : null);
+	const model = $derived(volume ? getActiveVolumeReadingModel(volume) : null);
+	const displayTitle = $derived(model?.title ?? volume?.title ?? '');
+	const displayAuthor = $derived(model?.author ?? volume?.author ?? '');
 	const spread = $derived(model ? getSpread(model, spreadIndex) : null);
 	const activeMobilePage = $derived(
 		spread ? (focusedSide === 'left' ? spread.leftPage : spread.rightPage) : null
@@ -143,8 +146,7 @@
 		pageInput?.setCustomValidity('');
 		jumpToReadingPage(page.index);
 		pageNumberInput = '';
-		pageInput?.blur();
-		reveal();
+		void closeDrawer();
 	}
 
 	// Track narrow portrait viewports so mobile single-Page focus controls appear cleanly (ADR 0004).
@@ -167,7 +169,6 @@
 		function onKeyDown(event: KeyboardEvent): void {
 			if (phase !== 'reading') return;
 			if (event.key === 'Tab') reveal();
-			if (event.target instanceof HTMLInputElement) return;
 			if (drawerOpen) {
 				if (event.key === 'Escape') {
 					event.preventDefault();
@@ -175,6 +176,7 @@
 				}
 				return;
 			}
+			if (event.target instanceof HTMLInputElement) return;
 			if (event.key === 'Escape') {
 				event.preventDefault();
 				requestCloseToInspect();
@@ -253,8 +255,11 @@
 	});
 
 	const hasChapters = $derived((model?.chapters.length ?? 0) > 0);
+	const hasDrawerContent = $derived(navigationChoices.length > 0 || lastPageNumber > 0);
 	const drawerTitle = $derived(hasChapters ? 'Chapters' : 'Stanzas');
-	const choosePrompt = $derived(hasChapters ? 'Choose Chapter' : 'Choose Stanza');
+	const choosePrompt = $derived(
+		hasChapters ? 'Choose Chapter' : navigationChoices.length > 0 ? 'Choose Stanza' : 'Go to Page'
+	);
 </script>
 
 <svelte:window onpointermove={onHover} onpointerdown={onPointerDown} />
@@ -290,11 +295,11 @@
 		<!-- Top reading status header -->
 		<header class="study-heading relative z-10 max-w-full">
 			<h1 class="font-volume text-xl leading-tight sm:text-2xl">
-				{volume.title}
+				{displayTitle}
 			</h1>
-			{#if navigationChoices.length === 0}
+			{#if !hasDrawerContent}
 				<p class="study-action mt-1 inline-flex cursor-default items-center border-b border-brass/60 bg-ink/95">
-					{volume.author}, {spreadLabel}
+					{displayAuthor}, {spreadLabel}
 				</p>
 			{:else}
 				<div data-chapters class="pointer-events-auto relative mt-1 max-w-full">
@@ -302,7 +307,7 @@
 						type="button"
 						bind:this={indicator}
 						disabled={!!getLeafTurn()}
-						aria-label={`${choosePrompt}, ${chapterLabel ?? volume.author}, ${spreadLabel}`}
+						aria-label={`${choosePrompt}, ${chapterLabel ?? displayAuthor}, ${spreadLabel}`}
 						aria-expanded={drawerOpen}
 						aria-controls="chapter-drawer"
 						onclick={() => {
@@ -314,69 +319,90 @@
 						{#if chapterLabel}
 							{chapterLabel}, {spreadLabel}
 						{:else}
-							{volume.author}, {spreadLabel}
+							{displayAuthor}, {spreadLabel}
 						{/if}
 						<span aria-hidden="true"> ▾</span>
 					</button>
 					{#if drawerOpen && model}
 						<nav
 							id="chapter-drawer"
-							aria-label={`Title Page and ${drawerTitle}`}
-							class="absolute top-full left-0 z-10 mt-1 max-h-[50dvh] w-80 max-w-[calc(100vw-3.5rem)] overflow-y-auto overscroll-contain border-t-2 border-brass bg-paper p-2 text-left text-ink shadow-lg"
+							aria-label={navigationChoices.length > 0
+								? `Title Page and ${drawerTitle}`
+								: 'Go to Page'}
+							class="absolute top-full left-0 z-10 mt-1 max-h-[50dvh] w-80 max-w-[calc(100vw-3.5rem)] overflow-y-auto overscroll-contain border-t-2 border-brass bg-paper p-2 text-left text-ink shadow-lg text-shadow-none"
 						>
-							<button
-								type="button"
-								aria-current={spreadIndex === 0 ? 'location' : undefined}
-								onclick={() => {
-									jumpToReadingPage(model.spreads[0].rightPage.index);
-									void closeDrawer();
-								}}
-								class="chapter-choice"
-							>
-								<span class="text-xs text-muted">0</span>
-								<span class="font-volume text-base">Title Page</span>
-							</button>
-							{#each navigationChoices as choice (choice.key)}
+							{#if lastPageNumber > 0}
+								<form
+									onsubmit={goToPage}
+									novalidate
+									class="sticky -top-2 z-10 -mx-2 -mt-2 flex items-center gap-2 bg-paper px-3 py-1.5 {navigationChoices.length >
+									0
+										? 'mb-1 border-b border-ink/15'
+										: ''}"
+								>
+									<label for="reading-page-number" class="shrink-0 font-volume text-sm text-muted">
+										Go to p.
+									</label>
+									<div
+										class="flex min-w-0 flex-1 items-baseline gap-1 border-b border-ink/25 pb-0.5 transition-colors focus-within:border-brass"
+									>
+										<input
+											id="reading-page-number"
+											bind:this={pageInput}
+											bind:value={pageNumberInput}
+											type="text"
+											inputmode="numeric"
+											autocomplete="off"
+											placeholder="1"
+											disabled={!!getLeafTurn() || phase !== 'reading'}
+											oninput={() => pageInput?.setCustomValidity('')}
+											class="h-8 w-full min-w-0 bg-transparent text-right font-volume text-sm tabular-nums text-ink placeholder:text-muted/60 focus:outline-none disabled:opacity-40"
+										/>
+										<span class="shrink-0 text-xs tabular-nums text-muted">
+											/ {lastPageNumber}
+										</span>
+									</div>
+									<button
+										type="submit"
+										aria-label="Go to Page"
+										disabled={!!getLeafTurn() || phase !== 'reading'}
+										class="min-h-11 min-w-11 shrink-0 cursor-pointer rounded-xs border border-brass/50 px-2 font-volume text-sm text-ink transition-colors enabled:hover:bg-brass/20 focus-visible:outline-2 focus-visible:outline-brass disabled:cursor-default disabled:opacity-40"
+									>
+										→
+									</button>
+								</form>
+							{/if}
+							{#if navigationChoices.length > 0}
 								<button
 									type="button"
-									aria-current={choice.active ? 'location' : undefined}
+									aria-current={spreadIndex === 0 ? 'location' : undefined}
 									onclick={() => {
-										jumpToReadingPage(choice.startPageIndex);
+										jumpToReadingPage(model.spreads[0].rightPage.index);
 										void closeDrawer();
 									}}
 									class="chapter-choice"
 								>
-									<span class="text-xs text-muted">{choice.marker}</span>
-									<span class="font-volume text-base">{choice.label}</span>
+									<span class="text-xs text-muted">0</span>
+									<span class="font-volume text-base">Title Page</span>
 								</button>
-							{/each}
+								{#each navigationChoices as choice (choice.key)}
+									<button
+										type="button"
+										aria-current={choice.active ? 'location' : undefined}
+										onclick={() => {
+											jumpToReadingPage(choice.startPageIndex);
+											void closeDrawer();
+										}}
+										class="chapter-choice"
+									>
+										<span class="text-xs text-muted">{choice.marker}</span>
+										<span class="font-volume text-base">{choice.label}</span>
+									</button>
+								{/each}
+							{/if}
 						</nav>
 					{/if}
 				</div>
-			{/if}
-			{#if lastPageNumber > 0}
-				<form onsubmit={goToPage} novalidate class="pointer-events-auto mt-2 flex w-fit items-center bg-ink/95 text-paper">
-					<label for="reading-page-number" class="sr-only">Page number</label>
-					<input
-						id="reading-page-number"
-						bind:this={pageInput}
-						bind:value={pageNumberInput}
-						type="text"
-						inputmode="numeric"
-						autocomplete="off"
-						placeholder="Page"
-						disabled={!!getLeafTurn() || phase !== 'reading'}
-						oninput={() => pageInput?.setCustomValidity('')}
-						class="h-11 w-14 px-1 text-center text-sm text-paper placeholder:text-paper/75 focus-visible:outline-2 focus-visible:outline-brass disabled:opacity-40"
-					/>
-					<button
-						type="submit"
-						disabled={!!getLeafTurn() || phase !== 'reading'}
-						class="study-action border-b border-brass/60 px-2 enabled:hover:bg-paper/15"
-					>
-						Go
-					</button>
-				</form>
 			{/if}
 		</header>
 

@@ -90,6 +90,12 @@ export interface VolumeDesign {
 	readonly coverArtwork?: CoverArtworkSpec;
 
 	// --- Cover & Spine Stamping ---
+	/** Optional display title override stamped eagerly on the closed spine/cover and Shelf HUD. */
+	readonly title?: string;
+	/** Optional author override stamped eagerly on the closed spine/cover and Shelf HUD. */
+	readonly author?: string;
+	/** Optional source attribution stamped eagerly on the closed back cover. */
+	readonly sourceNote?: string;
 	readonly coverBorder?: CoverBorderStyle;
 	readonly emblem?: CoverEmblemSpec;
 	/** Edition imprint stamped near the foot of the cover (defaults to "STOA LIBRARY EDITION"). */
@@ -173,13 +179,13 @@ export interface IllustratedStanza {
 }
 
 interface VolumeMetadata {
-	/** Optional display title override (replaces the default Catalog title everywhere). */
+	/** Optional display title override inside Reading Mode (title Page, running heads, HUD). */
 	readonly title?: string;
-	/** Optional author override (replaces the default Catalog author everywhere). */
+	/** Optional author override inside Reading Mode (title Page, colophon, HUD). */
 	readonly author?: string;
 	readonly subtitle?: string;
 	readonly translator?: string;
-	/** Source / edition attribution shown on the back cover, 1st title Page, and closing colophon. */
+	/** Source / edition attribution shown on the 1st title Page and closing colophon. */
 	readonly sourceNote?: string;
 	readonly colophonNote?: string;
 }
@@ -200,5 +206,6 @@ export type VolumeContent = VolumeMetadata &
 
 export interface ReadableVolumePackage {
 	readonly design: VolumeDesign;
-	readonly content: VolumeContent;
+	/** Lazy loader for `content.ts` so full literary texts are code-split per Volume. */
+	readonly loadContent: () => Promise<VolumeContent>;
 }

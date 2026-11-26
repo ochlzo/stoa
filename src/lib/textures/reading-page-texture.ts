@@ -433,6 +433,27 @@ function drawStanza(
 	ctx.fillText(String(page.pageNumber), cx, height - 49);
 }
 
+function loadTextureImage(
+	src: string | undefined,
+	texture: CanvasTexture,
+	onLoad: (img: HTMLImageElement) => void
+): void {
+	if (!src || typeof Image === 'undefined') return;
+	const resolvedSrc = new URL(src.replace(/^\/+/, ''), document.baseURI).href;
+	const img = new Image();
+	img.crossOrigin = 'anonymous';
+	const cancelLoad = () => {
+		img.onload = null;
+		texture.removeEventListener('dispose', cancelLoad);
+	};
+	texture.addEventListener('dispose', cancelLoad);
+	img.onload = () => {
+		texture.removeEventListener('dispose', cancelLoad);
+		onLoad(img);
+	};
+	img.src = resolvedSrc;
+}
+
 function drawIllustrationPlate(
 	ctx: CanvasRenderingContext2D,
 	page: Page,
@@ -470,17 +491,7 @@ function drawIllustrationPlate(
 		ctx.fillText(String(page.pageNumber), layout.cx, height - 49);
 	}
 
-	if (!page.illustrationSrc || typeof Image === 'undefined') return;
-	const resolvedSrc = new URL(page.illustrationSrc.replace(/^\/+/, ''), document.baseURI).href;
-	const img = new Image();
-	img.crossOrigin = 'anonymous';
-	const cancelLoad = () => {
-		img.onload = null;
-		texture.removeEventListener('dispose', cancelLoad);
-	};
-	texture.addEventListener('dispose', cancelLoad);
-	img.onload = () => {
-		texture.removeEventListener('dispose', cancelLoad);
+	loadTextureImage(page.illustrationSrc, texture, (img) => {
 		const pad = fullPage ? 0 : 20;
 		const scaleImage = fullPage ? Math.max : Math.min;
 		const scale = scaleImage(
@@ -515,16 +526,13 @@ function drawIllustrationPlate(
 				drawOverlay: () => drawGutterShadow(ctx, page.side)
 			});
 		}
-	};
-	img.src = resolvedSrc;
+	});
 }
 
 function drawChapterOpener(
 	ctx: CanvasRenderingContext2D,
 	page: Page,
-	left: number,
-	right: number,
-	cx: number,
+	layout: { left: number; right: number; cx: number },
 	texture: CanvasTexture,
 	theme: PageTheme
 ) {
@@ -538,15 +546,15 @@ function drawChapterOpener(
 		ctx.textAlign = 'center';
 		ctx.fillStyle = '#24160e';
 		ctx.font = '600 30px ' + theme.font;
-		ctx.fillText(`CHAPTER ${page.chapterRomanNumeral ?? ''}`, cx, 165);
+		ctx.fillText(`CHAPTER ${page.chapterRomanNumeral ?? ''}`, layout.cx, 165);
 		ctx.font = '600 54px ' + theme.font;
-		heading(ctx, page.chapterTitle ?? '', cx, 430, right - left, 62);
+		heading(ctx, page.chapterTitle ?? '', layout.cx, 430, layout.right - layout.left, 62);
 		if (page.pageNumber !== null) {
 			ctx.fillStyle = '#fff0c9';
 			ctx.shadowColor = '#24160e';
 			ctx.shadowBlur = 8;
 			ctx.font = '600 25px ' + theme.font;
-			ctx.fillText(String(page.pageNumber), cx, height - 49);
+			ctx.fillText(String(page.pageNumber), layout.cx, height - 49);
 			ctx.shadowBlur = 0;
 		}
 		drawGutterShadow(ctx, page.side);
@@ -555,18 +563,14 @@ function drawChapterOpener(
 
 	// Keep the Chapter readable on paper while its local illustration loads.
 	drawTitle();
-	if (!page.illustrationSrc || typeof Image === 'undefined') return;
-	const img = new Image();
-	img.crossOrigin = 'anonymous';
-	img.onload = () => {
+	loadTextureImage(page.illustrationSrc, texture, (img) => {
 		const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
 		const drawW = img.naturalWidth * scale;
 		const drawH = img.naturalHeight * scale;
 		ctx.clearRect(0, 0, width, height);
 		ctx.drawImage(img, (width - drawW) / 2, (height - drawH) / 2, drawW, drawH);
 		drawTitle();
-	};
-	img.src = new URL(page.illustrationSrc.replace(/^\/+/, ''), document.baseURI).href;
+	});
 }
 
 // One stock tile per tint per open Volume. Each face owns its CanvasTexture, including a turning Leaf's reverse.
@@ -680,7 +684,7 @@ export function createReadingPagePainter() {
 				heading(ctx, page.sourceNote, cx, 932, right - left - 44, 26);
 			}
 		} else if (page.kind === 'chapter-opener') {
-			drawChapterOpener(ctx, page, left, right, cx, texture, theme);
+			drawChapterOpener(ctx, page, { left, right, cx }, texture, theme);
 		} else if (page.kind === 'illustration') {
 			if (!page.fullBleed) {
 				ctx.font = 'italic 600 25px ' + theme.font;

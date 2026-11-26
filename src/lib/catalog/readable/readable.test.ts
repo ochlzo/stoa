@@ -5,7 +5,9 @@ import { describe, it } from 'node:test';
 import { LOOKDEV_PALETTE } from '#lib/catalog/lookdev.ts';
 import {
 	buildVolumeReadingModel,
-	getSpreadIndexForPage
+	getSpreadIndexForPage,
+	getVolumeReadingModel,
+	loadVolumeReadingModel
 } from '#lib/catalog/reading.ts';
 import { READABLE_VOLUMES } from '#lib/catalog/readable/index.ts';
 import type { VolumeContent } from '#lib/catalog/readable/types.ts';
@@ -147,9 +149,9 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 		assert.equal(lastPage.colophonNote, 'Public domain test fixture');
 	});
 
-	it('builds illustratedStanzas with explicit stanza PageKind, fullBleed plates, and static assets', () => {
+	it('builds illustratedStanzas with explicit stanza PageKind, fullBleed plates, and static assets', async () => {
 		const pkg = READABLE_VOLUMES['ode-on-a-grecian-urn'];
-		const model = buildVolumeReadingModel(sampleVolume, pkg.content);
+		const model = buildVolumeReadingModel(sampleVolume, await pkg.loadContent());
 
 		assert.equal(model.chapters.length, 0);
 		// Title spread + 5 illustrated stanza spreads + closing colophon spread
@@ -175,6 +177,15 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 			assert.equal(spread.rightPage.stanzaNumber, i);
 			assert.equal(spread.rightPage.lines?.length, 10);
 		}
+	});
+
+	it('lazy-loads The Odyssey content on demand and caches its 24 illustrated chapters', async () => {
+		const odyssey = CATALOG.find((v) => v.id === 'the-odyssey')!;
+		const model = await loadVolumeReadingModel(odyssey);
+
+		assert.equal(model.chapters.length, 24);
+		assert.equal(model.pages.filter((p) => p.kind === 'chapter-opener').length, 24);
+		assert.equal(getVolumeReadingModel(odyssey), model);
 	});
 });
 
