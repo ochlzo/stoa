@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { BOOKCASE_DIMENSIONS } from '#lib/catalog/bookcase.ts';
+import { WOOD_GRAIN_TILE_WIDTH } from '#lib/catalog/lookdev.ts';
 
 export interface BookcaseCrownGeometryBundle {
 	readonly geometry: THREE.BufferGeometry;
@@ -68,6 +69,7 @@ export function createBookcaseCrownGeometry(): BookcaseCrownGeometryBundle {
 	const profile = buildCrownProfile(d.crownHeight, d.crownOverhang);
 
 	const positions: number[] = [];
+	const uvs: number[] = [];
 	const indices: number[] = [];
 
 	/**
@@ -78,9 +80,20 @@ export function createBookcaseCrownGeometry(): BookcaseCrownGeometryBundle {
 		endCorner: (p: ProfilePoint) => readonly [number, number, number]
 	): void {
 		const baseIndex = positions.length / 3;
+		let distance = 0;
+		let previous = profile[0];
 		for (const p of profile) {
 			const a = startCorner(p);
 			const b = endCorner(p);
+			distance += Math.hypot(p.y - previous.y, p.out - previous.out);
+			previous = p;
+			const front = a[2] === b[2];
+			uvs.push(
+				front ? a[0] : a[2],
+				distance / WOOD_GRAIN_TILE_WIDTH,
+				front ? b[0] : b[2],
+				distance / WOOD_GRAIN_TILE_WIDTH
+			);
 			positions.push(a[0], a[1], a[2], b[0], b[1], b[2]);
 		}
 		for (let i = 0; i < profile.length - 1; i += 1) {
@@ -117,10 +130,21 @@ export function createBookcaseCrownGeometry(): BookcaseCrownGeometryBundle {
 		halfW + top.out, top.y, top.out,
 		halfW + top.out, top.y, -depth
 	);
+	uvs.push(
+		-halfW - top.out,
+		-depth / WOOD_GRAIN_TILE_WIDTH,
+		-halfW - top.out,
+		top.out / WOOD_GRAIN_TILE_WIDTH,
+		halfW + top.out,
+		top.out / WOOD_GRAIN_TILE_WIDTH,
+		halfW + top.out,
+		-depth / WOOD_GRAIN_TILE_WIDTH
+	);
 	indices.push(capBase, capBase + 1, capBase + 2, capBase, capBase + 2, capBase + 3);
 
 	const geometry = new THREE.BufferGeometry();
 	geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+	geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
 	geometry.setIndex(indices);
 	geometry.computeVertexNormals();
 

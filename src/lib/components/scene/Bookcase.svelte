@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
+	import { createArchitectureFinishes, setBoardUvs } from '#lib/components/scene/architecture-finish-geometry.ts';
 	import { T } from '@threlte/core';
 	import { CLAY_COLORS, getBookcaseStructure, type BoxSpec } from '#lib/catalog/bookcase.ts';
 	import { createBookcaseCrownGeometry } from '#lib/components/scene/bookcase-trim-geometry.ts';
@@ -7,9 +9,13 @@
 	const structure = getBookcaseStructure();
 	const crownBundle = createBookcaseCrownGeometry();
 	const crownBaseY = structure.crown.position[1] - structure.crown.size[1] / 2;
+	const finishes = createArchitectureFinishes();
+	onDestroy(() => finishes.dispose());
 	const shadowsEnabled = $derived(!isClayMode());
 
 	$effect(() => () => crownBundle.dispose());
+
+	const finishByTone = { structure: 'woodPrimary', back: 'woodBackPanel', trim: 'woodTrim' } as const;
 
 	const parts: BoxSpec[] = [
 		structure.plinth,
@@ -30,12 +36,12 @@
 			castShadow={shadowsEnabled}
 			receiveShadow={shadowsEnabled}
 		>
-			<T.BoxGeometry args={[part.size[0], part.size[1], part.size[2]]} />
-			<T.MeshStandardMaterial
-				color={CLAY_COLORS[part.tone]}
-				roughness={0.92}
-				metalness={0}
-			/>
+			<T.BoxGeometry args={[part.size[0], part.size[1], part.size[2]]} oncreate={(geometry) => setBoardUvs(geometry, part)} />
+			{#if shadowsEnabled}
+				<T is={finishes.get(finishByTone[part.tone])} dispose={false} />
+			{:else}
+				<T.MeshStandardMaterial color={CLAY_COLORS[part.tone]} roughness={0.92} metalness={0} />
+			{/if}
 		</T.Mesh>
 	{/each}
 
@@ -47,6 +53,10 @@
 		castShadow={shadowsEnabled}
 		receiveShadow={shadowsEnabled}
 	>
-		<T.MeshStandardMaterial color={CLAY_COLORS.trim} roughness={0.9} metalness={0} />
+		{#if shadowsEnabled}
+			<T is={finishes.get('woodTrim')} dispose={false} />
+		{:else}
+			<T.MeshStandardMaterial color={CLAY_COLORS.trim} roughness={0.9} metalness={0} />
+		{/if}
 	</T.Mesh>
 </T.Group>

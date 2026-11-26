@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { T } from '@threlte/core';
+	import { createVolumeStamps } from '#lib/components/scene/volume-stamp-geometry.ts';
+	import { onDestroy } from 'svelte';
+	import { createVolumeFinishes } from '#lib/textures/volume-finishes.ts';
 	import { interactivity } from '@threlte/extras';
 	import { CLAY_COLORS } from '#lib/catalog/bookcase.ts';
 	import { SUNLIT_STUDY_LIGHTS } from '#lib/catalog/lookdev.ts';
@@ -14,6 +17,10 @@
 	import { isClayMode } from '#lib/state/lookdev.svelte.ts';
 
 	interactivity();
+	const finishes = createVolumeFinishes();
+	const stamps = createVolumeStamps(finishes);
+	onDestroy(stamps.dispose);
+	onDestroy(finishes.dispose);
 
 	const readingVolume = $derived(getSceneMode() === 'reading' ? getInspectedVolume() : null);
 	const backgroundColor = $derived(
@@ -27,8 +34,8 @@
 <LibraryLights />
 <RoomBackdrop />
 <Bookcase />
-<ShelfVolumes />
-<ShelfProps />
+<ShelfVolumes {stamps} {finishes} />
+<ShelfProps {finishes} />
 {#if readingVolume}
-	<OpenVolume volume={readingVolume} />
+	<OpenVolume {stamps} {finishes} volume={readingVolume} />
 {/if}

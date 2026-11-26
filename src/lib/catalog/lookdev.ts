@@ -26,7 +26,7 @@ export interface LookdevRendererConfig {
 	readonly shadowFrustum: ShadowFrustumBounds;
 }
 
-export interface DirectionalLightSpec {
+export interface StudyLightSpec {
 	readonly position: readonly [x: number, y: number, z: number];
 	readonly target: readonly [x: number, y: number, z: number];
 	readonly color: string;
@@ -46,24 +46,47 @@ export interface SunlitStudyLightsConfig {
 	/** Soft sky-to-floor ambient bounce so deep Shelf bays stay warm and readable. */
 	readonly hemisphere: HemisphereLightSpec;
 	/** Primary afternoon window sunlight casting soft shadows across the Bookcase. */
-	readonly sunKey: DirectionalLightSpec;
+	readonly sunKey: StudyLightSpec;
 	/** Gentle opposite-side sky fill to soften shadow contrast on spines and props. */
-	readonly skyFill: DirectionalLightSpec;
+	readonly skyFill: StudyLightSpec;
 	/** Subtle warm room bounce from the lower foreground to lift underside Shelf details. */
-	readonly warmBounce: DirectionalLightSpec;
+	readonly warmBounce: StudyLightSpec;
+	/** Back-left rim light that separates covers and catches foil during Inspect Mode. */
+	readonly rim: StudyLightSpec;
+}
+
+export interface StudyLightingTarget {
+	sun: number;
+	sky: number;
+	ambient: number;
+	rim: number;
+	environment: number;
+	exposure: number;
+	dust: number;
 }
 
 const bookcaseBounds = getBookcaseStructure().bounds;
 const bookcaseCenterY = (bookcaseBounds.minY + bookcaseBounds.maxY) / 2;
+
+/** Cross-grain width of one procedural wood tile in meters. */
+export const WOOD_GRAIN_TILE_WIDTH = 0.42;
+
+/** Dimmed backdrop styling for Inspect Mode and Reading Mode in Lookdev vs Clay. */
+export const LOOKDEV_BACKDROP = {
+	clayColor: '#141210',
+	lookdevColor: '#44382c',
+	inspectOpacity: 0.24,
+	readingOpacity: 0.39
+} as const;
 
 /**
  * Physically based renderer and shadow calibration for the warm sunlit afternoon study.
  * Shadow frustum bounds are derived directly from the metric Bookcase dimensions (ADR 0005).
  */
 export const LOOKDEV_RENDERER_CONFIG: LookdevRendererConfig = {
-	exposure: 1.05,
+	exposure: 0.92,
 	clayExposure: 1.0,
-	environmentIntensity: 0.65,
+	environmentIntensity: 0.34,
 	shadowMapSize: 2048,
 	shadowBias: -0.00025,
 	shadowNormalBias: 0.012,
@@ -83,36 +106,87 @@ export const LOOKDEV_RENDERER_CONFIG: LookdevRendererConfig = {
  * - Soft warm-ivory sky / oak-floor hemisphere fill
  * - Cool-neutral opposite window fill so shadowed spine crevices retain shape
  * - Gentle warm floor/desk bounce from below
+ * - Inspect Mode rim light from back-left to catch cover grain and gold foil
  */
 export const SUNLIT_STUDY_LIGHTS: SunlitStudyLightsConfig = {
 	background: '#ece3d5',
 	hemisphere: {
 		skyColor: '#fff5e4',
 		groundColor: '#b99c7a',
-		intensity: 0.72
+		intensity: 0.52
 	},
 	sunKey: {
 		position: [2.1, 3.05, 2.55],
 		target: [0, bookcaseCenterY, -0.15],
-		color: '#ffe2b8',
-		intensity: 2.35,
+		color: '#ffdfb3',
+		intensity: 2.25,
 		castShadow: true
 	},
 	skyFill: {
 		position: [-2.2, 1.5, 1.9],
 		target: [0, bookcaseCenterY, -0.1],
 		color: '#d8e4f2',
-		intensity: 0.58,
+		intensity: 0.42,
 		castShadow: false
 	},
 	warmBounce: {
 		position: [0.25, -0.8, 1.8],
 		target: [0, bookcaseCenterY, -0.1],
 		color: '#f2d8b6',
-		intensity: 0.28,
+		intensity: 0.2,
+		castShadow: false
+	},
+	rim: {
+		position: [-1.8, 2.45, -1.2],
+		target: [0, bookcaseCenterY, -0.15],
+		color: '#ffe5be',
+		intensity: 0,
 		castShadow: false
 	}
 };
+
+const shelfLighting: StudyLightingTarget = {
+	sun: SUNLIT_STUDY_LIGHTS.sunKey.intensity,
+	sky: SUNLIT_STUDY_LIGHTS.skyFill.intensity,
+	ambient: SUNLIT_STUDY_LIGHTS.hemisphere.intensity,
+	rim: SUNLIT_STUDY_LIGHTS.rim.intensity,
+	environment: LOOKDEV_RENDERER_CONFIG.environmentIntensity,
+	exposure: LOOKDEV_RENDERER_CONFIG.exposure,
+	dust: 1
+};
+
+/** Per-mode lighting interpolation targets for Shelf Mode, Inspect Mode, and Reading Mode. */
+export const STUDY_LIGHTING: Readonly<Record<'shelf' | 'inspect' | 'reading', StudyLightingTarget>> = {
+	shelf: shelfLighting,
+	inspect: {
+		...shelfLighting,
+		sun: 1.95,
+		sky: 0.52,
+		ambient: 0.6,
+		rim: 1.15,
+		environment: 0.45,
+		exposure: 0.96,
+		dust: 0
+	},
+	reading: {
+		...shelfLighting,
+		sun: 1.08,
+		sky: 0.84,
+		ambient: 0.96,
+		rim: 0.08,
+		environment: 0.31,
+		exposure: 0.98,
+		dust: 0
+	}
+};
+
+/** Sunlit air volume in front of the middle Shelves where dust motes drift in Shelf Mode. */
+export const STUDY_WINDOW = {
+	position: SUNLIT_STUDY_LIGHTS.sunKey.position,
+	target: SUNLIT_STUDY_LIGHTS.sunKey.target,
+	halfWidth: 0.26,
+	angle: 0.27
+} as const;
 
 /**
  * Shared warm sunlit afternoon study palette anchor for downstream Lookdev slices
@@ -144,7 +218,10 @@ export const LOOKDEV_PALETTE = {
 		terracotta: '#b36b4d',
 		sageGlaze: '#7e8c78',
 		travertine: '#cfc5b4',
+		marble: '#e0d6c4',
 		foliage: '#4f6a48',
+		petal: '#78906b',
+		stem: '#485536',
 		soil: '#3e3228',
 		tintedGlass: '#dce5df'
 	},
@@ -160,6 +237,19 @@ export const LOOKDEV_PALETTE = {
 		oliveCloth: '#5a6345'
 	}
 } as const;
+
+/**
+ * Deterministic 32-bit linear congruential PRNG returning values in [0, 1).
+ * Shared across pure-TS seeding and procedural texture generators so there is
+ * one reproducible noise source instead of duplicated LCG loops.
+ */
+export function createSeededRandom(initialSeed: number): () => number {
+	let seed = initialSeed >>> 0;
+	return () => {
+		seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+		return seed / 4294967296;
+	};
+}
 
 /**
  * Parses the URL query string for the dev-only Clay comparison toggle (`?clay=1` or `?clay=true`).

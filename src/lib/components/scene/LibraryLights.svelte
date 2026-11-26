@@ -1,13 +1,54 @@
 <script lang="ts">
-	import { T, useThrelte } from '@threlte/core';
-	import type { DirectionalLight } from 'three';
-	import { LOOKDEV_RENDERER_CONFIG, SUNLIT_STUDY_LIGHTS } from '#lib/catalog/lookdev.ts';
+	import { T, useTask, useThrelte } from '@threlte/core';
+	import { onMount } from 'svelte';
+	import type { DirectionalLight, HemisphereLight } from 'three';
+	import {
+		LOOKDEV_RENDERER_CONFIG,
+		STUDY_LIGHTING,
+		SUNLIT_STUDY_LIGHTS
+	} from '#lib/catalog/lookdev.ts';
 	import ClayStudioLights from '#lib/components/scene/ClayStudioLights.svelte';
+	import SunlitDust from '#lib/components/scene/SunlitDust.svelte';
+	import { stepStudyLighting } from '#lib/physics/study-lighting.ts';
+	import { getInspectPhase, getReadingPhase, getSceneMode } from '#lib/state/library.svelte.ts';
 	import { isClayMode } from '#lib/state/lookdev.svelte.ts';
 	import { createStudyEnvironment } from '#lib/textures/environment.ts';
 
 	const { renderer, scene } = useThrelte();
 	const clayMode = $derived(isClayMode());
+
+	const lighting = { ...STUDY_LIGHTING.shelf };
+	let sun = $state<DirectionalLight>();
+	let sky = $state<DirectionalLight>();
+	let ambient = $state<HemisphereLight>();
+	let rim = $state<DirectionalLight>();
+	let showDust = $state(false);
+
+	onMount(() => {
+		const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+		const update = () => {
+			showDust = !preference.matches;
+		};
+		update();
+		preference.addEventListener('change', update);
+		return () => preference.removeEventListener('change', update);
+	});
+
+	useTask((delta) => {
+		const dt = Math.min(delta, 0.05);
+		if (clayMode || !sun || !rim || !sky || !ambient) return;
+		const mode = getSceneMode();
+		const closing = getReadingPhase();
+		const returning = closing === 'closing-to-shelf' || getInspectPhase() === 'returning';
+		const target = returning ? 'shelf' : closing === 'closing-to-inspect' ? 'inspect' : mode;
+		stepStudyLighting(lighting, STUDY_LIGHTING[target], dt);
+		sun.intensity = lighting.sun;
+		sky.intensity = lighting.sky;
+		ambient.intensity = lighting.ambient;
+		rim.intensity = lighting.rim;
+		scene.environmentIntensity = lighting.environment;
+		renderer.toneMappingExposure = lighting.exposure;
+	});
 
 	// Sync filmic tone-mapping exposure and procedural IBL environment with Clay vs Lookdev mode.
 	$effect(() => {
@@ -30,13 +71,6 @@
 		};
 	});
 
-	function aimKeyLight(light: DirectionalLight): void {
-		const [tx, ty, tz] = SUNLIT_STUDY_LIGHTS.sunKey.target;
-		light.target.position.set(tx, ty, tz);
-		light.target.updateMatrixWorld();
-		scene.add(light.target);
-	}
-
 	function aimDirectionalTarget(targetPos: readonly [number, number, number]) {
 		return (light: DirectionalLight) => {
 			light.target.position.set(targetPos[0], targetPos[1], targetPos[2]);
@@ -53,6 +87,7 @@
 {:else}
 	<!-- Warm sunlit afternoon study lighting rig -->
 	<T.HemisphereLight
+		bind:ref={ambient}
 		args={[
 			SUNLIT_STUDY_LIGHTS.hemisphere.skyColor,
 			SUNLIT_STUDY_LIGHTS.hemisphere.groundColor,
@@ -61,6 +96,7 @@
 	/>
 
 	<T.DirectionalLight
+		bind:ref={sun}
 		position={[...SUNLIT_STUDY_LIGHTS.sunKey.position]}
 		intensity={SUNLIT_STUDY_LIGHTS.sunKey.intensity}
 		color={SUNLIT_STUDY_LIGHTS.sunKey.color}
@@ -76,7 +112,7 @@
 		shadow.camera.near={frustum.near}
 		shadow.camera.far={frustum.far}
 		oncreate={(light) => {
-			aimKeyLight(light);
+			aimDirectionalTarget(SUNLIT_STUDY_LIGHTS.sunKey.target)(light);
 			return () => {
 				scene.remove(light.target);
 			};
@@ -84,6 +120,7 @@
 	/>
 
 	<T.DirectionalLight
+		bind:ref={sky}
 		position={[...SUNLIT_STUDY_LIGHTS.skyFill.position]}
 		intensity={SUNLIT_STUDY_LIGHTS.skyFill.intensity}
 		color={SUNLIT_STUDY_LIGHTS.skyFill.color}
@@ -106,4 +143,19 @@
 			};
 		}}
 	/>
+
+	<T.DirectionalLight
+		bind:ref={rim}
+		position={[...SUNLIT_STUDY_LIGHTS.rim.position]}
+		intensity={SUNLIT_STUDY_LIGHTS.rim.intensity}
+		color={SUNLIT_STUDY_LIGHTS.rim.color}
+		oncreate={(light) => {
+			aimDirectionalTarget(SUNLIT_STUDY_LIGHTS.rim.target)(light);
+			return () => {
+				scene.remove(light.target);
+			};
+		}}
+	/>
+
+	<SunlitDust {lighting} animate={showDust} />
 {/if}

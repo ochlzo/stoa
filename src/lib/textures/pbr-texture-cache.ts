@@ -109,3 +109,29 @@ export function createPbrTextureCache<T extends DisposableTexture = Texture>(): 
 		}
 	};
 }
+
+/**
+ * Word-wraps a string to fit within `maxWidth` pixels using the canvas context's
+ * active font. Shared across procedural Page and Volume spine/cover painters.
+ */
+export function wrapCanvasLines(
+	ctx: CanvasRenderingContext2D,
+	text: string,
+	maxWidth: number
+): string[] {
+	const result: string[] = [];
+	let line = '';
+	for (const word of text.split(/\s+/)) {
+		const next = line ? `${line} ${word}` : word;
+		if (line && ctx.measureText(next).width > maxWidth) {
+			result.push(line);
+			line = word;
+		} else {
+			line = next;
+		}
+	}
+	if (line) {
+		result.push(line);
+	}
+	return result;
+}

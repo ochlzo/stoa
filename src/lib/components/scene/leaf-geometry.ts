@@ -1,6 +1,6 @@
-import { BackSide, MeshStandardMaterial, PlaneGeometry, type CanvasTexture } from 'three';
+import { BackSide, PlaneGeometry, type CanvasTexture } from 'three';
 import {
-	PAGE_CLAY_ROUGHNESS,
+	createPageMaterial,
 	PAGE_STACK_SEGMENTS
 } from '#lib/components/scene/open-volume-geometry.ts';
 import { curlLeafVertex, type LeafTurn } from '#lib/physics/leaf-turn.ts';
@@ -12,6 +12,7 @@ export interface LeafGeometryOptions {
 	readonly leftThickness: number;
 	readonly rightThickness: number;
 	readonly turn: LeafTurn;
+	readonly clay?: boolean;
 	readonly frontTexture: CanvasTexture;
 	readonly backTexture: CanvasTexture;
 }
@@ -27,8 +28,8 @@ export function createLeafGeometry(options: LeafGeometryOptions) {
 	backTexture.repeat.x = -1;
 	backTexture.offset.x = 1;
 	const materials = [
-		new MeshStandardMaterial({ map: frontTexture, roughness: PAGE_CLAY_ROUGHNESS }),
-		new MeshStandardMaterial({ map: backTexture, roughness: PAGE_CLAY_ROUGHNESS, side: BackSide })
+		createPageMaterial(frontTexture, options.clay ?? true),
+		createPageMaterial(backTexture, options.clay ?? true, BackSide)
 	];
 	let lastProgress = -1;
 	const gutterDepth = Math.min(leftThickness, rightThickness);

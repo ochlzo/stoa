@@ -1,3 +1,7 @@
+import type { LOOKDEV_PALETTE } from '#lib/catalog/lookdev.ts';
+
+export type VolumeCoverColor = keyof typeof LOOKDEV_PALETTE.volumes;
+
 export type BindingStyleId =
 	| 'raised-band-leather'
 	| 'linen-cloth'
@@ -54,6 +58,7 @@ interface VolumeBase {
 	readonly shelfIndex: number;
 	readonly dimensions: VolumeDimensions;
 	readonly bindingStyle: BindingStyleId;
+	readonly coverColor: VolumeCoverColor;
 	readonly clayTone: VolumeClayTone;
 	readonly spineProfile: SpineProfile;
 	readonly placement: VolumePlacementRule;

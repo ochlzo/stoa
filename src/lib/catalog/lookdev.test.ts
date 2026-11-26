@@ -41,6 +41,7 @@ describe('LOOKDEV_RENDERER_CONFIG & SUNLIT_STUDY_LIGHTS', () => {
 		assert.ok(SUNLIT_STUDY_LIGHTS.sunKey.castShadow);
 		assert.equal(SUNLIT_STUDY_LIGHTS.skyFill.castShadow, false);
 		assert.equal(SUNLIT_STUDY_LIGHTS.warmBounce.castShadow, false);
+		assert.equal(SUNLIT_STUDY_LIGHTS.rim.castShadow, false);
 		assert.ok(SUNLIT_STUDY_LIGHTS.sunKey.intensity > SUNLIT_STUDY_LIGHTS.skyFill.intensity);
 		assert.ok(LOOKDEV_RENDERER_CONFIG.exposure > 0);
 		assert.ok(LOOKDEV_RENDERER_CONFIG.environmentIntensity > 0);

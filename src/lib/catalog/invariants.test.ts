@@ -19,9 +19,35 @@ import {
 	STACK_COVER_THICKNESS,
 	STACK_SPINE_DEPTH
 } from '#lib/catalog/prop-layout.ts';
+import { SHELF_PROP_FINISHES, SHELF_PROP_MATERIALS } from '#lib/catalog/shelf-prop-materials.ts';
 import { getShelfProps } from '#lib/catalog/props.ts';
 import type { PlacedVolume } from '#lib/catalog/types.ts';
 import { CATALOG } from '#lib/catalog/volumes.ts';
+
+it('defines a material for each Shelf Prop family and stack topper', () => {
+	for (const prop of getShelfProps()) {
+		const roles = SHELF_PROP_MATERIALS[prop.kind];
+		assert.ok(roles, prop.id);
+		for (const name of Object.values(roles).flat()) {
+			assert.ok(Object.hasOwn(SHELF_PROP_FINISHES, name), prop.id + ' uses ' + name);
+		}
+		if (prop.kind === 'book-stack' && prop.topper) {
+			assert.ok(SHELF_PROP_MATERIALS['book-stack'][prop.topper.profile]);
+		}
+	}
+});
+
+it('assigns different cover colors to neighboring Volumes on every Shelf', () => {
+	const placed = layoutCatalogOnBookcase();
+	for (let shelf = 0; shelf < BOOKCASE_DIMENSIONS.shelfCount; shelf++) {
+		const row = placed.filter((item) => item.shelfIndex === shelf).sort((a, b) => a.position[0] - b.position[0]);
+		for (let i = 1; i < row.length; i++) {
+			const previous = row[i - 1].volume;
+			const current = row[i].volume;
+			assert.notEqual(current.coverColor, previous.coverColor, previous.title + ' beside ' + current.title);
+		}
+	}
+});
 
 const EPS = 1e-4; // 0.1 mm tolerance
 
