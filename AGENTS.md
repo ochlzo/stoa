@@ -13,6 +13,7 @@ A static, browser-only 3D library web app where readers browse a warm wooden boo
 - [`GLOSSARY.md`](./GLOSSARY.md) — Read before naming types, components, states, or UI copy. Use the canonical terms (`Bookcase`, `Shelf`, `Catalog`, `Volume`, `Readable Volume`, `Placeholder Volume`, `Shelf Prop`, `Binding Style`, `Peek`, `Chapter`, `Leaf`, `Page`, `Spread`, `Bookmark Ribbon`, `Shelf Mode`, `Inspect Mode`, `Reading Mode`) consistently across code and conversation.
 - [`CODING_STANDARD.md`](./CODING_STANDARD.md) — Read before creating files or writing 3D/Svelte code. Defines the layered `src/lib/` architecture, metric scale & pivot discipline, Clay-before-Lookdev workflow, and Svelte 5 / Threlte 8 conventions.
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — Branching and contribution rules (`dev/<name>`, `feat/<name>` for significant milestones, and never `codex/` or `claude` branch names).
+- [`docs/CONTRIBUTING_VOLUME.md`](./docs/CONTRIBUTING_VOLUME.md) — Single source of truth for customizing a `Readable Volume` (`src/lib/catalog/readable/<volume-id>/design.ts`, `content.ts`, and optional `static/volumes/<volume-id>/` illustrations).
 - [`docs/adr/`](./docs/adr/) — Read before changing 3D asset workflows (`0001`), adding 2D reading fallbacks (`0002`), modifying page-turn physics (`0003`), altering pagination/mobile viewport layout (`0004`), changing unit scale or Clay-before-Lookdev (`0005`), customizing `Volume` geometry (`0006`), or changing `Bookcase` framing, `Shelf Props`, or leaning-volume physics (`0007`).
 
 ## Collaboration

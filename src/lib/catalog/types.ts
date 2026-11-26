@@ -1,4 +1,5 @@
 import type { LOOKDEV_PALETTE } from '#lib/catalog/lookdev.ts';
+import type { VolumeDesign } from '#lib/catalog/readable/types.ts';
 
 export type VolumeCoverColor = keyof typeof LOOKDEV_PALETTE.volumes;
 
@@ -66,6 +67,9 @@ interface VolumeBase {
 
 export interface ReadableVolume extends VolumeBase {
 	readonly kind: 'readable';
+	readonly design?: VolumeDesign;
+	/** Optional source / edition attribution from content.ts (stamped on the back cover). */
+	readonly sourceNote?: string;
 }
 
 export interface PlaceholderVolume extends VolumeBase {

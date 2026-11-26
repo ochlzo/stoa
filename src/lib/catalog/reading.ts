@@ -1,7 +1,26 @@
+import { getReadableVolumePackage } from '#lib/catalog/readable/index.ts';
+import type {
+	ProseSection,
+	VerseSection,
+	VolumeContent
+} from '#lib/catalog/readable/types.ts';
 import type { Volume } from '#lib/catalog/types.ts';
 
-export type PageKind = 'endpaper' | 'front-title' | 'chapter-start' | 'body' | 'colophon';
+export type PageKind =
+	| 'endpaper'
+	| 'front-title'
+	| 'chapter-start'
+	| 'body'
+	| 'illustration'
+	| 'colophon';
 export type PageSide = 'left' | 'right';
+export type PageContentMode = 'specimen' | 'prose' | 'verse' | 'illustration';
+
+export interface PageTextLine {
+	readonly text: string;
+	readonly indent?: boolean;
+	readonly stanzaGapBefore?: boolean;
+}
 
 export interface Page {
 	/** 0-based sequential index across the entire Volume (even = left verso, odd = right recto). */
@@ -19,10 +38,21 @@ export interface Page {
 	readonly chapterTitle: string | null;
 	readonly volumeTitle: string;
 	readonly volumeAuthor: string;
+	readonly volumeSubtitle?: string;
+	readonly volumeTranslator?: string;
+	readonly sourceNote?: string;
+	readonly colophonNote?: string;
 	/** Deterministic clay placeholder ruled-line count for this Page. */
 	readonly lineCount: number;
 	/** Deterministic paragraph break line indices for clay placeholder layout. */
 	readonly paragraphBreaks: readonly number[];
+	/** Rendering mode for Lookdev Page textures (defaults to specimen when content is empty). */
+	readonly contentMode?: PageContentMode;
+	/** Pre-paginated literary text lines for deterministic prose/verse rendering (ADR 0004). */
+	readonly lines?: readonly PageTextLine[];
+	readonly epigraph?: string;
+	readonly illustrationSrc?: string;
+	readonly illustrationCaption?: string;
 }
 
 export interface Chapter {
@@ -159,23 +189,103 @@ function getChapterBlueprintsForVolume(volume: Volume): readonly ChapterBlueprin
 	return blueprints;
 }
 
+const PROSE_CHARS_PER_LINE = 42;
+const VERSE_CHARS_PER_LINE = 44;
+const BODY_LINES_PER_PAGE = 22;
+const OPENER_LINES_PER_PAGE = 14;
+
+function wrapTextToBudget(text: string, maxChars: number): string[] {
+	const words = text.trim().split(/\s+/).filter(Boolean);
+	if (words.length === 0) return [];
+	const rows: string[] = [];
+	let current = words[0];
+	for (let i = 1; i < words.length; i += 1) {
+		const word = words[i];
+		if (current.length + 1 + word.length <= maxChars) {
+			current += ' ' + word;
+		} else {
+			rows.push(current);
+			current = word;
+		}
+	}
+	rows.push(current);
+	return rows;
+}
+
+function paginateProseSection(section: ProseSection): readonly (readonly PageTextLine[])[] {
+	const allLines: PageTextLine[] = [];
+	for (const paragraph of section.paragraphs) {
+		const wrapped = wrapTextToBudget(paragraph, PROSE_CHARS_PER_LINE);
+		wrapped.forEach((text, idx) => {
+			allLines.push({ text, indent: idx === 0 });
+		});
+	}
+	if (allLines.length === 0) return [[]];
+
+	const firstLimit = section.epigraph ? OPENER_LINES_PER_PAGE - 3 : OPENER_LINES_PER_PAGE;
+	const buckets: PageTextLine[][] = [];
+	let cursor = 0;
+	while (cursor < allLines.length) {
+		const limit = buckets.length === 0 ? Math.max(6, firstLimit) : BODY_LINES_PER_PAGE;
+		buckets.push(allLines.slice(cursor, cursor + limit));
+		cursor += limit;
+	}
+	return buckets;
+}
+
+function paginateVerseSection(section: VerseSection): readonly (readonly PageTextLine[])[] {
+	const allLines: PageTextLine[] = [];
+	section.stanzas.forEach((stanza, stanzaIdx) => {
+		stanza.forEach((rawLine, lineIdx) => {
+			const wrapped = wrapTextToBudget(rawLine, VERSE_CHARS_PER_LINE);
+			if (wrapped.length === 0) return;
+			wrapped.forEach((text, wrapIdx) => {
+				allLines.push({
+					text,
+					indent: wrapIdx > 0,
+					stanzaGapBefore: stanzaIdx > 0 && lineIdx === 0 && wrapIdx === 0
+				});
+			});
+		});
+	});
+	if (allLines.length === 0) return [[]];
+
+	const firstLimit = section.epigraph ? OPENER_LINES_PER_PAGE - 3 : OPENER_LINES_PER_PAGE;
+	const buckets: PageTextLine[][] = [];
+	let cursor = 0;
+	while (cursor < allLines.length) {
+		const limit = buckets.length === 0 ? Math.max(6, firstLimit) : BODY_LINES_PER_PAGE;
+		const slice: PageTextLine[] = [];
+		let units = 0;
+		while (cursor < allLines.length) {
+			const line = allLines[cursor];
+			const gapCost = slice.length > 0 && line.stanzaGapBefore ? 0.65 : 0;
+			if (slice.length > 0 && units + gapCost + 1 > limit) break;
+			slice.push(slice.length === 0 && line.stanzaGapBefore ? { ...line, stanzaGapBefore: false } : line);
+			units += gapCost + 1;
+			cursor += 1;
+		}
+		buckets.push(slice);
+	}
+	return buckets;
+}
+
 const modelCache = new Map<string, VolumeReadingModel>();
 
 /**
- * Builds (and caches) a deterministic fixed-layout Chapter / Page / Spread model
- * for a Volume (ADR 0004).
- *
- * Layout convention:
- * - Spread 0: Front endpaper (left, index 0) + Front title Page (right, index 1).
- * - Spreads 1..N-2: Numbered Chapters & body Pages (folio numbers starting at 1).
- * - Final Spread: Trailing body/blank + Colophon Page so total Page count is always even.
+ * Builds a deterministic fixed-layout Chapter / Page / Spread model for a Volume
+ * from an explicit `VolumeContent` package (ADR 0004). Falls back to specimen pages
+ * when `content.sections` is empty.
  */
-export function getVolumeReadingModel(volume: Volume): VolumeReadingModel {
-	const cached = modelCache.get(volume.id);
-	if (cached) return cached;
-
+export function buildVolumeReadingModel(
+	volume: Volume,
+	content?: VolumeContent
+): VolumeReadingModel {
 	const pages: Page[] = [];
 	const chapters: Chapter[] = [];
+	const hasContent = Boolean(content && content.sections.length > 0);
+	const resolvedTitle = content?.title ?? volume.title;
+	const resolvedAuthor = content?.author ?? volume.author;
 
 	// Spread 0: Front title Spread
 	pages.push({
@@ -187,8 +297,8 @@ export function getVolumeReadingModel(volume: Volume): VolumeReadingModel {
 		chapterNumber: null,
 		chapterRomanNumeral: null,
 		chapterTitle: null,
-		volumeTitle: volume.title,
-		volumeAuthor: volume.author,
+		volumeTitle: resolvedTitle,
+		volumeAuthor: resolvedAuthor,
 		lineCount: 0,
 		paragraphBreaks: []
 	});
@@ -202,53 +312,141 @@ export function getVolumeReadingModel(volume: Volume): VolumeReadingModel {
 		chapterNumber: null,
 		chapterRomanNumeral: null,
 		chapterTitle: null,
-		volumeTitle: volume.title,
-		volumeAuthor: volume.author,
+		volumeTitle: resolvedTitle,
+		volumeAuthor: resolvedAuthor,
+		volumeSubtitle: content?.subtitle,
+		volumeTranslator: content?.translator,
+		sourceNote: content?.sourceNote,
 		lineCount: 0,
 		paragraphBreaks: []
 	});
 
-	const blueprints = getChapterBlueprintsForVolume(volume);
 	let folio = 1;
 
-	for (let c = 0; c < blueprints.length; c += 1) {
-		const bp = blueprints[c];
-		const chapterNumber = c + 1;
-		const roman = toRomanNumeral(chapterNumber);
-		const startPageIndex = pages.length;
+	if (hasContent && content) {
+		for (let s = 0; s < content.sections.length; s += 1) {
+			const section = content.sections[s];
+			const chapterIndex = chapters.length;
+			const chapterNumber = chapterIndex + 1;
+			const roman = toRomanNumeral(chapterNumber);
+			const startPageIndex = pages.length;
 
-		for (let p = 0; p < bp.pageCount; p += 1) {
-			const pageIndex = pages.length;
-			const isStart = p === 0;
-			const isEnd = p === bp.pageCount - 1;
-			const baseLines = isStart ? 18 : isEnd ? 16 + (deterministicHash(`${volume.id}:${pageIndex}`) % 7) : 26;
-			pages.push({
-				index: pageIndex,
-				pageNumber: folio,
-				side: pageIndex % 2 === 0 ? 'left' : 'right',
-				kind: isStart ? 'chapter-start' : 'body',
-				chapterIndex: c,
-				chapterNumber,
-				chapterRomanNumeral: roman,
-				chapterTitle: bp.title,
-				volumeTitle: volume.title,
-				volumeAuthor: volume.author,
-				lineCount: baseLines,
-				paragraphBreaks: buildParagraphBreaks(`${volume.id}:${pageIndex}`, baseLines)
+			if (section.kind === 'illustration') {
+				const pageIndex = pages.length;
+				pages.push({
+					index: pageIndex,
+					pageNumber: folio,
+					side: pageIndex % 2 === 0 ? 'left' : 'right',
+					kind: 'illustration',
+					contentMode: 'illustration',
+					chapterIndex,
+					chapterNumber,
+					chapterRomanNumeral: roman,
+					chapterTitle: section.title ?? section.caption ?? `Plate ${roman}`,
+					volumeTitle: resolvedTitle,
+					volumeAuthor: resolvedAuthor,
+					lineCount: 0,
+					paragraphBreaks: [],
+					illustrationSrc: section.src,
+					illustrationCaption: section.caption
+				});
+				folio += 1;
+				chapters.push({
+					index: chapterIndex,
+					number: chapterNumber,
+					romanNumeral: roman,
+					title: section.title ?? section.caption ?? `Plate ${roman}`,
+					startPageIndex,
+					endPageIndex: pageIndex,
+					startSpreadIndex: Math.floor(startPageIndex / 2)
+				});
+				continue;
+			}
+
+			const pageBuckets =
+				section.kind === 'prose' ? paginateProseSection(section) : paginateVerseSection(section);
+
+			pageBuckets.forEach((lines, bucketIdx) => {
+				const pageIndex = pages.length;
+				const isStart = bucketIdx === 0;
+				const paragraphBreaks: number[] = [];
+				lines.forEach((line, idx) => {
+					if (idx > 0 && (line.indent || line.stanzaGapBefore)) paragraphBreaks.push(idx);
+				});
+				pages.push({
+					index: pageIndex,
+					pageNumber: folio,
+					side: pageIndex % 2 === 0 ? 'left' : 'right',
+					kind: isStart ? 'chapter-start' : 'body',
+					contentMode: section.kind,
+					chapterIndex,
+					chapterNumber,
+					chapterRomanNumeral: roman,
+					chapterTitle: section.title,
+					volumeTitle: resolvedTitle,
+					volumeAuthor: resolvedAuthor,
+					lineCount: Math.max(1, lines.length),
+					paragraphBreaks,
+					lines,
+					epigraph: isStart ? section.epigraph : undefined
+				});
+				folio += 1;
 			});
-			folio += 1;
-		}
 
-		const endPageIndex = pages.length - 1;
-		chapters.push({
-			index: c,
-			number: chapterNumber,
-			romanNumeral: roman,
-			title: bp.title,
-			startPageIndex,
-			endPageIndex,
-			startSpreadIndex: Math.floor(startPageIndex / 2)
-		});
+			const endPageIndex = pages.length - 1;
+			chapters.push({
+				index: chapterIndex,
+				number: chapterNumber,
+				romanNumeral: roman,
+				title: section.title,
+				startPageIndex,
+				endPageIndex,
+				startSpreadIndex: Math.floor(startPageIndex / 2)
+			});
+		}
+	} else {
+		const blueprints = getChapterBlueprintsForVolume(volume);
+
+		for (let c = 0; c < blueprints.length; c += 1) {
+			const bp = blueprints[c];
+			const chapterNumber = c + 1;
+			const roman = toRomanNumeral(chapterNumber);
+			const startPageIndex = pages.length;
+
+			for (let p = 0; p < bp.pageCount; p += 1) {
+				const pageIndex = pages.length;
+				const isStart = p === 0;
+				const isEnd = p === bp.pageCount - 1;
+				const baseLines = isStart ? 18 : isEnd ? 16 + (deterministicHash(`${volume.id}:${pageIndex}`) % 7) : 26;
+				pages.push({
+					index: pageIndex,
+					pageNumber: folio,
+					side: pageIndex % 2 === 0 ? 'left' : 'right',
+					kind: isStart ? 'chapter-start' : 'body',
+					contentMode: 'specimen',
+					chapterIndex: c,
+					chapterNumber,
+					chapterRomanNumeral: roman,
+					chapterTitle: bp.title,
+					volumeTitle: resolvedTitle,
+					volumeAuthor: resolvedAuthor,
+					lineCount: baseLines,
+					paragraphBreaks: buildParagraphBreaks(`${volume.id}:${pageIndex}`, baseLines)
+				});
+				folio += 1;
+			}
+
+			const endPageIndex = pages.length - 1;
+			chapters.push({
+				index: c,
+				number: chapterNumber,
+				romanNumeral: roman,
+				title: bp.title,
+				startPageIndex,
+				endPageIndex,
+				startSpreadIndex: Math.floor(startPageIndex / 2)
+			});
+		}
 	}
 
 	// Ensure a clean closing colophon Spread with an even total number of Pages.
@@ -262,8 +460,8 @@ export function getVolumeReadingModel(volume: Volume): VolumeReadingModel {
 			chapterNumber: null,
 			chapterRomanNumeral: null,
 			chapterTitle: null,
-			volumeTitle: volume.title,
-			volumeAuthor: volume.author,
+			volumeTitle: resolvedTitle,
+			volumeAuthor: resolvedAuthor,
 			lineCount: 0,
 			paragraphBreaks: []
 		});
@@ -277,8 +475,9 @@ export function getVolumeReadingModel(volume: Volume): VolumeReadingModel {
 		chapterNumber: null,
 		chapterRomanNumeral: null,
 		chapterTitle: null,
-		volumeTitle: volume.title,
-		volumeAuthor: volume.author,
+		volumeTitle: resolvedTitle,
+		volumeAuthor: resolvedAuthor,
+		colophonNote: content?.colophonNote ?? content?.sourceNote,
 		lineCount: 0,
 		paragraphBreaks: []
 	});
@@ -299,16 +498,27 @@ export function getVolumeReadingModel(volume: Volume): VolumeReadingModel {
 		});
 	}
 
-	const model: VolumeReadingModel = {
+	return {
 		volumeId: volume.id,
-		title: volume.title,
-		author: volume.author,
+		title: resolvedTitle,
+		author: resolvedAuthor,
 		chapters,
 		pages,
 		spreads,
 		totalLeaves: spreadCount
 	};
+}
 
+/**
+ * Builds (and caches) a deterministic fixed-layout Chapter / Page / Spread model
+ * for a Volume (ADR 0004).
+ */
+export function getVolumeReadingModel(volume: Volume): VolumeReadingModel {
+	const cached = modelCache.get(volume.id);
+	if (cached) return cached;
+
+	const pkg = getReadableVolumePackage(volume.id);
+	const model = buildVolumeReadingModel(volume, pkg?.content);
 	modelCache.set(volume.id, model);
 	return model;
 }
