@@ -1,8 +1,15 @@
 import { CanvasTexture, ClampToEdgeWrapping } from 'three';
 import { BINDING_STYLE_PRESETS } from '#lib/catalog/layout.ts';
-import type { CoverEmblemPreset, CoverEmblemSpec, VolumeDesign } from '#lib/catalog/readable/types.ts';
+import type {
+	CoverBorderStyle,
+	CoverEmblemPreset,
+	CoverEmblemSpec,
+	StampPaintInfo,
+	VolumeDesign
+} from '#lib/catalog/readable/types.ts';
 import type { BindingStyleId, Volume } from '#lib/catalog/types.ts';
 import { configurePbrTexture, wrapCanvasLines } from '#lib/textures/pbr-texture-cache.ts';
+import { drawStoaCombinationMark } from '#lib/textures/brand-mark.ts';
 
 export type StampFace = 'front' | 'back' | 'spine';
 
@@ -272,22 +279,62 @@ function spine(ctx: CanvasRenderingContext2D, volume: Volume, w: number, h: numb
 		ctx.restore();
 	}
 	ctx.fillStyle = foil;
-	diamond(ctx, cx, 0.895 * h, panel * 0.11);
+	drawStoaCombinationMark(ctx, cx, 0.896 * h, panel * 0.84, h * 0.052);
+}
+
+function drawBoardBorder(
+	ctx: CanvasRenderingContext2D,
+	style: CoverBorderStyle,
+	foil: string,
+	w: number,
+	h: number
+) {
+	if (style === 'none') return;
+	ctx.strokeStyle = foil;
+	ctx.fillStyle = foil;
+	if (style === 'single-rule') {
+		ctx.lineWidth = 2.4;
+		ctx.strokeRect(w * 0.06, w * 0.06, w * 0.88, h - 2 * w * 0.06);
+		return;
+	}
+	if (style === 'corner-ornaments') {
+		const inset = w * 0.065;
+		const arm = w * 0.08;
+		ctx.lineWidth = 2.4;
+		for (const [cx, dx] of [
+			[inset, 1],
+			[w - inset, -1]
+		] as const) {
+			for (const [cy, dy] of [
+				[inset, 1],
+				[h - inset, -1]
+			] as const) {
+				ctx.beginPath();
+				ctx.moveTo(cx + dx * arm, cy);
+				ctx.lineTo(cx, cy);
+				ctx.lineTo(cx, cy + dy * arm);
+				ctx.stroke();
+				diamond(ctx, cx + dx * 12, cy + dy * 12, 8);
+			}
+		}
+		return;
+	}
+	for (const inset of [0.055, 0.069]) {
+		ctx.lineWidth = inset === 0.055 ? 3 : 1.4;
+		ctx.strokeRect(w * inset, w * inset, w * (1 - 2 * inset), h - 2 * w * inset);
+	}
+	for (const x of [0.069, 0.931]) {
+		for (const y of [w * 0.069, h - w * 0.069]) diamond(ctx, w * x, y, 9);
+	}
 }
 
 function board(ctx: CanvasRenderingContext2D, volume: Volume, face: StampFace, w: number, h: number) {
 	const design = resolveDesign(volume);
 	const foil = design?.foilStyle === 'blind' ? blind : gold;
 	const cx = w / 2;
+	drawBoardBorder(ctx, design?.coverBorder ?? 'double-rule', foil, w, h);
 	ctx.strokeStyle = foil;
-	for (const inset of [0.055, 0.069]) {
-		ctx.lineWidth = inset === 0.055 ? 3 : 1.4;
-		ctx.strokeRect(w * inset, w * inset, w * (1 - 2 * inset), h - 2 * w * inset);
-	}
 	ctx.fillStyle = foil;
-	for (const x of [0.069, 0.931]) {
-		for (const y of [w * 0.069, h - w * 0.069]) diamond(ctx, w * x, y, 9);
-	}
 	if (face === 'front') {
 		typeset(ctx, volume.author, cx, h * 0.19, w * 0.73, h * 0.08, w * 0.057, true);
 		const title = volume.title.toUpperCase();
@@ -328,8 +375,34 @@ export function createVolumeStamp(volume: Volume, face: StampFace) {
 	ctx.fillRect(0, 0, canvas.width, canvas.height);
 	ctx.textAlign = 'center';
 	ctx.textBaseline = 'middle';
-	if (face === 'spine') spine(ctx, volume, canvas.width, canvas.height);
-	else board(ctx, volume, face, canvas.width, canvas.height);
+
+	const design = resolveDesign(volume);
+	const defaultPaint = () => {
+		if (face === 'spine') spine(ctx, volume, canvas.width, canvas.height);
+		else board(ctx, volume, face, canvas.width, canvas.height);
+	};
+	const customPainter =
+		face === 'front'
+			? design?.paintFrontCover
+			: face === 'back'
+				? design?.paintBackCover
+				: design?.paintSpine;
+
+	if (customPainter) {
+		const info: StampPaintInfo = {
+			width: canvas.width,
+			height: canvas.height,
+			title: volume.title,
+			author: volume.author,
+			foil: design?.foilStyle === 'blind' ? blind : gold,
+			blind,
+			defaultPaint
+		};
+		customPainter(ctx, info);
+	} else {
+		defaultPaint();
+	}
+
 	return configurePbrTexture(new CanvasTexture(canvas), 'metalness', {
 		wrapS: ClampToEdgeWrapping,
 		wrapT: ClampToEdgeWrapping

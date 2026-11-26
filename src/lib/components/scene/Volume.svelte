@@ -89,7 +89,7 @@
 	const cover = $derived(finishes.cover(placed.volume, isClayMode()));
 	const bandFinish = $derived(finishes.cover(placed.volume, isClayMode(), 0.86));
 	const paper = $derived(finishes.paper(isClayMode()));
-	const headbandFinish = $derived(finishes.headband(isClayMode()));
+	const headbandFinish = $derived(finishes.headband(isClayMode(), placed.volume));
 	const highlightReadable = $derived(isPeeked && !isInspected && placed.volume.kind === 'readable');
 	const coverEmissive = $derived(highlightReadable ? LOOKDEV_PALETTE.paperAndInk.goldFoil : '#000000');
 	const coverEmissiveIntensity = $derived(highlightReadable ? 0.065 : 0);

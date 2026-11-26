@@ -103,14 +103,22 @@ export function createVolumeFinishes() {
 			return finish(kind, color, false, color, roughness[kind]);
 		},
 		cover(volume: Volume, clay: boolean, clayRoughness = 0.9) {
-			return finish(volume.bindingStyle, LOOKDEV_PALETTE.volumes[volume.coverColor], clay,
+			const design = volume.kind === 'readable' ? volume.design : undefined;
+			const base = finish(volume.bindingStyle, LOOKDEV_PALETTE.volumes[volume.coverColor], clay,
 				VOLUME_CLAY_COLORS[volume.clayTone], clayRoughness);
+			if (clay || !design) return base;
+			return {
+				...base,
+				roughness: design.surfaceRoughness ?? base.roughness,
+				bumpScale: design.bumpScale ?? base.bumpScale
+			};
 		},
 		paper(clay: boolean) {
 			return finish('paper', LOOKDEV_PALETTE.paperAndInk.archivalPaper, clay, PAGE_BLOCK_CLAY_COLOR, 0.95);
 		},
-		headband(clay: boolean) {
-			return finish('headband', LOOKDEV_PALETTE.paperAndInk.goldFoil, clay, '#d8d4cc', 0.92);
+		headband(clay: boolean, volume?: Volume) {
+			const design = volume?.kind === 'readable' ? volume.design : undefined;
+			return finish('headband', design?.headbandColor ?? LOOKDEV_PALETTE.paperAndInk.goldFoil, clay, '#d8d4cc', 0.92);
 		},
 		dispose: () => maps.dispose()
 	};
