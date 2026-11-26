@@ -15,6 +15,8 @@ import { design as sirGawainDesign } from '#lib/catalog/readable/sir-gawain-and-
 import { content as sirGawainContent } from '#lib/catalog/readable/sir-gawain-and-the-green-knight/content.ts';
 import { design as yourLaughterDesign } from '#lib/catalog/readable/your-laughter/design.ts';
 import { content as yourLaughterContent } from '#lib/catalog/readable/your-laughter/content.ts';
+import { design as lifeOfPiDesign } from '#lib/catalog/readable/life-of-pi/design.ts';
+import { content as lifeOfPiContent } from '#lib/catalog/readable/life-of-pi/content.ts';
 import { design as odeOnAGrecianUrnDesign } from '#lib/catalog/readable/ode-on-a-grecian-urn/design.ts';
 import { content as odeOnAGrecianUrnContent } from '#lib/catalog/readable/ode-on-a-grecian-urn/content.ts';
 import { design as oedipusRexDesign } from '#lib/catalog/readable/oedipus-rex/design.ts';
@@ -33,6 +35,7 @@ export const READABLE_VOLUMES: Readonly<Record<string, ReadableVolumePackage>> =
 	'gullivers-travels': { design: gulliversTravelsDesign, content: gulliversTravelsContent },
 	'sir-gawain-and-the-green-knight': { design: sirGawainDesign, content: sirGawainContent },
 	'your-laughter': { design: yourLaughterDesign, content: yourLaughterContent },
+	'life-of-pi': { design: lifeOfPiDesign, content: lifeOfPiContent },
 	'ode-on-a-grecian-urn': { design: odeOnAGrecianUrnDesign, content: odeOnAGrecianUrnContent },
 	'oedipus-rex': { design: oedipusRexDesign, content: oedipusRexContent }
 };
