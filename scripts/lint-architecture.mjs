@@ -1,10 +1,12 @@
 import ts from 'typescript';
 import { parse } from 'svelte/compiler';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const ROOT = process.cwd();
 const SRC_DIR = join(ROOT, 'src');
+const READABLE_CATALOG_DIR = join(ROOT, 'src/lib/catalog/readable');
+const IMAGE_ASSET_EXT = /\.(?:webp|png|jpe?g|gif|avif|svg)$/i;
 
 /** @typedef {{ file: string; line: number; rule: string; message: string }} Violation */
 
@@ -17,6 +19,22 @@ function walk(dir) {
 		if (entry.isDirectory()) {
 			files.push(...walk(full));
 		} else if (/\.(ts|svelte)$/.test(entry.name)) {
+			files.push(full);
+		}
+	}
+	return files;
+}
+
+/** @param {string} dir @returns {string[]} */
+function walkImageAssets(dir) {
+	if (!existsSync(dir)) return [];
+	/** @type {string[]} */
+	const files = [];
+	for (const entry of readdirSync(dir, { withFileTypes: true })) {
+		const full = join(dir, entry.name);
+		if (entry.isDirectory()) {
+			files.push(...walkImageAssets(full));
+		} else if (IMAGE_ASSET_EXT.test(entry.name)) {
 			files.push(full);
 		}
 	}
@@ -38,7 +56,7 @@ const gestureArithmetic = new Set([
 	'+', '-', '*', '/', '%', '**', '+=', '-=', '*=', '/=', '%=', '**='
 ]);
 
-function checkCameraGestureHandlers(source, callbacks, report) {
+function checkSceneGestureHandlers(source, callbacks, report, eventPattern, rule, targetModule) {
 	const checked = new Set();
 	function checkHandler(handler) {
 		const fn = callbacks.get(handler.getText()) ?? handler;
@@ -46,12 +64,12 @@ function checkCameraGestureHandlers(source, callbacks, report) {
 		checked.add(fn);
 		visit(fn.body, node => {
 			if (ts.isBinaryExpression(node) && gestureArithmetic.has(node.operatorToken.getText())) {
-				report(node, 'camera-gesture-math', 'Move gesture calculations into the camera physics module.');
+				report(node, rule, `Move gesture calculations into ${targetModule}.`);
 			}
 			if (ts.isCallExpression(node)) {
 				const callee = node.expression;
 				if (ts.isPropertyAccessExpression(callee) && callee.expression.getText() === 'Math') {
-					report(node, 'camera-gesture-math', 'Calculate gesture distances and thresholds in the camera physics module.');
+					report(node, rule, `Calculate gesture distances and thresholds in ${targetModule}.`);
 				}
 				if (ts.isIdentifier(callee) && callbacks.has(callee.text)) checkHandler(callee);
 			}
@@ -61,7 +79,7 @@ function checkCameraGestureHandlers(source, callbacks, report) {
 		if (!ts.isCallExpression(node) || !ts.isPropertyAccessExpression(node.expression)) return;
 		const [event, handler] = node.arguments;
 		if (node.expression.name.text === 'addEventListener' && handler &&
-			ts.isStringLiteral(event) && /^(pointer|touch|wheel)/.test(event.text)) checkHandler(handler);
+			ts.isStringLiteral(event) && eventPattern.test(event.text)) checkHandler(handler);
 	});
 }
 
@@ -90,7 +108,23 @@ function checkScripts(file, content, isPureLayer) {
 			if (ts.isCallExpression(node) && node.expression.getText() === 'useTask') tasks.push(node);
 		});
 		if (file === 'src/lib/components/scene/ShelfCamera.svelte') {
-			checkCameraGestureHandlers(source, callbacks, report);
+			checkSceneGestureHandlers(
+				source,
+				callbacks,
+				report,
+				/^(pointer|touch|wheel)/,
+				'camera-gesture-math',
+				'the camera physics module'
+			);
+		} else if (file.startsWith('src/lib/components/scene/')) {
+			checkSceneGestureHandlers(
+				source,
+				callbacks,
+				report,
+				/^wheel$/,
+				'scene-wheel-gesture-math',
+				'src/lib/physics/'
+			);
 		}
 		for (const task of tasks) {
 			// Threlte accepts an optional key before the callback.
@@ -111,6 +145,18 @@ function checkScripts(file, content, isPureLayer) {
 
 /** @type {Violation[]} */
 const violations = [];
+
+// 0. Keep Readable Volume image assets in static/volumes/<volume-id>/ (not inside src/lib/catalog/readable/)
+for (const absPath of walkImageAssets(READABLE_CATALOG_DIR)) {
+	const relPath = relative(ROOT, absPath).replaceAll('\\', '/');
+	violations.push({
+		file: relPath,
+		line: 1,
+		rule: 'volume-assets-in-static',
+		message:
+			'Move Readable Volume image assets into static/volumes/<volume-id>/ (see docs/CONTRIBUTING_VOLUME.md).'
+	});
+}
 
 for (const absPath of walk(SRC_DIR)) {
 	const relPath = relative(ROOT, absPath).replaceAll('\\', '/');

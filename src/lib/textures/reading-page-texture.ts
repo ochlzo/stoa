@@ -3,6 +3,10 @@ import type { Page } from '#lib/catalog/reading.ts';
 import type { EndpaperPaintInfo, VolumeDesign } from '#lib/catalog/readable/types.ts';
 import { LOOKDEV_PALETTE, createSeededRandom } from '#lib/catalog/lookdev.ts';
 import { drawStoaCombinationMark } from '#lib/textures/brand-mark.ts';
+import {
+	createIllustrationMotionController,
+	type IllustrationMotionController
+} from '#lib/textures/illustration-motion.ts';
 import { configurePbrTexture, wrapCanvasLines } from '#lib/textures/pbr-texture-cache.ts';
 import { createClayPageTexture } from '#lib/textures/page-clay-texture.ts';
 
@@ -13,6 +17,12 @@ const defaultSerif = 'Georgia, "Times New Roman", serif';
 const tau = 2 * Math.PI;
 const BOOKPLATE_PAPER = '#E7E1D2';
 const BOOKPLATE_INK = '#473929';
+
+interface PageLayout {
+	readonly left: number;
+	readonly right: number;
+	readonly cx: number;
+}
 
 interface PageTheme {
 	paperTint: string;
@@ -357,7 +367,24 @@ function literaryBody(
 		if (line.stanzaGapBefore) y += leading * 0.65;
 		const indent = line.indent ? (isVerse ? 22 : 28) : 0;
 		const available = Math.max(120, maxWidth - indent);
-		ctx.fillText(line.text, left + indent, y, available);
+		const x = left + indent;
+		if (!isVerse && line.justify) {
+			const words = line.text.split(' ');
+			const wordWidths = words.map((word) => ctx.measureText(word).width);
+			const wordsWidth = wordWidths.reduce((sum, wordWidth) => sum + wordWidth, 0);
+			if (words.length > 1 && ctx.measureText(line.text).width < available) {
+				const space = (available - wordsWidth) / (words.length - 1);
+				let cursor = x;
+				for (let i = 0; i < words.length; i++) {
+					ctx.fillText(words[i], cursor, y);
+					cursor += wordWidths[i] + space;
+				}
+			} else {
+				ctx.fillText(line.text, x, y, available);
+			}
+		} else {
+			ctx.fillText(line.text, x, y, available);
+		}
 		y += leading;
 	}
 }
@@ -372,69 +399,185 @@ function drawGutterShadow(ctx: CanvasRenderingContext2D, side: Page['side']) {
 	ctx.fillRect(0, 0, width, height);
 }
 
-function drawIllustrationPlate(
+function drawStanza(
 	ctx: CanvasRenderingContext2D,
 	page: Page,
 	left: number,
 	right: number,
-	cx: number,
-	texture: CanvasTexture,
 	theme: PageTheme
 ) {
-	const frameX = left + 14;
-	const frameY = 148;
-	const frameW = right - left - 28;
-	const frameH = 710;
+	const lines = page.lines ?? [];
+	const cx = (left + right) / 2;
+	const maxWidth = right - left;
+	const leading = Math.min(48, 640 / Math.max(1, lines.length));
+	const startY = 565 - (lines.length - 1) * leading / 2;
 
-	// Outer & inner archival plate border
-	ctx.strokeStyle = theme.inkMuted;
-	ctx.lineWidth = 1.6;
-	ctx.strokeRect(frameX, frameY, frameW, frameH);
-	ctx.lineWidth = 0.8;
-	ctx.strokeRect(frameX + 8, frameY + 8, frameW - 16, frameH - 16);
+	ctx.font = '600 28px ' + theme.font;
+	ctx.fillStyle = theme.inkMuted;
+	ctx.fillText('Stanza ' + page.stanzaNumber, cx, 164);
+	ornament(ctx, cx, 195, theme);
+
+	ctx.font = '34px ' + theme.font;
+	const widest = Math.max(1, ...lines.map(({ text }) => ctx.measureText(text).width));
+	const fontSize = Math.min(34, 34 * maxWidth / widest, leading * 0.78);
+	ctx.font = fontSize + 'px ' + theme.font;
+	const textWidth = Math.max(0, ...lines.map(({ text }) => ctx.measureText(text).width));
+	ctx.fillStyle = theme.inkPrimary;
+	ctx.textAlign = 'left';
+	for (const [index, line] of lines.entries()) {
+		ctx.fillText(line.text, cx - textWidth / 2, startY + index * leading);
+	}
+
+	ctx.textAlign = 'center';
+	ctx.font = '600 25px ' + theme.font;
+	ctx.fillText(String(page.pageNumber), cx, height - 49);
+}
+
+function loadTextureImage(
+	src: string | undefined,
+	texture: CanvasTexture,
+	onLoad: (img: HTMLImageElement) => void
+): void {
+	if (!src || typeof Image === 'undefined') return;
+	const resolvedSrc = new URL(src.replace(/^\/+/, ''), document.baseURI).href;
+	const img = new Image();
+	img.crossOrigin = 'anonymous';
+	const cancelLoad = () => {
+		img.onload = null;
+		texture.removeEventListener('dispose', cancelLoad);
+	};
+	texture.addEventListener('dispose', cancelLoad);
+	img.onload = () => {
+		texture.removeEventListener('dispose', cancelLoad);
+		onLoad(img);
+	};
+	img.src = resolvedSrc;
+}
+
+function drawIllustrationPlate(
+	ctx: CanvasRenderingContext2D,
+	page: Page,
+	layout: PageLayout,
+	texture: CanvasTexture,
+	theme: PageTheme,
+	motionController: IllustrationMotionController
+) {
+	const fullPage = Boolean(page.fullBleed);
+	const frameX = fullPage ? 0 : layout.left + 14;
+	const frameY = fullPage ? 0 : 148;
+	const frameW = fullPage ? width : layout.right - layout.left - 28;
+	const frameH = fullPage ? height : 710;
+
+	if (!fullPage) {
+		// Outer & inner archival plate border
+		ctx.strokeStyle = theme.inkMuted;
+		ctx.lineWidth = 1.6;
+		ctx.strokeRect(frameX, frameY, frameW, frameH);
+		ctx.lineWidth = 0.8;
+		ctx.strokeRect(frameX + 8, frameY + 8, frameW - 16, frameH - 16);
+	}
 
 	if (page.illustrationCaption) {
 		ctx.textAlign = 'center';
 		ctx.font = 'italic 23px ' + theme.font;
 		ctx.fillStyle = theme.inkMuted;
-		heading(ctx, page.illustrationCaption, cx, frameY + frameH + 46, frameW, 30);
+		heading(ctx, page.illustrationCaption, layout.cx, frameY + frameH + 46, frameW, 30);
 	}
 
-	if (page.pageNumber !== null) {
+	if (!fullPage && page.pageNumber !== null) {
 		ctx.textAlign = 'center';
 		ctx.font = '600 25px ' + theme.font;
 		ctx.fillStyle = theme.inkPrimary;
-		ctx.fillText(String(page.pageNumber), cx, height - 49);
+		ctx.fillText(String(page.pageNumber), layout.cx, height - 49);
 	}
 
-	if (!page.illustrationSrc || typeof Image === 'undefined') return;
-	const resolvedSrc = new URL(page.illustrationSrc.replace(/^\/+/, ''), document.baseURI).href;
-	const img = new Image();
-	img.crossOrigin = 'anonymous';
-	img.onload = () => {
-		const pad = 20;
-		const boxW = frameW - pad * 2;
-		const boxH = frameH - pad * 2;
-		const scale = Math.min(boxW / img.naturalWidth, boxH / img.naturalHeight);
+	loadTextureImage(page.illustrationSrc, texture, (img) => {
+		const pad = fullPage ? 0 : 20;
+		const scaleImage = fullPage ? Math.max : Math.min;
+		const scale = scaleImage(
+			(frameW - pad * 2) / img.naturalWidth,
+			(frameH - pad * 2) / img.naturalHeight
+		);
 		const drawW = img.naturalWidth * scale;
 		const drawH = img.naturalHeight * scale;
 		const drawX = frameX + (frameW - drawW) / 2;
 		const drawY = frameY + (frameH - drawH) / 2;
 
-		ctx.save();
-		ctx.globalCompositeOperation = 'multiply';
-		ctx.globalAlpha = 0.92;
-		ctx.drawImage(img, drawX, drawY, drawW, drawH);
-		ctx.restore();
+		const drawStill = () => {
+			ctx.save();
+			if (!fullPage) {
+				ctx.globalCompositeOperation = 'multiply';
+				ctx.globalAlpha = 0.92;
+			}
+			ctx.drawImage(img, drawX, drawY, drawW, drawH);
+			ctx.restore();
 
+			drawGutterShadow(ctx, page.side);
+			texture.needsUpdate = true;
+		};
+		drawStill();
+		if (page.illustrationMotion) {
+			motionController.attach({
+				ctx,
+				texture,
+				motion: page.illustrationMotion,
+				placement: { drawX, drawY, scale },
+				drawStill,
+				drawOverlay: () => drawGutterShadow(ctx, page.side)
+			});
+		}
+	});
+}
+
+function drawChapterOpener(
+	ctx: CanvasRenderingContext2D,
+	page: Page,
+	layout: { left: number; right: number; cx: number },
+	texture: CanvasTexture,
+	theme: PageTheme
+) {
+	const drawTitle = () => {
+		const wash = ctx.createLinearGradient(0, 0, 0, 710);
+		wash.addColorStop(0, 'rgba(255,237,198,0.55)');
+		wash.addColorStop(0.68, 'rgba(255,237,198,0.38)');
+		wash.addColorStop(1, 'rgba(255,237,198,0)');
+		ctx.fillStyle = wash;
+		ctx.fillRect(0, 0, width, 710);
+		ctx.textAlign = 'center';
+		ctx.fillStyle = '#24160e';
+		if (page.chapterRomanNumeral) {
+			ctx.font = '600 30px ' + theme.font;
+			ctx.fillText(`CHAPTER ${page.chapterRomanNumeral}`, layout.cx, 165);
+		}
+		ctx.font = '600 54px ' + theme.font;
+		heading(ctx, page.chapterTitle ?? '', layout.cx, 430, layout.right - layout.left, 62);
+		if (page.pageNumber !== null) {
+			ctx.fillStyle = '#fff0c9';
+			ctx.shadowColor = '#24160e';
+			ctx.shadowBlur = 8;
+			ctx.font = '600 25px ' + theme.font;
+			ctx.fillText(String(page.pageNumber), layout.cx, height - 49);
+			ctx.shadowBlur = 0;
+		}
 		drawGutterShadow(ctx, page.side);
 		texture.needsUpdate = true;
 	};
-	img.src = resolvedSrc;
+
+	// Keep the Chapter readable on paper while its local illustration loads.
+	drawTitle();
+	loadTextureImage(page.illustrationSrc, texture, (img) => {
+		const scale = Math.max(width / img.naturalWidth, height / img.naturalHeight);
+		const drawW = img.naturalWidth * scale;
+		const drawH = img.naturalHeight * scale;
+		ctx.clearRect(0, 0, width, height);
+		ctx.drawImage(img, (width - drawW) / 2, (height - drawH) / 2, drawW, drawH);
+		drawTitle();
+	});
 }
 
 // One stock tile per tint per open Volume. Each face owns its CanvasTexture, including a turning Leaf's reverse.
 export function createReadingPagePainter() {
+	const motionController = createIllustrationMotionController();
 	const stockByTint = new Map<string, HTMLCanvasElement>();
 	function getStock(tint: string) {
 		let tile = stockByTint.get(tint);
@@ -445,7 +588,7 @@ export function createReadingPagePainter() {
 		return tile;
 	}
 
-	return (page: Page, chapterCount: number, clay: boolean, design?: VolumeDesign) => {
+	function paintPage(page: Page, chapterCount: number, clay: boolean, design?: VolumeDesign) {
 		if (clay) return createClayPageTexture(page, chapterCount);
 		const theme = resolvePageTheme(design);
 		const canvas = document.createElement('canvas');
@@ -527,8 +670,10 @@ export function createReadingPagePainter() {
 			ctx.font = '23px ' + theme.font;
 			ctx.fillStyle = theme.inkMuted;
 			if (title) {
-				const unit = chapterCount === 1 ? 'Section' : 'Chapters';
-				ctx.fillText(chapterCount + ' ' + unit, cx, 820);
+				if (chapterCount > 0) {
+					const unit = chapterCount === 1 ? 'Section' : 'Chapters';
+					ctx.fillText(chapterCount + ' ' + unit, cx, 820);
+				}
 			} else if (page.colophonNote) {
 				heading(ctx, page.colophonNote, cx, 780, right - left - 40, 28);
 			} else {
@@ -540,24 +685,36 @@ export function createReadingPagePainter() {
 				ctx.fillStyle = theme.inkMuted;
 				heading(ctx, page.sourceNote, cx, 932, right - left - 44, 26);
 			}
+		} else if (page.kind === 'chapter-opener') {
+			drawChapterOpener(ctx, page, { left, right, cx }, texture, theme);
 		} else if (page.kind === 'illustration') {
-			ctx.font = 'italic 600 25px ' + theme.font;
-			ctx.fillStyle = theme.inkMuted;
-			ctx.fillText(page.chapterTitle ?? page.volumeTitle, cx, 64);
-			drawIllustrationPlate(ctx, page, left, right, cx, texture, theme);
+			if (!page.fullBleed) {
+				ctx.font = 'italic 600 25px ' + theme.font;
+				ctx.fillStyle = theme.inkMuted;
+				ctx.fillText(page.chapterTitle ?? page.volumeTitle, cx, 64);
+			}
+			drawIllustrationPlate(ctx, page, { left, right, cx }, texture, theme, motionController);
+		} else if (page.kind === 'stanza') {
+			drawStanza(ctx, page, left, right, theme);
 		} else {
 			const opener = page.kind === 'chapter-start';
 			ctx.font = 'italic 600 25px ' + theme.font;
 			ctx.fillStyle = theme.inkMuted;
 			ctx.fillText(
-				page.side === 'left' ? page.volumeTitle : 'Chapter ' + page.chapterRomanNumeral,
+				page.side === 'left'
+					? page.volumeTitle
+					: page.chapterRomanNumeral
+						? 'Chapter ' + page.chapterRomanNumeral
+						: (page.chapterTitle ?? page.volumeTitle),
 				cx,
 				64
 			);
 			let startY = 148;
 			if (opener) {
-				ctx.font = '600 28px ' + theme.font;
-				ctx.fillText('CHAPTER ' + page.chapterRomanNumeral, cx, 173);
+				if (page.chapterRomanNumeral) {
+					ctx.font = '600 28px ' + theme.font;
+					ctx.fillText('CHAPTER ' + page.chapterRomanNumeral, cx, 173);
+				}
 				ctx.font = '600 44px ' + theme.font;
 				ctx.fillStyle = theme.inkPrimary;
 				const bottom = heading(ctx, page.chapterTitle ?? '', cx, 242, right - left, 50);
@@ -585,5 +742,12 @@ export function createReadingPagePainter() {
 		drawGutterShadow(ctx, page.side);
 		texture.needsUpdate = true;
 		return texture;
+	}
+
+	return {
+		paintPage,
+		stepIllustrations(delta: number) {
+			motionController.step(delta);
+		}
 	};
 }

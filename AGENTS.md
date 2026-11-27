@@ -27,6 +27,8 @@ A static, browser-only 3D library web app where readers browse a warm wooden boo
 | --- | --- |
 | `#lib/*` imports with explicit extensions inside `src/lib/` | `pnpm lint` (`use-lib-subpath-imports`) + `pnpm check` |
 | `src/lib/catalog/` & `src/lib/physics/` stay pure TS (no Three/Svelte/Threlte) | `pnpm lint` (`pure-ts-layer`) |
+| `Readable Volume` images live in `static/volumes/<volume-id>/` (not `src/lib/catalog/readable/`) | `pnpm lint` (`volume-assets-in-static`) |
+| Camera & scene wheel gesture math lives in `src/lib/physics/` | `pnpm lint` (`camera-gesture-math`, `scene-wheel-gesture-math`) |
 | Manual `THREE.*Geometry`/`Material` live in `*-geometry.ts` with `dispose()` | `pnpm lint` (`scene-geometry-disposal`, `geometry-helper-dispose`) |
 | `useTask()` clamps `delta` (e.g. `Math.min(delta, 0.05)`) | `pnpm lint` (`clamp-usetask-delta`) |
 | Canonical `GLOSSARY.md` type names (`Volume`, not `VolumeEntry`) | `pnpm lint` (`glossary-canonical-names`) |
