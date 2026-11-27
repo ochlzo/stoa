@@ -5,5 +5,7 @@ export const design: VolumeDesign = {
 	spineProfile: 'rounded',
 	coverColor: 'forestGreen',
 	foilStyle: 'gold',
-	emblem: 'compass'
+	emblem: 'compass',
+	sourceNote:
+		'Sophocles, Oedipus Rex. Translated by Francis Storr (Loeb Classical Library, 1912); public domain text via Project Gutenberg (#31).'
 };

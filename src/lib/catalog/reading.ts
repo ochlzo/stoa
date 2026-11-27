@@ -1,4 +1,4 @@
-import { getReadableVolumePackage } from '#lib/catalog/readable/index.ts';
+import { getLoadedVolumeContent, loadVolumeContent } from '#lib/catalog/readable/index.ts';
 import type {
 	IllustrationMotion,
 	ProseSection,
@@ -10,6 +10,7 @@ import type { Volume } from '#lib/catalog/types.ts';
 export type PageKind =
 	| 'endpaper'
 	| 'front-title'
+	| 'chapter-opener'
 	| 'chapter-start'
 	| 'body'
 	| 'stanza'
@@ -21,6 +22,8 @@ export type PageContentMode = 'specimen' | 'prose' | 'verse' | 'illustration';
 export interface PageTextLine {
 	readonly text: string;
 	readonly indent?: boolean;
+	/** Expand the spaces in a continuing prose line to the right margin. */
+	readonly justify?: boolean;
 	readonly stanzaGapBefore?: boolean;
 }
 
@@ -63,9 +66,9 @@ export interface Page {
 export interface Chapter {
 	/** 0-based index in VolumeReadingModel.chapters. */
 	readonly index: number;
-	/** 1-based Chapter number. */
-	readonly number: number;
-	readonly romanNumeral: string;
+	/** 1-based Chapter number, or null for unnumbered front matter and illustration plates. */
+	readonly number: number | null;
+	readonly romanNumeral: string | null;
 	readonly title: string;
 	/** First Page index belonging to this Chapter. */
 	readonly startPageIndex: number;
@@ -91,6 +94,8 @@ export interface VolumeReadingModel {
 	readonly title: string;
 	readonly author: string;
 	readonly chapters: readonly Chapter[];
+	/** Count of numbered Chapters (excluding unnumbered front matter and illustration plates). */
+	readonly numberedChapterCount: number;
 	readonly pages: readonly Page[];
 	readonly spreads: readonly Spread[];
 	readonly totalLeaves: number;
@@ -194,11 +199,10 @@ function getChapterBlueprintsForVolume(volume: Volume): readonly ChapterBlueprin
 	return blueprints;
 }
 
-const PROSE_CHARS_PER_LINE = 42;
+const PROSE_CHARS_PER_LINE = 44;
 const VERSE_CHARS_PER_LINE = 44;
 const BODY_LINES_PER_PAGE = 22;
 const OPENER_LINES_PER_PAGE = 14;
-const MIN_BODY_LINES_PER_PAGE = 6;
 
 function wrapTextToBudget(text: string, maxChars: number): string[] {
 	const words = text.trim().split(/\s+/).filter(Boolean);
@@ -218,45 +222,39 @@ function wrapTextToBudget(text: string, maxChars: number): string[] {
 	return rows;
 }
 
-function paginateProseSection(section: ProseSection): readonly (readonly PageTextLine[])[] {
+function getFirstPageLineLimit(hasArtworkOpener: boolean, epigraph?: string): number {
+	const base = hasArtworkOpener ? BODY_LINES_PER_PAGE : OPENER_LINES_PER_PAGE;
+	return Math.max(6, base - (epigraph ? 3 : 0));
+}
+
+function paginateProseSection(
+	section: ProseSection,
+	hasArtworkOpener = false
+): readonly (readonly PageTextLine[])[] {
 	const allLines: PageTextLine[] = [];
 	for (const paragraph of section.paragraphs) {
 		const wrapped = wrapTextToBudget(paragraph, PROSE_CHARS_PER_LINE);
 		wrapped.forEach((text, idx) => {
-			allLines.push({ text, indent: idx === 0 });
+			allLines.push({ text, indent: idx === 0, justify: idx < wrapped.length - 1 });
 		});
 	}
 	if (allLines.length === 0) return [[]];
 
-	const firstLimit = section.epigraph ? OPENER_LINES_PER_PAGE - 3 : OPENER_LINES_PER_PAGE;
-	let openerLineCount = Math.min(firstLimit, allLines.length);
-	let remainingLineCount = allLines.length - openerLineCount;
-
-	// Give a short tail back to the Chapter-opening Page instead of leaving a
-	// nearly empty final Page by itself.
-	if (remainingLineCount > 0 && remainingLineCount < MIN_BODY_LINES_PER_PAGE) {
-		openerLineCount = Math.max(
-			MIN_BODY_LINES_PER_PAGE,
-			allLines.length - MIN_BODY_LINES_PER_PAGE
-		);
-		remainingLineCount = allLines.length - openerLineCount;
-	}
-
-	const buckets: PageTextLine[][] = [allLines.slice(0, openerLineCount)];
-	const continuationPageCount = Math.ceil(remainingLineCount / BODY_LINES_PER_PAGE);
-	const continuationLinesPerPage = continuationPageCount
-		? Math.ceil(remainingLineCount / continuationPageCount)
-		: 0;
-	let cursor = openerLineCount;
+	const firstLimit = getFirstPageLineLimit(hasArtworkOpener, section.epigraph);
+	const buckets: PageTextLine[][] = [];
+	let cursor = 0;
 	while (cursor < allLines.length) {
-		const end = Math.min(allLines.length, cursor + continuationLinesPerPage);
-		buckets.push(allLines.slice(cursor, end));
-		cursor = end;
+		const limit = buckets.length === 0 ? firstLimit : BODY_LINES_PER_PAGE;
+		buckets.push(allLines.slice(cursor, cursor + limit));
+		cursor += limit;
 	}
 	return buckets;
 }
 
-function paginateVerseSection(section: VerseSection): readonly (readonly PageTextLine[])[] {
+function paginateVerseSection(
+	section: VerseSection,
+	hasArtworkOpener = false
+): readonly (readonly PageTextLine[])[] {
 	const allLines: PageTextLine[] = [];
 	section.stanzas.forEach((stanza, stanzaIdx) => {
 		stanza.forEach((rawLine, lineIdx) => {
@@ -273,11 +271,11 @@ function paginateVerseSection(section: VerseSection): readonly (readonly PageTex
 	});
 	if (allLines.length === 0) return [[]];
 
-	const firstLimit = section.epigraph ? OPENER_LINES_PER_PAGE - 3 : OPENER_LINES_PER_PAGE;
+	const firstLimit = getFirstPageLineLimit(hasArtworkOpener, section.epigraph);
 	const buckets: PageTextLine[][] = [];
 	let cursor = 0;
 	while (cursor < allLines.length) {
-		const limit = buckets.length === 0 ? Math.max(6, firstLimit) : BODY_LINES_PER_PAGE;
+		const limit = buckets.length === 0 ? firstLimit : BODY_LINES_PER_PAGE;
 		const slice: PageTextLine[] = [];
 		let units = 0;
 		while (cursor < allLines.length) {
@@ -386,14 +384,15 @@ export function buildVolumeReadingModel(
 			folio += 2;
 		}
 	} else if (content?.sections?.length) {
+		let numberedChapterCount = 0;
+
 		for (const section of content.sections) {
 			const chapterIndex = chapters.length;
-			const chapterNumber = chapterIndex + 1;
-			const roman = toRomanNumeral(chapterNumber);
 			const startPageIndex = pages.length;
 
 			if (section.kind === 'illustration') {
 				const pageIndex = pages.length;
+				const plateTitle = section.title ?? section.caption ?? 'Illustration';
 				pages.push({
 					index: pageIndex,
 					pageNumber: folio,
@@ -401,9 +400,9 @@ export function buildVolumeReadingModel(
 					kind: 'illustration',
 					contentMode: 'illustration',
 					chapterIndex,
-					chapterNumber,
-					chapterRomanNumeral: roman,
-					chapterTitle: section.title ?? section.caption ?? `Plate ${roman}`,
+					chapterNumber: null,
+					chapterRomanNumeral: null,
+					chapterTitle: plateTitle,
 					volumeTitle: resolvedTitle,
 					volumeAuthor: resolvedAuthor,
 					lineCount: 0,
@@ -415,9 +414,9 @@ export function buildVolumeReadingModel(
 				folio += 1;
 				chapters.push({
 					index: chapterIndex,
-					number: chapterNumber,
-					romanNumeral: roman,
-					title: section.title ?? section.caption ?? `Plate ${roman}`,
+					number: null,
+					romanNumeral: null,
+					title: plateTitle,
 					startPageIndex,
 					endPageIndex: pageIndex,
 					startSpreadIndex: Math.floor(startPageIndex / 2)
@@ -425,8 +424,34 @@ export function buildVolumeReadingModel(
 				continue;
 			}
 
+			const chapterNumber = section.unnumbered ? null : ++numberedChapterCount;
+			const roman = chapterNumber === null ? null : toRomanNumeral(chapterNumber);
+
+			if (section.openingImageSrc) {
+				const pageIndex = pages.length;
+				pages.push({
+					index: pageIndex,
+					pageNumber: folio,
+					side: pageIndex % 2 === 0 ? 'left' : 'right',
+					kind: 'chapter-opener',
+					contentMode: 'illustration',
+					chapterIndex,
+					chapterNumber,
+					chapterRomanNumeral: roman,
+					chapterTitle: section.title,
+					volumeTitle: resolvedTitle,
+					volumeAuthor: resolvedAuthor,
+					lineCount: 0,
+					paragraphBreaks: [],
+					illustrationSrc: section.openingImageSrc
+				});
+				folio += 1;
+			}
+
 			const pageBuckets =
-				section.kind === 'prose' ? paginateProseSection(section) : paginateVerseSection(section);
+				section.kind === 'prose'
+					? paginateProseSection(section, !!section.openingImageSrc)
+					: paginateVerseSection(section, !!section.openingImageSrc);
 
 			pageBuckets.forEach((lines, bucketIdx) => {
 				const pageIndex = pages.length;
@@ -439,7 +464,7 @@ export function buildVolumeReadingModel(
 					index: pageIndex,
 					pageNumber: folio,
 					side: pageIndex % 2 === 0 ? 'left' : 'right',
-					kind: isStart ? 'chapter-start' : 'body',
+					kind: isStart && !section.openingImageSrc ? 'chapter-start' : 'body',
 					contentMode: section.kind,
 					chapterIndex,
 					chapterNumber,
@@ -565,6 +590,7 @@ export function buildVolumeReadingModel(
 		title: resolvedTitle,
 		author: resolvedAuthor,
 		chapters,
+		numberedChapterCount: chapters.filter((chapter) => chapter.number !== null).length,
 		pages,
 		spreads,
 		totalLeaves: spreadCount
@@ -573,14 +599,33 @@ export function buildVolumeReadingModel(
 
 /**
  * Builds (and caches) a deterministic fixed-layout Chapter / Page / Spread model
- * for a Volume (ADR 0004).
+ * for a Volume (ADR 0004). Uses already-loaded VolumeContent when present, or
+ * falls back to the deterministic specimen layout until `loadVolumeReadingModel` resolves.
  */
 export function getVolumeReadingModel(volume: Volume): VolumeReadingModel {
 	const cached = modelCache.get(volume.id);
 	if (cached) return cached;
 
-	const pkg = getReadableVolumePackage(volume.id);
-	const model = buildVolumeReadingModel(volume, pkg?.content);
+	const content = getLoadedVolumeContent(volume.id);
+	const model = buildVolumeReadingModel(volume, content);
+	if (content || volume.kind !== 'readable') {
+		modelCache.set(volume.id, model);
+	}
+	return model;
+}
+
+/**
+ * Lazy-loads a Readable Volume's `content.ts` chunk, builds its deterministic
+ * reading model, and caches it for synchronous lookups.
+ */
+export async function loadVolumeReadingModel(volume: Volume): Promise<VolumeReadingModel> {
+	if (volume.kind !== 'readable') return getVolumeReadingModel(volume);
+
+	const content = await loadVolumeContent(volume.id);
+	const cached = modelCache.get(volume.id);
+	if (cached) return cached;
+
+	const model = buildVolumeReadingModel(volume, content);
 	modelCache.set(volume.id, model);
 	return model;
 }

@@ -23,72 +23,72 @@ function simulateSeconds(sim: ReturnType<typeof createShelfDominoSimulation>, se
 }
 
 describe('shelf-domino 2D multi-body physics', () => {
-	it('tips The Aeneid cleanly onto The Iliad when The Odyssey is pulled out and rights it on return', () => {
+	it('tips The Old Man and the Sea cleanly onto The Iliad when The Odyssey is pulled out and rights it on return', () => {
 		const sim = createShelfDominoSimulation(placedVolumes);
-		const aeneid = placedVolumes.find((v) => v.volume.id === 'aeneid')!;
+		const leaningVolume = placedVolumes.find((v) => v.volume.id === 'the-old-man-and-the-sea')!;
 		const iliad = placedVolumes.find((v) => v.volume.id === 'iliad')!;
-		const shelf = bookcase.shelves[aeneid.shelfIndex];
+		const shelf = bookcase.shelves[leaningVolume.shelfIndex];
 
 		startShelfDomino(sim, 'the-odyssey');
 		simulateSeconds(sim, 1.4);
 
-		const aeneidPose = getShelfDominoPose(sim, 'aeneid')!;
+		const leaningPose = getShelfDominoPose(sim, 'the-old-man-and-the-sea')!;
 		const iliadPose = getShelfDominoPose(sim, 'iliad')!;
-		assert.ok(aeneidPose, 'Expected live pose for aeneid');
-		// Aeneid tipped significantly further leftward than its 14° (0.244 rad) resting lean
+		assert.ok(leaningPose, 'Expected live pose for the-old-man-and-the-sea');
+		// Leaning volume tipped significantly further leftward than its 14° (0.244 rad) resting lean
 		assert.ok(
-			aeneidPose.angle > aeneid.rotationZ + 0.18,
-			`Expected Aeneid to tip further leftward, got ${aeneidPose.angle.toFixed(3)} rad`
+			leaningPose.angle > leaningVolume.rotationZ + 0.18,
+			`Expected The Old Man and the Sea to tip further leftward, got ${leaningPose.angle.toFixed(3)} rad`
 		);
 
 		// Verify zero Shelf floor penetration and zero clipping through The Iliad
 		const corners = getBoxCorners(
-			aeneidPose.centerX,
-			aeneidPose.centerY,
-			aeneidPose.angle,
-			aeneid.volume.dimensions.thickness / 2,
-			aeneid.volume.dimensions.height / 2
+			leaningPose.centerX,
+			leaningPose.centerY,
+			leaningPose.angle,
+			leaningVolume.volume.dimensions.thickness / 2,
+			leaningVolume.volume.dimensions.height / 2
 		);
 		const minY = Math.min(...corners.map((c) => c.y));
 		const minX = Math.min(...corners.map((c) => c.x));
 		const iliadRightFace = iliadPose.centerX + iliad.volume.dimensions.thickness / 2;
 
-		assert.ok(minY >= shelf.surfaceY - 0.002, `Aeneid sank below shelf: ${minY} < ${shelf.surfaceY}`);
+		assert.ok(minY >= shelf.surfaceY - 0.002, `The Old Man and the Sea sank below shelf: ${minY} < ${shelf.surfaceY}`);
 		assert.ok(
 			minX >= iliadRightFace - 0.004,
-			`Aeneid clipped into The Iliad: minX=${minX.toFixed(4)} < iliadRight=${iliadRightFace.toFixed(4)}`
+			`The Old Man and the Sea clipped into The Iliad: minX=${minX.toFixed(4)} < iliadRight=${iliadRightFace.toFixed(4)}`
 		);
 
 		// Smooth return restores exact resting pose
 		startShelfDominoReturn(sim);
 		simulateSeconds(sim, 0.7);
 		assert.equal(sim.phase, 'idle');
-		const restored = getShelfDominoPose(sim, 'aeneid')!;
-		const exactRest = computeVolumeShelfCenter(aeneid, 0);
+		const restored = getShelfDominoPose(sim, 'the-old-man-and-the-sea')!;
+		const exactRest = computeVolumeShelfCenter(leaningVolume, 0);
 		assert.ok(Math.abs(restored.centerX - exactRest[0]) < 1e-9);
 		assert.ok(Math.abs(restored.centerY - exactRest[1]) < 1e-9);
-		assert.ok(Math.abs(restored.angle - aeneid.rotationZ) < 1e-9);
+		assert.ok(Math.abs(restored.angle - leaningVolume.rotationZ) < 1e-9);
 	});
 
 	it('produces a true multi-book domino chain when pulling out an interior book (The Iliad)', () => {
 		const sim = createShelfDominoSimulation(placedVolumes);
 		const odyssey = placedVolumes.find((v) => v.volume.id === 'the-odyssey')!;
-		const aeneid = placedVolumes.find((v) => v.volume.id === 'aeneid')!;
+		const leaningVolume = placedVolumes.find((v) => v.volume.id === 'the-old-man-and-the-sea')!;
 
-		// Pulling out The Iliad (#3) lets leaning Aeneid (#5) push upright Odyssey (#4) leftward into the gap!
+		// Pulling out The Iliad (#3) lets leaning The Old Man and the Sea (#5) push upright Odyssey (#4) leftward into the gap!
 		startShelfDomino(sim, 'iliad');
 		simulateSeconds(sim, 1.5);
 
 		const odysseyPose = getShelfDominoPose(sim, 'the-odyssey')!;
-		const aeneidPose = getShelfDominoPose(sim, 'aeneid')!;
+		const leaningPose = getShelfDominoPose(sim, 'the-old-man-and-the-sea')!;
 
 		assert.ok(
 			odysseyPose.angle > 0.12,
 			`Expected upright Odyssey (#4) to domino-tip leftward when Iliad (#3) is removed, got ${odysseyPose.angle.toFixed(3)} rad`
 		);
 		assert.ok(
-			aeneidPose.angle > aeneid.rotationZ + 0.08,
-			`Expected Aeneid (#5) to follow Odyssey in the domino chain, got ${aeneidPose.angle.toFixed(3)} rad`
+			leaningPose.angle > leaningVolume.rotationZ + 0.08,
+			`Expected The Old Man and the Sea (#5) to follow Odyssey in the domino chain, got ${leaningPose.angle.toFixed(3)} rad`
 		);
 		assert.ok(odysseyPose.centerX < computeVolumeShelfCenter(odyssey, 0)[0]);
 	});
