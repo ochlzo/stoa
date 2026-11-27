@@ -14,6 +14,7 @@ Each teammate owns one isolated `Readable Volume` slot in Stoa's 3D `Bookcase`. 
 | **Alvarez** | *Don Quixote* | Miguel de Cervantes | `don-quixote` | Shelf 1 (Right) |
 | **Briongos** | *Gulliver's Travels* | Jonathan Swift | `gullivers-travels` | Shelf 1 (Right) |
 | **Licup** | *Sir Gawain and the Green Knight* | Anonymous | `sir-gawain-and-the-green-knight` | Shelf 2 (Left) |
+| **Dechavez** | *The Old Man and the Sea* | Ernest Hemingway | `the-old-man-and-the-sea` | Shelf 2 (Left, leaning) |
 | **Belgica** | *Your Laughter* | Pablo Neruda | `your-laughter` | Shelf 2 (Right) |
 | **Lutaro** | *Life of Pi* | Yann Martel | `life-of-pi` | Shelf 3 (Left) |
 | **Bone** | *Ode on a Grecian Urn* | John Keats | `ode-on-a-grecian-urn` | Shelf 3 (Right, leaning) |

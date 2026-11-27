@@ -7,6 +7,7 @@ import { design as theMerchantOfVeniceDesign } from '#lib/catalog/readable/the-m
 import { design as donQuixoteDesign } from '#lib/catalog/readable/don-quixote/design.ts';
 import { design as gulliversTravelsDesign } from '#lib/catalog/readable/gullivers-travels/design.ts';
 import { design as sirGawainDesign } from '#lib/catalog/readable/sir-gawain-and-the-green-knight/design.ts';
+import { design as theOldManAndTheSeaDesign } from '#lib/catalog/readable/the-old-man-and-the-sea/design.ts';
 import { design as yourLaughterDesign } from '#lib/catalog/readable/your-laughter/design.ts';
 import { design as lifeOfPiDesign } from '#lib/catalog/readable/life-of-pi/design.ts';
 import { design as odeOnAGrecianUrnDesign } from '#lib/catalog/readable/ode-on-a-grecian-urn/design.ts';
@@ -56,6 +57,11 @@ export const READABLE_VOLUMES: Readonly<Record<string, ReadableVolumePackage>> =
 			import('#lib/catalog/readable/sir-gawain-and-the-green-knight/content.ts').then(
 				(m) => m.content
 			)
+	},
+	'the-old-man-and-the-sea': {
+		design: theOldManAndTheSeaDesign,
+		loadContent: () =>
+			import('#lib/catalog/readable/the-old-man-and-the-sea/content.ts').then((m) => m.content)
 	},
 	'your-laughter': {
 		design: yourLaughterDesign,
