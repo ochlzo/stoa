@@ -1,7 +1,11 @@
 import type { VolumeDesign } from '#lib/catalog/readable/types.ts';
 
-export const SOURCE_NOTE =
-	"Charles Scribner's Sons, 1952 · Public Domain in the Philippines & Canada (Faded Page #20141070)";
+const EDITION_LINE = 'FIRST EDITION · MCMLII';
+const PUBLISHER = "Charles Scribner's Sons";
+const EDITION_YEAR = '1952';
+const ARCHIVE_REF = 'Faded Page #20141070';
+
+export const SOURCE_NOTE = `${PUBLISHER}, ${EDITION_YEAR} · Public Domain in the Philippines & Canada (${ARCHIVE_REF})`;
 
 const SERIF = 'Georgia, "Times New Roman", serif';
 
@@ -146,10 +150,8 @@ export const design: VolumeDesign = {
 		spine: 'volumes/the-old-man-and-the-sea/spine-cover.webp',
 		opacity: 0.98
 	},
-	coverBorder: 'single-rule',
-	emblem: 'ship',
 	titlePageIcon: 'sailboat',
-	editionLine: 'FIRST EDITION · MCMLII',
+	editionLine: EDITION_LINE,
 	paintFrontCover(ctx, { width: w, height: h, foil, blind }) {
 		const cx = w / 2;
 		ctx.save();
@@ -201,7 +203,7 @@ export const design: VolumeDesign = {
 		// Crisp cream edition imprint sitting cleanly over the deep indigo waves at the foot
 		ctx.fillStyle = blind;
 		ctx.font = `600 ${Math.round(w * 0.028)}px ${SERIF}`;
-		drawTrackedCentered(ctx, 'FIRST EDITION · MCMLII', cx, h * 0.908, w * 0.009);
+		drawTrackedCentered(ctx, EDITION_LINE, cx, h * 0.908, w * 0.009);
 
 		ctx.restore();
 	},
@@ -227,8 +229,8 @@ export const design: VolumeDesign = {
 		// Source attribution neatly set across two lines over the deep indigo sea band
 		ctx.fillStyle = blind;
 		ctx.font = `italic ${Math.round(w * 0.026)}px ${SERIF}`;
-		ctx.fillText("Charles Scribner's Sons, New York · 1952", cx, h * 0.855);
-		ctx.fillText('Public Domain (PH / CA) · Faded Page #20141070', cx, h * 0.892);
+		ctx.fillText(`${PUBLISHER}, New York · ${EDITION_YEAR}`, cx, h * 0.855);
+		ctx.fillText(`Public Domain (PH / CA) · ${ARCHIVE_REF}`, cx, h * 0.892);
 
 		ctx.restore();
 	},
