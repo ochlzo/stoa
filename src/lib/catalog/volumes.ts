@@ -122,12 +122,12 @@ export const CATALOG: readonly Volume[] = [
 	volume({ id: 'gullivers-travels', title: "Gulliver's Travels", author: 'Jonathan Swift', shelf: 1, size: [0.228, 0.04, 0.156], binding: 'linen-cloth', coverColor: 'oliveCloth', tone: 'bone', spine: 'flat', placement: RIGHT, readable: true }),
 	volume({ id: 'war-and-peace', title: 'War and Peace', author: 'Leo Tolstoy', shelf: 1, size: [0.268, 0.056, 0.188], binding: 'blind-tooled-calf', coverColor: 'umberCalf', tone: 'alabaster', spine: 'rounded', placement: RIGHT }),
 
-	// --- Shelf 2 (eye-level default Shelf Mode): Epics on the left (Aeneid leaning on The Odyssey), Stoics on the right ---
+	// --- Shelf 2 (eye-level default Shelf Mode): Epics & Classics on the left (The Old Man and the Sea leaning on The Odyssey), Stoics on the right ---
 	volume({ id: 'gilgamesh', title: 'The Epic of Gilgamesh', author: 'Anonymous', shelf: 2, size: [0.204, 0.028, 0.14], binding: 'quarter-vellum', coverColor: 'agedVellum', tone: 'bone', spine: 'shallow', placement: LEFT }),
 	volume({ id: 'sir-gawain-and-the-green-knight', title: 'Sir Gawain and the Green Knight', author: 'Anonymous', shelf: 2, size: [0.234, 0.038, 0.162], binding: 'linen-cloth', coverColor: 'slateBlue', tone: 'slateClay', spine: 'flat', placement: LEFT, readable: true }),
 	volume({ id: 'iliad', title: 'The Iliad', author: 'Homer', shelf: 2, size: [0.26, 0.052, 0.182], binding: 'raised-band-leather', coverColor: 'oxblood', tone: 'stone', spine: 'rounded', placement: LEFT }),
 	volume({ id: 'the-odyssey', title: 'The Odyssey', author: 'Homer', shelf: 2, size: [0.254, 0.05, 0.178], binding: 'raised-band-leather', coverColor: 'navyCloth', tone: 'warmClay', spine: 'rounded', placement: LEFT, readable: true }),
-	volume({ id: 'aeneid', title: 'The Aeneid', author: 'Virgil', shelf: 2, size: [0.236, 0.04, 0.166], binding: 'blind-tooled-calf', coverColor: 'oliveCloth', tone: 'ash', spine: 'rounded', placement: leaning(LEFT, 14) }),
+	volume({ id: 'the-old-man-and-the-sea', title: 'The Old Man and the Sea', author: 'Ernest Hemingway', shelf: 2, size: [0.236, 0.04, 0.166], binding: 'linen-cloth', coverColor: 'slateBlue', tone: 'ash', spine: 'shallow', placement: leaning(LEFT, 14), readable: true }),
 
 	volume({ id: 'meditations', title: 'Meditations', author: 'Marcus Aurelius', shelf: 2, size: [0.226, 0.036, 0.158], binding: 'raised-band-leather', coverColor: 'forestGreen', tone: 'slateClay', spine: 'rounded', placement: RIGHT }),
 	volume({ id: 'letters-from-a-stoic', title: 'Letters from a Stoic', author: 'Seneca', shelf: 2, size: [0.246, 0.042, 0.17], binding: 'blind-tooled-calf', coverColor: 'umberCalf', tone: 'stone', spine: 'flat', placement: RIGHT }),
