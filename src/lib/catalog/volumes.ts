@@ -114,7 +114,7 @@ export const CATALOG: readonly Volume[] = [
 	// --- Shelf 1: Great Novels. Grounded left cluster with leaning end, props in center, right run with leaning end ---
 	volume({ id: 'the-color-purple', title: 'The Color Purple', author: 'Alice Walker', shelf: 1, size: [0.248, 0.046, 0.174], binding: 'raised-band-leather', coverColor: 'forestGreen', tone: 'stone', spine: 'rounded', placement: LEFT, readable: true }),
 	// 109 Leaves at about 0.16 mm each, plus two 3.3 mm boards.
-	volume({ id: 'the-merchant-of-venice', title: 'The Merchant of Venice', author: 'William Shakespeare', shelf: 1, size: [0.232, 0.024, 0.16], binding: 'blind-tooled-calf', coverColor: 'oxblood', tone: 'charcoal', spine: 'rounded', placement: LEFT, readable: true }),
+	volume({ id: 'the-merchant-of-venice', title: 'The Merchant of Venice', author: 'William Shakespeare', shelf: 1, size: [0.232, 0.024, 0.16], binding: 'blind-tooled-calf', coverColor: 'slateBlue', tone: 'charcoal', spine: 'rounded', placement: LEFT, readable: true }),
 	volume({ id: 'pride-and-prejudice', title: 'Pride and Prejudice', author: 'Jane Austen', shelf: 1, size: [0.222, 0.032, 0.152], binding: 'quarter-vellum', coverColor: 'agedVellum', tone: 'bone', spine: 'flat', placement: leaning(LEFT, 14) }),
 
 	volume({ id: 'moby-dick', title: 'Moby-Dick', author: 'Herman Melville', shelf: 1, size: [0.24, 0.046, 0.17], binding: 'raised-band-leather', coverColor: 'navyCloth', tone: 'slateClay', spine: 'rounded', placement: leaning(RIGHT, -14) }),

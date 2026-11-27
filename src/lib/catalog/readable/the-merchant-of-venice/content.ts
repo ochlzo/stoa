@@ -1,9 +1,10 @@
+import { SOURCE_NOTE } from '#lib/catalog/readable/the-merchant-of-venice/design.ts';
 import type { VolumeContent } from '#lib/catalog/readable/types.ts';
 
 // Standard Ebooks text, based on the 1887 Victoria edition edited by Clark and Wright.
 // The edition's scene, speech, verse, and stage-direction boundaries are preserved.
 export const content: VolumeContent = {
-	sourceNote: '1887 Victoria edition · Standard Ebooks',
+	sourceNote: SOURCE_NOTE,
 	colophonNote:
 		'Text edited by William George Clark and William Aldis Wright. Interior art takes visual cues from Michael Radford’s 2004 film.',
 	sections: [

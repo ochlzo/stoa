@@ -1,11 +1,13 @@
 import type { VolumeDesign } from '#lib/catalog/readable/types.ts';
 
+export const SOURCE_NOTE = '1887 Victoria edition · Standard Ebooks';
+
 export const design: VolumeDesign = {
 	bindingStyle: 'blind-tooled-calf',
-	coverColor: 'navyCloth',
+	coverColor: 'slateBlue',
 	foilColor: '#b89558',
 	headbandColor: '#a17d48',
-	sourceNote: '1887 Victoria edition · Standard Ebooks',
+	sourceNote: SOURCE_NOTE,
 	coverBorder: 'single-rule',
 	emblem: {
 		// Balance beam, upright, and two suspended pans in a 100-unit square.
