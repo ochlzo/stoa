@@ -3,7 +3,6 @@ import type { EndpaperPaintInfo, VolumeDesign } from '#lib/catalog/readable/type
 /**
  * Custom gold-foil emblem: The Green Knight's bearded Danish broad-axe
  * centered inside a medieval heater-shield outline (100x100 viewBox).
- * (You can also swap `emblem` below to presets like `'crown'`, `'knot'`, `'wreath'`, or `'fleuron'`.)
  */
 const GREEN_AXE_CREST_SVG_PATH =
 	// Outer shield ring (clockwise) + inner shield cutout (counter-clockwise)
@@ -86,15 +85,15 @@ export const design: VolumeDesign = {
 	headbandColor: '#2c4637',
 
 	// --- Cover & Spine Stamping ---
+	author: 'Anonymous (The Gawain Poet)',
 	coverBorder: 'double-rule',
 	emblem: {
 		svgPath: GREEN_AXE_CREST_SVG_PATH,
 		viewBoxSize: 100
 	},
-	// 👇 PUT YOUR NAME HERE to display it at the top of the Front Title Page,
-	//    on the 3D Front Cover foot, and on the Front Endpaper Ex Libris Bookplate:
-	//    e.g. editionLine: 'CURATED BY JORGE LICUP · 1912 EDITION',
 	editionLine: 'CAMELOT ILLUMINATED EDITION · 1912',
+	sourceNote:
+		'Illustrated companion edition · Archival plates from BL Cotton MS. Nero A.x (c. 1400), Howard Pyle (1903), Frederic Lawrence (1912), and August Schwerdfeger (CC BY 4.0).',
 
 	// --- Endpapers & Endsheets ---
 	endpaperStyle: 'marbled',
