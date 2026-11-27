@@ -1,12 +1,9 @@
 import type { VolumeDesign } from '#lib/catalog/readable/types.ts';
 
-/**
- * Linear PBR stamp channels in Stoa's volume shader:
- * - Red channel (`toolColor` = #1e1915, metalness = 0): crisp espresso-black ink on warm
- *   cream parchment so the spine and back cover match the ink-and-gold nib front cover.
- */
-const INK_PRIMARY = 'rgb(255, 145, 0)'; // Crisp deep black-ink lettering (#1e1915)
-const INK_SECONDARY = 'rgb(198, 162, 0)'; // Muted charcoal-sepia ink for secondary lines
+const SERIF_FONT = 'Georgia, "Times New Roman", serif';
+const SECONDARY_INK_ALPHA = 0.78;
+const BACK_NOTE_PRIMARY = 'Miguel Syjuco, Ilustrado (2008)';
+const BACK_NOTE_SECONDARY = 'Winner of the Man Asian Literary Prize · Stoa Library Edition';
 
 export const design: VolumeDesign = {
 	// --- Binding & 3D Surface Material ---
@@ -21,7 +18,6 @@ export const design: VolumeDesign = {
 	// on the warm cream spine and back cover.
 	foilStyle: 'blind',
 	toolColor: '#1e1915',
-	foilColor: '#d99a16',
 	headbandColor: '#e2a218',
 	// UV-exact 1024x1024 fountain-pen nib front cover + matching warm cream cloth on spine/back.
 	coverArtwork: {
@@ -32,8 +28,7 @@ export const design: VolumeDesign = {
 	},
 
 	// --- Cover & Spine Stamping ---
-	sourceNote:
-		'Miguel Syjuco, Ilustrado (2008). Winner of the Man Asian Literary Prize · Stoa Library Edition.',
+	sourceNote: `${BACK_NOTE_PRIMARY}. ${BACK_NOTE_SECONDARY}.`,
 	coverBorder: 'none',
 	emblem: 'none',
 
@@ -45,7 +40,7 @@ export const design: VolumeDesign = {
 	 * and edition attribution.
 	 */
 	paintBackCover: (ctx, info) => {
-		const { width: w, height: h } = info;
+		const { width: w, height: h, blind } = info;
 		const cx = w / 2;
 
 		ctx.save();
@@ -56,7 +51,8 @@ export const design: VolumeDesign = {
 		ctx.save();
 		ctx.translate(cx, ny);
 		ctx.scale(s, s);
-		ctx.strokeStyle = INK_SECONDARY;
+		ctx.globalAlpha = SECONDARY_INK_ALPHA;
+		ctx.strokeStyle = blind;
 		ctx.lineWidth = 4.5;
 		ctx.lineJoin = 'round';
 		ctx.beginPath();
@@ -75,7 +71,7 @@ export const design: VolumeDesign = {
 		ctx.lineTo(0, -10);
 		ctx.stroke();
 
-		ctx.fillStyle = INK_SECONDARY;
+		ctx.fillStyle = blind;
 		ctx.beginPath();
 		ctx.arc(0, -6, 6.5, 0, Math.PI * 2);
 		ctx.fill();
@@ -87,11 +83,11 @@ export const design: VolumeDesign = {
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
 		const noteSize = Math.round(w * 0.027);
-		ctx.font = `italic 500 ${noteSize}px Georgia, "Times New Roman", serif`;
-		ctx.fillStyle = INK_PRIMARY;
-		ctx.fillText('Miguel Syjuco, Ilustrado (2008)', cx, h * 0.818);
-		ctx.fillStyle = INK_SECONDARY;
-		ctx.fillText('Winner of the Man Asian Literary Prize · Stoa Library Edition', cx, h * 0.856);
+		ctx.font = `italic 500 ${noteSize}px ${SERIF_FONT}`;
+		ctx.fillStyle = blind;
+		ctx.fillText(BACK_NOTE_PRIMARY, cx, h * 0.818);
+		ctx.globalAlpha = SECONDARY_INK_ALPHA;
+		ctx.fillText(BACK_NOTE_SECONDARY, cx, h * 0.856);
 
 		ctx.restore();
 	},
@@ -101,9 +97,11 @@ export const design: VolumeDesign = {
 	 * parchment, preserving Stoa's foot combination mark and double bottom rule.
 	 */
 	paintSpine: (ctx, info) => {
-		const { width: w, height: h } = info;
+		const { width: w, height: h, blind } = info;
 		const cx = w / 2;
 		const panel = w * 0.68;
+		const authorLabel = info.author.split(/\s+/).at(-1) ?? info.author;
+		const titleLabel = info.title;
 
 		ctx.save();
 
@@ -117,11 +115,14 @@ export const design: VolumeDesign = {
 		let titleW = 0;
 		let gap = 0;
 
+		const authorFont = (size: number) => `400 ${Math.round(size * 0.9)}px ${SERIF_FONT}`;
+		const titleFont = (size: number) => `italic 700 ${size}px ${SERIF_FONT}`;
+
 		while (fontSize > 14) {
-			ctx.font = `400 ${Math.round(fontSize * 0.9)}px Georgia, "Times New Roman", serif`;
-			authorW = ctx.measureText('Syjuco').width * scaleX;
-			ctx.font = `italic 700 ${fontSize}px Georgia, "Times New Roman", serif`;
-			titleW = ctx.measureText('Ilustrado').width * scaleX;
+			ctx.font = authorFont(fontSize);
+			authorW = ctx.measureText(authorLabel).width * scaleX;
+			ctx.font = titleFont(fontSize);
+			titleW = ctx.measureText(titleLabel).width * scaleX;
 			gap = fontSize * 1.1;
 			if (authorW + gap + titleW <= maxSpan) break;
 			fontSize--;
@@ -138,17 +139,18 @@ export const design: VolumeDesign = {
 
 		ctx.save();
 		ctx.scale(scaleX, 1.04);
-		ctx.font = `400 ${Math.round(fontSize * 0.9)}px Georgia, "Times New Roman", serif`;
-		ctx.fillStyle = INK_SECONDARY;
-		ctx.fillText('Syjuco', 0, 0);
+		ctx.font = authorFont(fontSize);
+		ctx.globalAlpha = SECONDARY_INK_ALPHA;
+		ctx.fillStyle = blind;
+		ctx.fillText(authorLabel, 0, 0);
 		ctx.restore();
 
 		ctx.save();
 		ctx.translate(authorW + gap, 0);
 		ctx.scale(scaleX, 1.04);
-		ctx.font = `italic 700 ${fontSize}px Georgia, "Times New Roman", serif`;
-		ctx.fillStyle = INK_PRIMARY;
-		ctx.fillText('Ilustrado', 0, 0);
+		ctx.font = titleFont(fontSize);
+		ctx.fillStyle = blind;
+		ctx.fillText(titleLabel, 0, 0);
 		ctx.restore();
 
 		ctx.restore();
