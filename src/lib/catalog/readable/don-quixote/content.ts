@@ -10,6 +10,7 @@ export const content: VolumeContent = {
 	"sections": [
 		{
 			"kind": "prose",
+			"unnumbered": true,
 			"title": "The Gentleman of La Mancha",
 			"epigraph": "Part I, Chapter I — Character and pursuits of Don Quixote.",
 			"paragraphs": [
@@ -31,6 +32,7 @@ export const content: VolumeContent = {
 		},
 		{
 			"kind": "prose",
+			"unnumbered": true,
 			"title": "The First Sally",
 			"epigraph": "Part I, Chapter II — The first sally the ingenious Don Quixote made from home.",
 			"paragraphs": [
@@ -47,6 +49,7 @@ export const content: VolumeContent = {
 		},
 		{
 			"kind": "prose",
+			"unnumbered": true,
 			"title": "Dubbed a Knight at the Inn",
 			"epigraph": "Part I, Chapter III — The droll way in which Don Quixote had himself dubbed a knight.",
 			"paragraphs": [
@@ -69,6 +72,7 @@ export const content: VolumeContent = {
 		},
 		{
 			"kind": "prose",
+			"unnumbered": true,
 			"title": "Sancho Panza and the Second Sally",
 			"epigraph": "Part I, Chapter VII — Of the second sally of our worthy knight.",
 			"paragraphs": [
@@ -101,6 +105,7 @@ export const content: VolumeContent = {
 		},
 		{
 			"kind": "prose",
+			"unnumbered": true,
 			"title": "The Adventure of the Windmills",
 			"epigraph": "Part I, Chapter VIII — The terrible and undreamt-of adventure of the windmills.",
 			"paragraphs": [
