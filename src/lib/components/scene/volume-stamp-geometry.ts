@@ -53,6 +53,9 @@ function createCoverArtLayer(src: string, opacity: number): ArtLayer {
 	return { texture, loaded, opacity };
 }
 
+export const VOLUME_HIGHLIGHT_EMISSIVE = LOOKDEV_PALETTE.paperAndInk.goldFoil;
+export const VOLUME_HIGHLIGHT_INTENSITY = 0.065;
+
 export function createVolumeStamps(finishes: VolumeFinishes) {
 	const textures = createPbrTextureCache<Texture>();
 	const artTextures = createPbrTextureCache<Texture>();
@@ -73,6 +76,28 @@ export function createVolumeStamps(finishes: VolumeFinishes) {
 					: undefined;
 				return createStampedMaterial(finishes.cover(volume, false), stamp, design, artLayer);
 			});
+		},
+		coverMaterial(volume: Volume, clay: boolean, highlighted = false, clayRoughness = 0.9) {
+			const props = finishes.cover(volume, clay, clayRoughness);
+			const key = `cover:${clay ? 'c' : volume.bindingStyle}:${props.color}:${props.roughness}:${props.bumpScale}:${highlighted ? 'h' : 'n'}`;
+			return materials.getOrCreate(
+				key,
+				() =>
+					new MeshStandardMaterial({
+						...props,
+						emissive: highlighted ? VOLUME_HIGHLIGHT_EMISSIVE : '#000000',
+						emissiveIntensity: highlighted ? VOLUME_HIGHLIGHT_INTENSITY : 0
+					})
+			);
+		},
+		paperMaterial(clay: boolean) {
+			const key = `paper:${clay ? 'c' : 'l'}`;
+			return materials.getOrCreate(key, () => new MeshStandardMaterial(finishes.paper(clay)));
+		},
+		headbandMaterial(clay: boolean, volume?: Volume) {
+			const props = finishes.headband(clay, volume);
+			const key = `headband:${clay ? 'c' : props.color}`;
+			return materials.getOrCreate(key, () => new MeshStandardMaterial(props));
 		},
 		dispose() {
 			materials.dispose();

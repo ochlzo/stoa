@@ -22,7 +22,17 @@ export function createShelfPropMaterials() {
 			};
 			switch (preset.materialKind) {
 				case 'glass':
-					return new MeshPhysicalMaterial({ ...base, transmission: 0.94, thickness: 0.015, ior: 1.5 });
+					return new MeshPhysicalMaterial({
+						...base,
+						transparent: true,
+						opacity: 0.34,
+						depthWrite: false,
+						roughness: 0.08,
+						metalness: 0.08,
+						ior: 1.5,
+						reflectivity: 0.9,
+						envMapIntensity: 1.6
+					});
 				case 'paper':
 					return new MeshStandardMaterial(bindings.paper(false));
 				case 'leather':

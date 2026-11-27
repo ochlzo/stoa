@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { rosettePetals } from '#lib/catalog/prop-layout.ts';
 import type { ShelfPropSpec, VaseProfile } from '#lib/catalog/props.ts';
 
 const VASE_PROFILES: Record<VaseProfile, readonly [radius: number, y: number][]> = {
@@ -49,11 +51,11 @@ const OUTER_WALL_END: Record<VaseProfile, number> = {
 function createSmoothLathe(
 	points: readonly [number, number][],
 	outerWallEnd: number,
-	segments = 40
+	segments = 24
 ): THREE.LatheGeometry {
 	const vecs = points.map(([r, y]) => new THREE.Vector2(r, y));
 	const outerWall = new THREE.SplineCurve(vecs.slice(1, outerWallEnd + 1)).getPoints(
-		outerWallEnd * 6
+		outerWallEnd * 4
 	);
 	return new THREE.LatheGeometry([vecs[0], ...outerWall, ...vecs.slice(outerWallEnd + 1)], segments);
 }
@@ -85,8 +87,8 @@ function createCurvedLeafGeometry(
 		bevelEnabled: true,
 		bevelThickness: thickness * 0.45,
 		bevelSize: thickness * 0.35,
-		bevelSegments: 2,
-		curveSegments: 10
+		bevelSegments: 1,
+		curveSegments: 6
 	});
 
 	// Gently cup and arch the blade along its length so it reads as living foliage, not cardboard
@@ -105,23 +107,29 @@ function createCurvedLeafGeometry(
 	return geom;
 }
 
-interface StemLeafPlacement {
-	readonly key: string;
-	readonly position: readonly [number, number, number];
-	readonly rotation: readonly [number, number, number];
-	readonly scale: number;
+interface TrailingPlantBuild {
+	readonly stemsGeometry: THREE.BufferGeometry;
+	readonly leavesGeometry: THREE.BufferGeometry;
 }
 
-interface TrailingPlantBuild {
-	readonly stemGeometries: readonly THREE.TubeGeometry[];
-	readonly leaves: readonly StemLeafPlacement[];
+function bakeTransformed(
+	source: THREE.BufferGeometry,
+	matrix: THREE.Matrix4
+): THREE.BufferGeometry {
+	const clone = source.clone();
+	clone.applyMatrix4(matrix);
+	return clone;
 }
 
 /**
  * Builds curved arching stems (Catmull-Rom TubeGeometry) and paired sculpted leaves
- * for a trailing/arching houseplant (pothos-inspired, with a couple sprigs spilling gently over the rim).
+ * for a trailing/arching houseplant, merged into two static draw calls (stems + leaves).
  */
-function buildTrailingPlant(potRadius: number, potHeight: number): TrailingPlantBuild {
+function buildTrailingPlant(
+	potRadius: number,
+	potHeight: number,
+	foliageLeafGeometry: THREE.BufferGeometry
+): TrailingPlantBuild {
 	const stemSpecs = [
 		// Three upright arching crown stems
 		{ azimuth: 0.3, reach: potRadius * 1.15, peakY: 0.115, tipY: 0.088, tipDrop: false },
@@ -135,10 +143,15 @@ function buildTrailingPlant(potRadius: number, potHeight: number): TrailingPlant
 	] as const;
 
 	const soilY = potHeight * 0.86;
-	const stemGeometries: THREE.TubeGeometry[] = [];
-	const leaves: StemLeafPlacement[] = [];
+	const stemParts: THREE.TubeGeometry[] = [];
+	const leafParts: THREE.BufferGeometry[] = [];
+	const matrix = new THREE.Matrix4();
+	const pos = new THREE.Vector3();
+	const quat = new THREE.Quaternion();
+	const euler = new THREE.Euler();
+	const scaleVec = new THREE.Vector3();
 
-	stemSpecs.forEach((spec, sIdx) => {
+	stemSpecs.forEach((spec) => {
 		const dirX = Math.cos(spec.azimuth);
 		const dirZ = Math.sin(spec.azimuth);
 		const startR = potRadius * 0.18;
@@ -149,7 +162,7 @@ function buildTrailingPlant(potRadius: number, potHeight: number): TrailingPlant
 		const p3 = new THREE.Vector3(dirX * spec.reach, soilY + spec.tipY, dirZ * spec.reach);
 
 		const curve = new THREE.CatmullRomCurve3([p0, p1, p2, p3]);
-		stemGeometries.push(new THREE.TubeGeometry(curve, 14, 0.0022, 6, false));
+		stemParts.push(new THREE.TubeGeometry(curve, 10, 0.0022, 5, false));
 
 		const leafFractions = spec.tipDrop ? [0.42, 0.68, 0.9, 1.0] : [0.48, 0.76, 1.0];
 		leafFractions.forEach((t, lIdx) => {
@@ -160,16 +173,59 @@ function buildTrailingPlant(potRadius: number, potHeight: number): TrailingPlant
 			const pitch = spec.tipDrop ? 0.85 + t * 0.65 : 0.42 + t * 0.55;
 			const scale = isTip ? 0.78 : 0.88 + (1 - t) * 0.25;
 
-			leaves.push({
-				key: `stem-${sIdx}-leaf-${lIdx}`,
-				position: [pt.x, pt.y, pt.z],
-				rotation: [pitch, yaw, sideSign * 0.25],
-				scale
-			});
+			pos.copy(pt);
+			euler.set(pitch, yaw, sideSign * 0.25, 'XYZ');
+			quat.setFromEuler(euler);
+			scaleVec.set(scale, scale, scale);
+			matrix.compose(pos, quat, scaleVec);
+			leafParts.push(bakeTransformed(foliageLeafGeometry, matrix));
 		});
 	});
 
-	return { stemGeometries, leaves };
+	const stemsGeometry = mergeGeometries(stemParts, false);
+	const leavesGeometry = mergeGeometries(leafParts, false);
+	for (const g of stemParts) g.dispose();
+	for (const g of leafParts) g.dispose();
+
+	return { stemsGeometry, leavesGeometry };
+}
+
+function buildRosettePetals(
+	leafCount: number,
+	potRadius: number,
+	potHeight: number,
+	succulentPetalGeometry: THREE.BufferGeometry
+): THREE.BufferGeometry {
+	const petals = rosettePetals(leafCount, potRadius);
+	const parts: THREE.BufferGeometry[] = [];
+	const groupMatrix = new THREE.Matrix4();
+	const localMatrix = new THREE.Matrix4();
+	const combined = new THREE.Matrix4();
+	const pos = new THREE.Vector3();
+	const quat = new THREE.Quaternion();
+	const euler = new THREE.Euler();
+	const scaleVec = new THREE.Vector3();
+
+	for (const petal of petals) {
+		euler.set(0, petal.angle, 0, 'XYZ');
+		quat.setFromEuler(euler);
+		groupMatrix.compose(pos.set(0, potHeight * 0.87, 0), quat, scaleVec.set(1, 1, 1));
+
+		euler.set(petal.pitch, 0, 0, 'XYZ');
+		quat.setFromEuler(euler);
+		localMatrix.compose(
+			pos.set(0, 0, petal.radialOffset),
+			quat,
+			scaleVec.set(petal.scale, petal.scale, petal.scale)
+		);
+
+		combined.multiplyMatrices(groupMatrix, localMatrix);
+		parts.push(bakeTransformed(succulentPetalGeometry, combined));
+	}
+
+	const merged = mergeGeometries(parts, false);
+	for (const g of parts) g.dispose();
+	return merged;
 }
 
 export function createShelfPropGeometry(props: readonly ShelfPropSpec[]) {
@@ -194,7 +250,7 @@ export function createShelfPropGeometry(props: readonly ShelfPropSpec[]) {
 			[0.0, 0.84]
 		],
 		6,
-		36
+		24
 	);
 
 	// Organic foliage leaf (pothos/trailing houseplant) & plump spoon petal (echeveria succulent)
@@ -215,7 +271,7 @@ export function createShelfPropGeometry(props: readonly ShelfPropSpec[]) {
 			[0.0, 1.0]
 		],
 		7,
-		32
+		20
 	);
 
 	// Turned classical candlestick pedestal normalized to height 1.0, base radius 1.0
@@ -235,34 +291,45 @@ export function createShelfPropGeometry(props: readonly ShelfPropSpec[]) {
 			[0.0, 0.92]
 		],
 		9,
-		32
+		20
 	);
 
 	const trailingPlants = new Map<string, TrailingPlantBuild>();
+	const rosettePlants = new Map<string, THREE.BufferGeometry>();
 	for (const prop of props) {
 		if (prop.kind === 'planter' && prop.leafStyle === 'tall') {
-			trailingPlants.set(prop.id, buildTrailingPlant(prop.potRadius, prop.potHeight));
+			trailingPlants.set(
+				prop.id,
+				buildTrailingPlant(prop.potRadius, prop.potHeight, foliageLeafGeometry)
+			);
+		} else if (prop.kind === 'planter') {
+			rosettePlants.set(
+				prop.id,
+				buildRosettePetals(prop.leafCount, prop.potRadius, prop.potHeight, succulentPetalGeometry)
+			);
 		}
 	}
+	foliageLeafGeometry.dispose();
+	succulentPetalGeometry.dispose();
 
 	function dispose() {
 		for (const geom of Object.values(vaseGeometries)) {
 			geom.dispose();
 		}
 		planterPotGeometry.dispose();
-		foliageLeafGeometry.dispose();
-		succulentPetalGeometry.dispose();
 		hourglassBulbGeometry.dispose();
 		candlestickHolderGeometry.dispose();
 		for (const plant of trailingPlants.values()) {
-			for (const stemGeom of plant.stemGeometries) {
-				stemGeom.dispose();
-			}
+			plant.stemsGeometry.dispose();
+			plant.leavesGeometry.dispose();
+		}
+		for (const geom of rosettePlants.values()) {
+			geom.dispose();
 		}
 	}
 
 	return {
-		vaseGeometries, planterPotGeometry, foliageLeafGeometry, succulentPetalGeometry,
-		hourglassBulbGeometry, candlestickHolderGeometry, trailingPlants, dispose
+		vaseGeometries, planterPotGeometry,
+		hourglassBulbGeometry, candlestickHolderGeometry, trailingPlants, rosettePlants, dispose
 	};
 }

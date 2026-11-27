@@ -3,7 +3,7 @@ import { BoxGeometry } from 'three';
 
 /** Bend a strip around the bound edge. Its cut ends meet the two cover boards. */
 export function createSpineGeometry(radius: number, depth: number, boardThickness: number) {
-	const geometry = new BoxGeometry(1, 1, 1, 32);
+	const geometry = new BoxGeometry(1, 1, 1, 12);
 	const position = geometry.attributes.position;
 	for (let i = 0; i < position.count; i++) {
 		const angle = Math.PI * position.getX(i);

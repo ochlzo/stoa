@@ -34,7 +34,7 @@
 <LibraryLights />
 <RoomBackdrop />
 <Bookcase />
-<ShelfVolumes {stamps} {finishes} />
+<ShelfVolumes {stamps} />
 <ShelfProps {finishes} />
 {#if readingVolume}
 	<OpenVolume {stamps} {finishes} volume={readingVolume} />

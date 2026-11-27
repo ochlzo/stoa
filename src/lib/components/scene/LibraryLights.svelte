@@ -12,11 +12,21 @@
 	import { stepStudyLighting } from '#lib/physics/study-lighting.ts';
 	import { getInspectPhase, getReadingPhase, getSceneMode } from '#lib/state/library.svelte.ts';
 	import { isClayMode } from '#lib/state/lookdev.svelte.ts';
+	import {
+		consumeShadowsDirty,
+		markShadowsDirty
+	} from '#lib/components/scene/shadow-invalidation.ts';
 	import { createDappledSunlightMap } from '#lib/textures/dappled-sunlight.ts';
 	import { createStudyEnvironment } from '#lib/textures/environment.ts';
 
 	const { renderer, scene } = useThrelte();
 	const clayMode = $derived(isClayMode());
+	const shadowMapSize =
+		typeof window !== 'undefined' &&
+		(window.innerWidth < LOOKDEV_RENDERER_CONFIG.mobileViewportMaxWidth ||
+			window.matchMedia('(pointer: coarse)').matches)
+			? LOOKDEV_RENDERER_CONFIG.mobileShadowMapSize
+			: LOOKDEV_RENDERER_CONFIG.shadowMapSize;
 
 	const lighting = { ...STUDY_LIGHTING.shelf };
 	let sun = $state<DirectionalLight>();
@@ -48,20 +58,29 @@
 		sky.intensity = lighting.sky;
 		ambient.intensity = lighting.ambient;
 		rim.intensity = lighting.rim;
+		rim.visible = lighting.rim > 0.002;
 		dappled.intensity = lighting.dappled;
+		dappled.visible = lighting.dappled > 0.002;
 		scene.environmentIntensity = lighting.environment;
 		renderer.toneMappingExposure = lighting.exposure;
+
+		if (consumeShadowsDirty()) {
+			renderer.shadowMap.needsUpdate = true;
+		}
 	});
 
-	// Sync filmic tone-mapping exposure and procedural IBL environment with Clay vs Lookdev mode.
+	// Sync filmic tone-mapping exposure, demand-driven shadow updates, and procedural IBL environment.
 	$effect(() => {
 		if (clayMode) {
 			renderer.toneMappingExposure = LOOKDEV_RENDERER_CONFIG.clayExposure;
+			renderer.shadowMap.autoUpdate = false;
 			scene.environment = null;
 			return;
 		}
 
 		renderer.toneMappingExposure = LOOKDEV_RENDERER_CONFIG.exposure;
+		renderer.shadowMap.autoUpdate = false;
+		markShadowsDirty(2);
 		const envBundle = createStudyEnvironment(renderer);
 		scene.environment = envBundle.texture;
 		scene.environmentIntensity = LOOKDEV_RENDERER_CONFIG.environmentIntensity;
@@ -104,8 +123,8 @@
 		intensity={SUNLIT_STUDY_LIGHTS.sunKey.intensity}
 		color={SUNLIT_STUDY_LIGHTS.sunKey.color}
 		castShadow={SUNLIT_STUDY_LIGHTS.sunKey.castShadow}
-		shadow.mapSize.width={LOOKDEV_RENDERER_CONFIG.shadowMapSize}
-		shadow.mapSize.height={LOOKDEV_RENDERER_CONFIG.shadowMapSize}
+		shadow.mapSize.width={shadowMapSize}
+		shadow.mapSize.height={shadowMapSize}
 		shadow.bias={LOOKDEV_RENDERER_CONFIG.shadowBias}
 		shadow.normalBias={LOOKDEV_RENDERER_CONFIG.shadowNormalBias}
 		shadow.camera.left={frustum.left}

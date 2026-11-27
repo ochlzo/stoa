@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { VolumeStamps } from '#lib/components/scene/volume-stamp-geometry.ts';
-	import type { VolumeFinishes } from '#lib/textures/volume-finishes.ts';
 	import { T, useTask } from '@threlte/core';
 	import { layoutCatalogOnBookcase } from '#lib/catalog/layout.ts';
 	import { clampDelta } from '#lib/physics/shelf-camera.ts';
@@ -17,9 +16,10 @@
 		getPeekedVolumeId,
 		getSceneMode
 	} from '#lib/state/library.svelte.ts';
+	import { markShadowsDirty } from '#lib/components/scene/shadow-invalidation.ts';
 	import Volume from '#lib/components/scene/Volume.svelte';
 
-	let { finishes, stamps }: { finishes: VolumeFinishes; stamps: VolumeStamps } = $props();
+	let { stamps }: { stamps: VolumeStamps } = $props();
 	const placedVolumes = layoutCatalogOnBookcase();
 	const dominoSim = createShelfDominoSimulation(placedVolumes);
 
@@ -44,7 +44,9 @@
 
 	useTask((delta) => {
 		const dt = clampDelta(delta);
-		stepShelfDomino(dominoSim, dt);
+		if (stepShelfDomino(dominoSim, dt)) {
+			markShadowsDirty();
+		}
 	});
 </script>
 
@@ -52,7 +54,6 @@
 	{#each placedVolumes as placed (placed.volume.id)}
 		<Volume
 			{placed}
-			{finishes}
 			{stamps}
 			isPeeked={getPeekedVolumeId() === placed.volume.id}
 			isInspected={getInspectedVolumeId() === placed.volume.id}

@@ -11,7 +11,7 @@
 	import { isClayMode } from '#lib/state/lookdev.svelte.ts';
 
 	import {
-		getFramePivotY, getHourglassRods, getSculptureCenterY, layoutBookStack, rosettePetals,
+		getFramePivotY, getHourglassRods, getSculptureCenterY, layoutBookStack,
 		sculptureTilt, STACK_COVER_THICKNESS, STACK_SPINE_DEPTH
 	} from '#lib/catalog/prop-layout.ts';
 
@@ -23,8 +23,8 @@
 	let propsGroupRef = $state<Group | undefined>(undefined);
 
 	const {
-		vaseGeometries, planterPotGeometry, foliageLeafGeometry, succulentPetalGeometry,
-		hourglassBulbGeometry, candlestickHolderGeometry, trailingPlants, dispose
+		vaseGeometries, planterPotGeometry,
+		hourglassBulbGeometry, candlestickHolderGeometry, trailingPlants, rosettePlants, dispose
 	} = createShelfPropGeometry(shelfProps);
 
 	$effect(() => dispose);
@@ -35,7 +35,7 @@
 		if (!group) return;
 		group.traverse((obj) => {
 			if ('isMesh' in obj && (obj as Mesh).isMesh) {
-				obj.castShadow = enabled;
+				obj.castShadow = enabled && obj.userData.castShadow !== false;
 				obj.receiveShadow = enabled;
 			}
 		});
@@ -132,36 +132,20 @@
 				{#if prop.leafStyle === 'tall'}
 					{@const built = trailingPlants.get(prop.id)}
 					{#if built}
-						{#each built.stemGeometries as stemGeom, idx (idx)}
-							<T.Mesh geometry={stemGeom}>
-								{@render surface(presets.planter.stem, '#a6a49d', 0.92)}
-							</T.Mesh>
-						{/each}
-						{#each built.leaves as leaf (leaf.key)}
-							<T.Mesh
-								geometry={foliageLeafGeometry}
-								position={[leaf.position[0], leaf.position[1], leaf.position[2]]}
-								rotation={[leaf.rotation[0], leaf.rotation[1], leaf.rotation[2]]}
-								scale={[leaf.scale, leaf.scale, leaf.scale]}
-							>
-								{@render surface(presets.planter.leaf, '#b4b2ab', 0.88)}
-							</T.Mesh>
-						{/each}
+						<T.Mesh userData={{ castShadow: false }} geometry={built.stemsGeometry}>
+							{@render surface(presets.planter.stem, '#a6a49d', 0.92)}
+						</T.Mesh>
+						<T.Mesh userData={{ castShadow: false }} geometry={built.leavesGeometry}>
+							{@render surface(presets.planter.leaf, '#b4b2ab', 0.88)}
+						</T.Mesh>
 					{/if}
 				{:else}
-					{@const petals = rosettePetals(prop.leafCount, prop.potRadius)}
-					{#each petals as petal (petal.i)}
-						<T.Group position={[0, prop.potHeight * 0.87, 0]} rotation={[0, petal.angle, 0]}>
-							<T.Mesh
-								geometry={succulentPetalGeometry}
-								position={[0, 0, petal.radialOffset]}
-								rotation={[petal.pitch, 0, 0]}
-								scale={[petal.scale, petal.scale, petal.scale]}
-							>
-								{@render surface(presets.planter.petal, '#b7b5ae', 0.88)}
-							</T.Mesh>
-						</T.Group>
-					{/each}
+					{@const rosetteGeom = rosettePlants.get(prop.id)}
+					{#if rosetteGeom}
+						<T.Mesh userData={{ castShadow: false }} geometry={rosetteGeom}>
+							{@render surface(presets.planter.petal, '#b7b5ae', 0.88)}
+						</T.Mesh>
+					{/if}
 				{/if}
 			</T.Group>
 		{:else if prop.kind === 'bookend'}
@@ -255,7 +239,7 @@
 					{@render surface(presets.candlestick.taper, PAGE_BLOCK_CLAY_COLOR, 0.92)}
 				</T.Mesh>
 				<!-- Tiny wick stub -->
-				<T.Mesh position={[0, holderH * 0.94 + candleH + 0.004, 0]}>
+				<T.Mesh userData={{ castShadow: false }} position={[0, holderH * 0.94 + candleH + 0.004, 0]}>
 					<T.CylinderGeometry args={[0.001, 0.0012, 0.008, 6]} />
 					{@render surface(presets.candlestick.wick, '#8f8c86', 0.96)}
 				</T.Mesh>
@@ -351,6 +335,7 @@
 								</T.Mesh>
 							{/each}
 							<T.Mesh
+								userData={{ castShadow: false }}
 								geometry={hourglassBulbGeometry}
 								position={[0, capH, 0]}
 								scale={[r, innerH, r]}

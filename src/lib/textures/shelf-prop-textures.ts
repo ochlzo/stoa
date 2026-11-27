@@ -74,7 +74,7 @@ function print(ctx: CanvasRenderingContext2D, kind: 'coast' | 'temple' | 'hills'
 		}
 	}
 	// Broken dry-brush strokes soften flat washes at the scale of the print.
-	for (let i = 0; i < 3600; i++) {
+	for (let i = 0; i < 1200; i++) {
 		const x = (i * 179.43) % 512;
 		const y = (i * 317.73 + Math.sin(i) * 51) % 512;
 		ctx.fillStyle = i % 3 ? 'rgba(248,227,188,0.12)' : 'rgba(53,55,45,0.13)';
@@ -110,9 +110,16 @@ function paint(kind: ShelfPropFinish) {
 	const preset: ShelfPropFinishPreset = SHELF_PROP_FINISHES[kind];
 	const pattern = preset.pattern ?? 'none';
 	const noise = preset.noise ?? 'none';
+	const detailed =
+		pattern === 'globe' || pattern === 'coast' || pattern === 'temple' || pattern === 'hills';
+	const size = detailed ? 512 : 256;
 	const canvas = document.createElement('canvas');
-	canvas.width = canvas.height = 512;
+	canvas.width = canvas.height = size;
 	const ctx = canvas.getContext('2d')!;
+	if (!detailed) {
+		ctx.save();
+		ctx.scale(size / 512, size / 512);
+	}
 	ctx.fillStyle = '#faf8f3';
 	ctx.fillRect(0, 0, 512, 512);
 	if (pattern === 'globe') atlas(ctx);
@@ -151,13 +158,19 @@ function paint(kind: ShelfPropFinish) {
 			}
 		}
 	}
+	if (!detailed) {
+		ctx.restore();
+	}
 	// Fine pigment, pores, or tool marks across each continuous UV tile.
-	const pixels = ctx.getImageData(0, 0, 512, 512);
+	const pixels = ctx.getImageData(0, 0, size, size);
 	const random = createSeededRandom(721);
+	const scale = 512 / size;
 	for (let i = 0; i < pixels.data.length; i += 4) {
 		const n = random();
-		const x = (i / 4) % 512;
-		const y = Math.floor(i / 2048);
+		const px = (i >> 2) % size;
+		const py = (i >> 2) / size | 0;
+		const x = px * scale;
+		const y = py * scale;
 		let shade = n * 0.065;
 		if (noise === 'wood') shade += 0.14 * (1 + Math.sin(y * 0.31 + Math.sin(x / 80) * 2));
 		else if (noise === 'veined')
