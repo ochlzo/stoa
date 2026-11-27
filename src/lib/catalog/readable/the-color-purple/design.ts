@@ -1,15 +1,6 @@
 import type { VolumeDesign } from '#lib/catalog/readable/types.ts';
 
 /**
- * Linear PBR stamp channels in Stoa's volume shader (`toolColor` = #f4e8ff, metalness = 0):
- * Keeps the title lockup, author line, and spine text brightly lit and unmistakable over
- * the quiet tone-on-tone floral cover cloth and slightly darker solid purple spine.
- */
-const INK_PRIMARY = 'rgb(255, 124, 0)'; // Title & spine title: bright luminous lavender
-const INK_SECONDARY = 'rgb(220, 140, 0)'; // Author & accent rays: soft wisteria
-const INK_TERTIARY = 'rgb(184, 156, 0)'; // Back cover secondary attribution
-
-/**
  * Pair kerning adjustments (in ems) for tight, interlocking editorial display typography.
  */
 const DISPLAY_KERN_PAIRS: Record<string, number> = {
@@ -26,22 +17,42 @@ const DISPLAY_KERN_PAIRS: Record<string, number> = {
 	le: -0.02
 };
 
-function measureTightDisplayWord(
+const SERIF_FONT = 'Georgia, "Times New Roman", serif';
+const SOURCE_NOTE =
+	'Alice Walker, The Color Purple (Harcourt Brace Jovanovich, 1982). Pulitzer Prize for Fiction · Stoa Library Edition.';
+
+interface DisplayWordStyle {
+	size: number;
+	scaleX: number;
+	scaleY: number;
+	ink: string;
+}
+
+interface GlyphPlacement {
+	ch: string;
+	x: number;
+}
+
+function layoutTightDisplayWord(
 	ctx: CanvasRenderingContext2D,
 	word: string,
-	size: number,
-	scaleX: number
-): number {
+	size: number
+): { glyphs: GlyphPlacement[]; width: number } {
 	const baseTrack = -0.042 * size;
-	let total = 0;
+	const glyphs: GlyphPlacement[] = [];
+	let cursor = 0;
+
 	for (let i = 0; i < word.length; i++) {
-		total += ctx.measureText(word[i]).width;
+		const ch = word[i];
+		glyphs.push({ ch, x: cursor });
+		cursor += ctx.measureText(ch).width;
 		if (i < word.length - 1) {
-			const pair = word[i] + word[i + 1];
-			total += baseTrack + (DISPLAY_KERN_PAIRS[pair] ?? 0) * size;
+			const pair = ch + word[i + 1];
+			cursor += baseTrack + (DISPLAY_KERN_PAIRS[pair] ?? 0) * size;
 		}
 	}
-	return total * scaleX;
+
+	return { glyphs, width: cursor };
 }
 
 function drawTightDisplayWordRightAligned(
@@ -49,40 +60,26 @@ function drawTightDisplayWordRightAligned(
 	word: string,
 	rightX: number,
 	y: number,
-	size: number,
-	scaleX: number,
-	scaleY: number,
-	ink: string
+	style: DisplayWordStyle
 ): number {
-	const baseTrack = -0.042 * size;
-	const unscaledWidth = measureTightDisplayWord(ctx, word, size, 1);
-	const startX = rightX - unscaledWidth * scaleX;
+	const { glyphs, width } = layoutTightDisplayWord(ctx, word, style.size);
+	const startX = rightX - width * style.scaleX;
 
 	const renderPass = (mode: 'knockout' | 'ink') => {
 		ctx.save();
 		ctx.translate(startX, y);
-		ctx.scale(scaleX, scaleY);
+		ctx.scale(style.scaleX, style.scaleY);
 		ctx.textAlign = 'left';
 		ctx.textBaseline = 'middle';
 		ctx.lineJoin = 'round';
 
-		let cursor = 0;
-		for (let i = 0; i < word.length; i++) {
-			const ch = word[i];
-			if (mode === 'knockout') {
-				ctx.strokeStyle = 'rgb(0, 0, 0)';
-				ctx.lineWidth = Math.max(3.5, size * 0.048);
-				ctx.strokeText(ch, cursor, 0);
-			} else {
-				ctx.fillStyle = ink;
-				ctx.fillText(ch, cursor, 0);
-			}
-
-			cursor += ctx.measureText(ch).width;
-			if (i < word.length - 1) {
-				const pair = ch + word[i + 1];
-				cursor += baseTrack + (DISPLAY_KERN_PAIRS[pair] ?? 0) * size;
-			}
+		if (mode === 'knockout') {
+			ctx.strokeStyle = '#000';
+			ctx.lineWidth = Math.max(3.5, style.size * 0.048);
+			for (const { ch, x } of glyphs) ctx.strokeText(ch, x, 0);
+		} else {
+			ctx.fillStyle = style.ink;
+			for (const { ch, x } of glyphs) ctx.fillText(ch, x, 0);
 		}
 		ctx.restore();
 	};
@@ -101,24 +98,22 @@ export const design: VolumeDesign = {
 	coverColor: 'navyCloth',
 	surfaceRoughness: 0.88,
 	bumpScale: 0.00024,
-	// Use 'blind' channel (metalness = 0) so all bright lavender typography & Stoa's foot mark
+	// Use 'blind' channel (metalness = 0) so all bright lavender typography & spine foot mark
 	// stay crisp and luminous across cover, spine, and back.
 	foilStyle: 'blind',
 	toolColor: '#f4e8ff',
-	foilColor: '#2c1942',
 	headbandColor: '#c9a6e6',
 	// Front: tone-on-tone floral field + gold STOA EXCLUSIVE EDITION seal; Back: seamless floral
 	// field; Spine: solid slightly-darker purple cloth (#4a3563). Full opacity preserves exact purple.
 	coverArtwork: {
 		front: 'volumes/the-color-purple/front-field.webp',
-		back: 'volumes/the-color-purple/cover-field.webp',
+		back: 'volumes/the-color-purple/back-field.webp',
 		spine: 'volumes/the-color-purple/spine-solid.webp',
 		opacity: 1
 	},
 
 	// --- Cover & Spine Stamping ---
-	sourceNote:
-		'Alice Walker, The Color Purple (1982). Pulitzer Prize for Fiction · Stoa Library Edition.',
+	sourceNote: SOURCE_NOTE,
 	coverBorder: 'none',
 	emblem: 'none',
 
@@ -134,50 +129,34 @@ export const design: VolumeDesign = {
 		ctx.save();
 
 		const titleSize = Math.round(w * 0.21);
-		const scaleX = 0.92;
-		const scaleY = 1.06;
-		ctx.font = `700 ${titleSize}px Georgia, "Times New Roman", serif`;
+		const wordStyle: DisplayWordStyle = {
+			size: titleSize,
+			scaleX: 0.92,
+			scaleY: 1.06,
+			ink: info.blind
+		};
+		ctx.font = `700 ${titleSize}px ${SERIF_FONT}`;
 
-		const purpleWidth = measureTightDisplayWord(ctx, 'Purple', titleSize, scaleX);
+		const purpleWidth = layoutTightDisplayWord(ctx, 'Purple', titleSize).width * wordStyle.scaleX;
 		// Shift lockup slightly right to balance cleanly against the upper-left STOA EDITION seal.
 		const lockupRightX = Math.min(w * 0.9, cx + purpleWidth * 0.54);
 		const lineStep = titleSize * 0.78;
 		const topY = h * 0.285;
 
-		drawTightDisplayWordRightAligned(
-			ctx,
-			'The',
-			lockupRightX - titleSize * 0.04,
-			topY,
-			titleSize,
-			scaleX,
-			scaleY,
-			INK_PRIMARY
-		);
+		drawTightDisplayWordRightAligned(ctx, 'The', lockupRightX - titleSize * 0.04, topY, wordStyle);
 		const colorLeftX = drawTightDisplayWordRightAligned(
 			ctx,
 			'Color',
 			lockupRightX - titleSize * 0.02,
 			topY + lineStep,
-			titleSize,
-			scaleX,
-			scaleY,
-			INK_PRIMARY
+			wordStyle
 		);
-		drawTightDisplayWordRightAligned(
-			ctx,
-			'Purple',
-			lockupRightX,
-			topY + lineStep * 2,
-			titleSize,
-			scaleX,
-			scaleY,
-			INK_PRIMARY
-		);
+		drawTightDisplayWordRightAligned(ctx, 'Purple', lockupRightX, topY + lineStep * 2, wordStyle);
 
 		// Three clean radiating accent strokes nestled upper-left of "C".
+		ctx.globalAlpha = 0.86;
 		ctx.lineCap = 'round';
-		ctx.strokeStyle = INK_SECONDARY;
+		ctx.strokeStyle = info.blind;
 		ctx.lineWidth = Math.max(2.5, w * 0.008);
 		const cAnchorX = colorLeftX + titleSize * 0.02;
 		const cAnchorY = topY + lineStep - titleSize * 0.12;
@@ -198,7 +177,7 @@ export const design: VolumeDesign = {
 		ctx.textBaseline = 'middle';
 		const authorSize = Math.round(w * 0.038);
 		ctx.font = `600 ${authorSize}px "Segoe UI", "Helvetica Neue", Arial, sans-serif`;
-		ctx.fillStyle = INK_SECONDARY;
+		ctx.fillStyle = info.blind;
 		ctx.fillText('B Y   A L I C E   W A L K E R', cx, h * 0.68);
 
 		ctx.restore();
@@ -210,33 +189,40 @@ export const design: VolumeDesign = {
 	paintBackCover: (ctx, info) => {
 		const { width: w, height: h } = info;
 		const cx = w / 2;
+		const [primaryLine, secondaryLine] = SOURCE_NOTE.split('. ');
 
 		ctx.save();
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
-		const noteSize = Math.round(w * 0.027);
-		ctx.font = `italic 500 ${noteSize}px Georgia, "Times New Roman", serif`;
+		const noteSize = Math.round(w * 0.025);
+		ctx.font = `italic 500 ${noteSize}px ${SERIF_FONT}`;
+		ctx.fillStyle = info.blind;
 
-		ctx.fillStyle = INK_SECONDARY;
-		ctx.fillText('Alice Walker, The Color Purple (1982)', cx, h * 0.825);
-		ctx.fillStyle = INK_TERTIARY;
-		ctx.fillText('Pulitzer Prize for Fiction · Stoa Library Edition', cx, h * 0.862);
+		ctx.globalAlpha = 0.86;
+		ctx.fillText(primaryLine, cx, h * 0.825);
+		if (secondaryLine) {
+			ctx.globalAlpha = 0.72;
+			ctx.fillText(secondaryLine.replace(/\.$/, ''), cx, h * 0.862);
+		}
 		ctx.restore();
 	},
 
 	/**
 	 * Spine: First-edition single-line vertical format ("Walker" in regular serif at top,
 	 * followed by bold Title Case "The Color Purple" down the center) over solid slightly-darker
-	 * purple cloth, keeping Stoa's foot combination mark and double rule at the bottom.
+	 * purple cloth, with a matching STOA foot mark and double rule at the bottom.
 	 */
 	paintSpine: (ctx, info) => {
 		const { width: w, height: h } = info;
 		const cx = w / 2;
 		const panel = w * 0.68;
 
+		const authorFont = (size: number) => `400 ${Math.round(size * 0.94)}px ${SERIF_FONT}`;
+		const titleFont = (size: number) => `700 ${size}px ${SERIF_FONT}`;
+
 		ctx.save();
 
-		// Single centered vertical line running top-to-bottom (y = 0.075..0.80 of spine height).
+		// Single centered vertical line running top-to-bottom (y = 0.075..0.805 of spine height).
 		const topMargin = h * 0.075;
 		const bottomLimit = h * 0.805;
 		const maxSpan = bottomLimit - topMargin;
@@ -248,9 +234,9 @@ export const design: VolumeDesign = {
 		let gap = 0;
 
 		while (fontSize > 14) {
-			ctx.font = `400 ${Math.round(fontSize * 0.94)}px Georgia, "Times New Roman", serif`;
+			ctx.font = authorFont(fontSize);
 			walkerW = ctx.measureText('Walker').width * scaleX;
-			ctx.font = `700 ${fontSize}px Georgia, "Times New Roman", serif`;
+			ctx.font = titleFont(fontSize);
 			titleW = ctx.measureText('The Color Purple').width * scaleX;
 			gap = fontSize * 0.88;
 			if (walkerW + gap + titleW <= maxSpan) break;
@@ -265,12 +251,13 @@ export const design: VolumeDesign = {
 		ctx.rotate(Math.PI / 2);
 		ctx.textAlign = 'left';
 		ctx.textBaseline = 'middle';
+		ctx.fillStyle = info.blind;
 
 		// Upper section: "Walker" (regular serif, slightly softer wisteria-lavender).
 		ctx.save();
 		ctx.scale(scaleX, 1.04);
-		ctx.font = `400 ${Math.round(fontSize * 0.94)}px Georgia, "Times New Roman", serif`;
-		ctx.fillStyle = INK_SECONDARY;
+		ctx.globalAlpha = 0.86;
+		ctx.font = authorFont(fontSize);
 		ctx.fillText('Walker', 0, 0);
 		ctx.restore();
 
@@ -278,20 +265,24 @@ export const design: VolumeDesign = {
 		ctx.save();
 		ctx.translate(walkerW + gap, 0);
 		ctx.scale(scaleX, 1.04);
-		ctx.font = `700 ${fontSize}px Georgia, "Times New Roman", serif`;
-		ctx.fillStyle = INK_PRIMARY;
+		ctx.globalAlpha = 1;
+		ctx.font = titleFont(fontSize);
 		ctx.fillText('The Color Purple', 0, 0);
 		ctx.restore();
 
 		ctx.restore();
 
-		// Preserve Stoa's canonical combination mark and double bottom rule at the foot of the spine.
-		ctx.save();
-		ctx.beginPath();
-		ctx.rect(0, h * 0.85, w, h * 0.15);
-		ctx.clip();
-		info.defaultPaint();
-		ctx.restore();
+		// Self-contained STOA foot wordmark and double rule at the base of the spine.
+		ctx.fillStyle = info.blind;
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		ctx.globalAlpha = 0.86;
+		ctx.font = `600 ${Math.round(panel * 0.17)}px ${SERIF_FONT}`;
+		ctx.fillText('S T O A', cx, h * 0.896);
+		ctx.globalAlpha = 1;
+		for (const y of [0.936, 0.95]) {
+			ctx.fillRect(cx - w * 0.42, y * h, w * 0.84, h * 0.004);
+		}
 
 		ctx.restore();
 	},
