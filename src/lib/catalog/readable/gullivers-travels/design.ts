@@ -10,5 +10,6 @@ export const design: VolumeDesign = {
 	coverBorder: 'double-rule',
 	inkColor: '#201a15',
 	mutedInkColor: '#483c2d',
-
+	sourceNote:
+		'Standard Ebooks edition, published 2019-10-22 (standardebooks.org/ebooks/jonathan-swift/gullivers-travels).'
 };

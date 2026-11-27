@@ -7,12 +7,13 @@ export const content: VolumeContent = {
 	sections: [
 		{
 			kind: 'illustration',
-			title: 'Voyage I \u2014 Lilliput',
-			src: 'volumes/gullivers-travels/Liliput.webp',
+			title: 'Plate I \u2014 Lilliput',
+			src: 'volumes/gullivers-travels/lilliput.webp',
 		},
 		{
 			kind: 'prose',
-			title: "Voyage I \u2014 Lilliput",
+			title: "Voyage I, Ch. 1 \u2014 Lilliput",
+			unnumbered: true,
 			epigraph: "The author gives some account of himself and family. His first inducements to travel. He is shipwrecked, and swims for his life. Gets safe on shore in the country of Lilliput; is made a prisoner, and carried up the country.",
 			paragraphs: [
 				"My father had a small estate in Nottinghamshire: I was the third of five sons. He sent me to Emanuel College in Cambridge at fourteen years old, where I resided three years, and applied myself close to my studies; but the charge of maintaining me, although I had a very scanty allowance, being too great for a narrow fortune, I was bound apprentice to Mr. James Bates, an eminent surgeon in London, with whom I continued four years. My father now and then sending me small sums of money, I laid them out in learning navigation, and other parts of the mathematics, useful to those who intend to travel, as I always believed it would be, some time or other, my fortune to do. When I left Mr. Bates, I went down to my father: where, by the assistance of him and my uncle John, and some other relations, I got forty pounds, and a promise of thirty pounds a year to maintain me at Leyden: there I studied physic two years and seven months, knowing it would be useful in long voyages.",
@@ -49,7 +50,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage I \u2014 Lilliput",
+			title: "Voyage I, Ch. 2 \u2014 Lilliput",
+			unnumbered: true,
 			epigraph: "The emperor of Lilliput, attended by several of the nobility, comes to see the author in his confinement. The emperor’s person and habit described. Learned men appointed to teach the author their language. He gains favour by his mild disposition. His pockets are searched, and his sword and pistols taken from him.",
 			paragraphs: [
 				"When I found myself on my feet, I looked about me, and must confess I never beheld a more entertaining prospect. The country around appeared like a continued garden, and the enclosed fields, which were generally forty feet square, resembled so many beds of flowers. These fields were intermingled with woods of half a stang,1 and the tallest trees, as I could judge, appeared to be seven feet high. I viewed the town on my left hand, which looked like the painted scene of a city in a theatre.",
@@ -69,7 +71,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage I \u2014 Lilliput",
+			title: "Voyage I, Ch. 3 \u2014 Lilliput",
+			unnumbered: true,
 			epigraph: "The author diverts the emperor, and his nobility of both sexes, in a very uncommon manner. The diversions of the court of Lilliput described. The author has his liberty granted him upon certain conditions.",
 			paragraphs: [
 				"My gentleness and good behaviour had gained so far on the emperor and his court, and indeed upon the army and people in general, that I began to conceive hopes of getting my liberty in a short time. I took all possible methods to cultivate this favourable disposition. The natives came, by degrees, to be less apprehensive of any danger from me. I would sometimes lie down, and let five or six of them dance on my hand; and at last the boys and girls would venture to come and play at hide-and-seek in my hair. I had now made a good progress in understanding and speaking the language. The emperor had a mind one day to entertain me with several of the country shows, wherein they exceed all nations I have known, both for dexterity and magnificence. I was diverted with none so much as that of the ropedancers, performed upon a slender white thread, extended about two feet, and twelve inches from the ground. Upon which I shall desire liberty, with the reader’s patience, to enlarge a little.",
@@ -98,7 +101,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage I \u2014 Lilliput",
+			title: "Voyage I, Ch. 4 \u2014 Lilliput",
+			unnumbered: true,
 			epigraph: "Mildendo, the metropolis of Lilliput, described, together with the emperor’s palace. A conversation between the author and a principal secretary, concerning the affairs of that empire. The author’s offers to serve the emperor in his wars.",
 			paragraphs: [
 				"The first request I made, after I had obtained my liberty, was, that I might have license to see Mildendo, the metropolis; which the emperor easily granted me, but with a special charge to do no hurt either to the inhabitants or their houses. The people had notice, by proclamation, of my design to visit the town. The wall which encompassed it is two feet and a half high, and at least eleven inches broad, so that a coach and horses may be driven very safely round it; and it is flanked with strong towers at ten feet distance. I stepped over the great western gate, and passed very gently, and sidling, through the two principal streets, only in my short waistcoat, for fear of damaging the roofs and eaves of the houses with the skirts of my coat. I walked with the utmost circumspection, to avoid treading on any stragglers who might remain in the streets, although the orders were very strict, that all people should keep in their houses, at their own peril. The garret windows and tops of houses were so crowded with spectators, that I thought in all my travels I had not seen a more populous place. The city is an exact square, each side of the wall being five hundred feet long. The two great streets, which run across and divide it into four quarters, are five feet wide. The lanes and alleys, which I could not enter, but only view them as I passed, are from twelve to eighteen inches. The town is capable of holding five hundred thousand souls: the houses are from three to five stories: the shops and markets well provided.",
@@ -111,7 +115,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage I \u2014 Lilliput",
+			title: "Voyage I, Ch. 5 \u2014 Lilliput",
+			unnumbered: true,
 			epigraph: "The author, by an extraordinary stratagem, prevents an invasion. A high title of honour is conferred upon him. Ambassadors arrive from the emperor of Blefuscu, and sue for peace. The empress’s apartment on fire by an accident; the author instrumental in saving the rest of the palace.",
 			paragraphs: [
 				"The empire of Blefuscu is an island situated to the northeast of Lilliput, from which it is parted only by a channel of eight hundred yards wide. I had not yet seen it, and upon this notice of an intended invasion, I avoided appearing on that side of the coast, for fear of being discovered, by some of the enemy’s ships, who had received no intelligence of me; all intercourse between the two empires having been strictly forbidden during the war, upon pain of death, and an embargo laid by our emperor upon all vessels whatsoever. I communicated to his majesty a project I had formed of seizing the enemy’s whole fleet; which, as our scouts assured us, lay at anchor in the harbour, ready to sail with the first fair wind. I consulted the most experienced seamen upon the depth of the channel, which they had often plumbed; who told me, that in the middle, at high-water, it was seventy glumgluffs deep, which is about six feet of European measure; and the rest of it fifty glumgluffs at most. I walked towards the northeast coast, over against Blefuscu, where, lying down behind a hillock, I took out my small perspective glass, and viewed the enemy’s fleet at anchor, consisting of about fifty men of war, and a great number of transports: I then came back to my house, and gave orders (for which I had a warrant) for a great quantity of the strongest cable and bars of iron. The cable was about as thick as packthread and the bars of the length and size of a knitting-needle. I trebled the cable to make it stronger, and for the same reason I twisted three of the iron bars together, bending the extremities into a hook. Having thus fixed fifty hooks to as many cables, I went back to the northeast coast, and putting off my coat, shoes, and stockings, walked into the sea, in my leathern jerkin, about half an hour before high water. I waded with what haste I could, and swam in the middle about thirty yards, till I felt ground. I arrived at the fleet in less than half an hour. The enemy was so frightened when they saw me, that they leaped out of their ships, and swam to shore, where there could not be fewer than thirty thousand souls. I then took my tackling, and, fastening a hook to the hole at the prow of each, I tied all the cords together at the end. While I was thus employed, the enemy discharged several thousand arrows, many of which stuck in my hands and face, and, beside the excessive smart, gave me much disturbance in my work. My greatest apprehension was for mine eyes, which I should have infallibly lost, if I had not suddenly thought of an expedient. I kept, among other little necessaries, a pair of spectacles in a private pocket, which, as I observed before, had escaped the emperor’s searchers. These I took out and fastened as strongly as I could upon my nose, and thus armed, went on boldly with my work, in spite of the enemy’s arrows, many of which struck against the glasses of my spectacles, but without any other effect, further than a little to discompose them. I had now fastened all the hooks, and, taking the knot in my hand, began to pull; but not a ship would stir, for they were all too fast held by their anchors, so that the boldest part of my enterprise remained. I therefore let go the cord, and leaving the hooks fixed to the ships, I resolutely cut with my knife the cables that fastened the anchors, receiving about two hundred shots in my face and hands; then I took up the knotted end of the cables, to which my hooks were tied, and with great ease drew fifty of the enemy’s largest men of war after me.",
@@ -129,7 +134,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage I \u2014 Lilliput",
+			title: "Voyage I, Ch. 6 \u2014 Lilliput",
+			unnumbered: true,
 			epigraph: "Of the inhabitants of Lilliput; their learning, laws, and customs; the manner of educating their children. The author’s way of living in that country. His vindication of a great lady.",
 			paragraphs: [
 				"Although I intend to leave the description of this empire to a particular treatise, yet, in the meantime, I am content to gratify the curious reader with some general ideas. As the common size of the natives is somewhat under six inches high, so there is an exact proportion in all other animals, as well as plants and trees: for instance, the tallest horses and oxen are between four and five inches in height, the sheep an inch and half, more or less: their geese about the bigness of a sparrow, and so the several gradations downwards till you come to the smallest, which to my sight, were almost invisible; but nature has adapted the eyes of the Lilliputians to all objects proper for their view: they see with great exactness, but at no great distance. And, to show the sharpness of their sight towards objects that are near, I have been much pleased with observing a cook pulling a lark, which was not so large as a common fly; and a young girl threading an invisible needle with invisible silk. Their tallest trees are about seven feet high: I mean some of those in the great royal park, the tops whereof I could but just reach with my fist clenched. The other vegetables are in the same proportion; but this I leave to the reader’s imagination.",
@@ -159,7 +165,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage I \u2014 Lilliput",
+			title: "Voyage I, Ch. 7 \u2014 Lilliput",
+			unnumbered: true,
 			epigraph: "The author, being informed of a design to accuse him of high-treason, makes his escape to Blefuscu. His reception there.",
 			paragraphs: [
 				"Before I proceed to give an account of my leaving this kingdom, it may be proper to inform the reader of a private intrigue which had been for two months forming against me.",
@@ -196,7 +203,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage I \u2014 Lilliput",
+			title: "Voyage I, Ch. 8 \u2014 Lilliput",
+			unnumbered: true,
 			epigraph: "The author, by a lucky accident, finds means to leave Blefuscu; and, after some difficulties, returns safe to his native country.",
 			paragraphs: [
 				"Three days after my arrival, walking out of curiosity to the northeast coast of the island, I observed, about half a league off in the sea, somewhat that looked like a boat overturned. I pulled off my shoes and stockings, and, wading two or three hundred yards, I found the object to approach nearer by force of the tide; and then plainly saw it to be a real boat, which I supposed might by some tempest have been driven from a ship. Whereupon, I returned immediately towards the city, and desired his imperial majesty to lend me twenty of the tallest vessels he had left, after the loss of his fleet, and three thousand seamen, under the command of his vice-admiral. This fleet sailed round, while I went back the shortest way to the coast, where I first discovered the boat. I found the tide had driven it still nearer. The seamen were all provided with cordage, which I had beforehand twisted to a sufficient strength. When the ships came up, I stripped myself, and waded till I came within a hundred yards off the boat, after which I was forced to swim till I got up to it. The seamen threw me the end of the cord, which I fastened to a hole in the forepart of the boat, and the other end to a man of war; but I found all my labour to little purpose; for, being out of my depth, I was not able to work. In this necessity I was forced to swim behind, and push the boat forward, as often as I could, with one of my hands; and the tide favouring me, I advanced so far that I could just hold up my chin and feel the ground. I rested two or three minutes, and then gave the boat another shove, and so on, till the sea was no higher than my armpits; and now, the most laborious part being over, I took out my other cables, which were stowed in one of the ships, and fastened them first to the boat, and then to nine of the vessels which attended me; the wind being favourable, the seamen towed, and I shoved, until we arrived within forty yards of the shore; and, waiting till the tide was out, I got dry to the boat, and by the assistance of two thousand men, with ropes and engines, I made a shift to turn it on its bottom, and found it was but little damaged.",
@@ -216,12 +224,13 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'illustration',
-			title: 'Voyage II \u2014 Brobdingnag',
-			src: 'volumes/gullivers-travels/Brobdingnag.jpg',
+			title: 'Plate II \u2014 Brobdingnag',
+			src: 'volumes/gullivers-travels/brobdingnag.jpg',
 		},
 		{
 			kind: 'prose',
-			title: "Voyage II \u2014 Brobdingnag",
+			title: "Voyage II, Ch. 1 \u2014 Brobdingnag",
+			unnumbered: true,
 			epigraph: "A great storm described; the long boat sent to fetch water; the author goes with it to discover the country. He is left on shore, is seized by one of the natives, and carried to a farmer’s house. His reception, with several accidents that happened there. A description of the inhabitants.",
 			paragraphs: [
 				"Having been condemned, by nature and fortune, to active and restless life, in two months after my return, I again left my native country, and took shipping in the Downs, on the 20th day of June, 1702, in the Adventure, Captain John Nicholas, a Cornish man, commander, bound for Surat. We had a very prosperous gale, till we arrived at the Cape of Good Hope, where we landed for fresh water; but discovering a leak, we unshipped our goods and wintered there; for the captain falling sick of an ague, we could not leave the Cape till the end of March. We then set sail, and had a good voyage till we passed the Straits of Madagascar; but having got northward of that island, and to about five degrees south latitude, the winds, which in those seas are observed to blow a constant equal gale between the north and west, from the beginning of December to the beginning of May, on the 19th of April began to blow with much greater violence, and more westerly than usual, continuing so for twenty days together: during which time, we were driven a little to the east of the Molucca Islands, and about three degrees northward of the line, as our captain found by an observation he took the 2nd of May, at which time the wind ceased, and it was a perfect calm, whereat I was not a little rejoiced. But he, being a man well experienced in the navigation of those seas, bid us all prepare against a storm, which accordingly happened the day following: for the southern wind, called the southern monsoon, began to set in.",
@@ -245,7 +254,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage II \u2014 Brobdingnag",
+			title: "Voyage II, Ch. 2 \u2014 Brobdingnag",
+			unnumbered: true,
 			epigraph: "A description of the farmer’s daughter. The author carried to a market-town, and then to the metropolis. The particulars of his journey.",
 			paragraphs: [
 				"My mistress had a daughter of nine years old, a child of towardly parts for her age, very dexterous at her needle, and skilful in dressing her baby. Her mother and she contrived to fit up the baby’s cradle for me against night: the cradle was put into a small drawer of a cabinet, and the drawer placed upon a hanging shelf for fear of the rats. This was my bed all the time I stayed with those people, though made more convenient by degrees, as I began to learn their language and make my wants known. This young girl was so handy, that after I had once or twice pulled off my clothes before her, she was able to dress and undress me, though I never gave her that trouble when she would let me do either myself. She made me seven shirts, and some other linen, of as fine cloth as could be got, which indeed was coarser than sackcloth; and these she constantly washed for me with her own hands. She was likewise my schoolmistress, to teach me the language: when I pointed to anything, she told me the name of it in her own tongue, so that in a few days I was able to call for whatever I had a mind to. She was very good-natured, and not above forty feet high, being little for her age. She gave me the name of “Grildrig,” which the family took up, and afterwards the whole kingdom. The word imports what the Latins call nanunculus, the Italians homunceletino, and the English “mannikin.” To her I chiefly owe my preservation in that country: we never parted while I was there; I called her my Glumdalclitch, or little nurse; and should be guilty of great ingratitude, if I omitted this honourable mention of her care and affection towards me, which I heartily wish it lay in my power to requite as she deserves, instead of being the innocent, but unhappy instrument of her disgrace, as I have too much reason to fear.",
@@ -261,7 +271,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage II \u2014 Brobdingnag",
+			title: "Voyage II, Ch. 3 \u2014 Brobdingnag",
+			unnumbered: true,
 			epigraph: "The author sent for to court. The queen buys him off his master the farmer, and presents him to the king. He disputes with his majesty’s great scholars. An apartment at court provided for the author. He is in high favour with the queen. He stands up for the honour of his own country. His quarrels with the queen’s dwarf.",
 			paragraphs: [
 				"The frequent labours I underwent every day, made, in a few weeks, a very considerable change in my health: the more my master got by me, the more insatiable he grew. I had quite lost my stomach, and was almost reduced to a skeleton. The farmer observed it, and concluding I must soon die, resolved to make as good a hand of me as he could. While he was thus reasoning and resolving with himself, a sardral, or gentleman-usher, came from court, commanding my master to carry me immediately thither for the diversion of the queen and her ladies. Some of the latter had already been to see me, and reported strange things of my beauty, behaviour, and good sense. Her majesty, and those who attended her, were beyond measure delighted with my demeanour. I fell on my knees, and begged the honour of kissing her imperial foot; but this gracious princess held out her little finger towards me, after I was set on the table, which I embraced in both my arms, and put the tip of it with the utmost respect to my lip. She made me some general questions about my country and my travels, which I answered as distinctly, and in as few words as I could. She asked, “whether I could be content to live at court?” I bowed down to the board of the table, and humbly answered “that I was my master’s slave: but, if I were at my own disposal, I should be proud to devote my life to her majesty’s service.” She then asked my master, “whether he was willing to sell me at a good price?” He, who apprehended I could not live a month, was ready enough to part with me, and demanded a thousand pieces of gold, which were ordered him on the spot, each piece being about the bigness of eight hundred moidores; but allowing for the proportion of all things between that country and Europe, and the high price of gold among them, was hardly so great a sum as a thousand guineas would be in England. I then said to the queen, “since I was now her majesty’s most humble creature and vassal, I must beg the favour, that Glumdalclitch, who had always tended me with so much care and kindness, and understood to do it so well, might be admitted into her service, and continue to be my nurse and instructor.”",
@@ -284,7 +295,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage II \u2014 Brobdingnag",
+			title: "Voyage II, Ch. 4 \u2014 Brobdingnag",
+			unnumbered: true,
 			epigraph: "The country described. A proposal for correcting modern maps. The king’s palace; and some account of the metropolis. The author’s way of travelling. The chief temple described.",
 			paragraphs: [
 				"I now intend to give the reader a short description of this country, as far as I travelled in it, which was not above two thousand miles round Lorbrulgrud, the metropolis. For the queen, whom I always attended, never went farther when she accompanied the king in his progresses, and there stayed till his majesty returned from viewing his frontiers. The whole extent of this prince’s dominions reaches about six thousand miles in length, and from three to five in breadth: whence I cannot but conclude, that our geographers of Europe are in a great error, by supposing nothing but sea between Japan and California; for it was ever my opinion, that there must be a balance of earth to counterpoise the great continent of Tartary; and therefore they ought to correct their maps and charts, by joining this vast tract of land to the northwest parts of America, wherein I shall be ready to lend them my assistance.",
@@ -301,7 +313,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage II \u2014 Brobdingnag",
+			title: "Voyage II, Ch. 5 \u2014 Brobdingnag",
+			unnumbered: true,
 			epigraph: "Several adventures that happened to the author. The execution of a criminal. The author shows his skill in navigation.",
 			paragraphs: [
 				"I should have lived happy enough in that country, if my littleness had not exposed me to several ridiculous and troublesome accidents; some of which I shall venture to relate. Glumdalclitch often carried me into the gardens of the court in my smaller box, and would sometimes take me out of it, and hold me in her hand, or set me down to walk. I remember, before the dwarf left the queen, he followed us one day into those gardens, and my nurse having set me down, he and I being close together, near some dwarf apple trees, I must needs show my wit, by a silly allusion between him and the trees, which happens to hold in their language as it does in ours. Whereupon, the malicious rogue, watching his opportunity, when I was walking under one of them, shook it directly over my head, by which a dozen apples, each of them near as large as a Bristol barrel, came tumbling about my ears; one of them hit me on the back as I chanced to stoop, and knocked me down flat on my face; but I received no other hurt, and the dwarf was pardoned at my desire, because I had given the provocation.",
@@ -325,7 +338,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage II \u2014 Brobdingnag",
+			title: "Voyage II, Ch. 6 \u2014 Brobdingnag",
+			unnumbered: true,
 			epigraph: "Several contrivances of the author to please the king and queen. He shows his skill in music. The king inquires into the state of England, which the author relates to him. The king’s observations thereon.",
 			paragraphs: [
 				"I used to attend the king’s levee once or twice a week, and had often seen him under the barber’s hand, which indeed was at first very terrible to behold; for the razor was almost twice as long as an ordinary scythe. His majesty, according to the custom of the country, was only shaved twice a-week. I once prevailed on the barber to give me some of the suds or lather, out of which I picked forty or fifty of the strongest stumps of hair. I then took a piece of fine wood, and cut it like the back of a comb, making several holes in it at equal distances with as small a needle as I could get from Glumdalclitch. I fixed in the stumps so artificially, scraping and sloping them with my knife toward the points, that I made a very tolerable comb; which was a seasonable supply, my own being so much broken in the teeth, that it was almost useless: neither did I know any artist in that country so nice and exact, as would undertake to make me another.",
@@ -351,7 +365,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage II \u2014 Brobdingnag",
+			title: "Voyage II, Ch. 7 \u2014 Brobdingnag",
+			unnumbered: true,
 			epigraph: "The author’s love of his country. He makes a proposal of much advantage to the king, which is rejected. The king’s great ignorance in politics. The learning of that country very imperfect and confined. The laws, and military affairs, and parties in the state.",
 			paragraphs: [
 				"Nothing but an extreme love of truth could have hindered me from concealing this part of my story. It was in vain to discover my resentments, which were always turned into ridicule; and I was forced to rest with patience, while my noble and beloved country was so injuriously treated. I am as heartily sorry as any of my readers can possibly be, that such an occasion was given: but this prince happened to be so curious and inquisitive upon every particular, that it could not consist either with gratitude or good manners, to refuse giving him what satisfaction I was able. Yet thus much I may be allowed to say in my own vindication, that I artfully eluded many of his questions, and gave to every point a more favourable turn, by many degrees, than the strictness of truth would allow. For I have always borne that laudable partiality to my own country, which Dionysius Halicarnassensis, with so much justice, recommends to an historian: I would hide the frailties and deformities of my political mother, and place her virtues and beauties in the most advantageous light. This was my sincere endeavour in those many discourses I had with that monarch, although it unfortunately failed of success.",
@@ -371,7 +386,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage II \u2014 Brobdingnag",
+			title: "Voyage II, Ch. 8 \u2014 Brobdingnag",
+			unnumbered: true,
 			epigraph: "The king and queen make a progress to the frontiers. The author attends them. The manner in which he leaves the country very particularly related. He returns to England.",
 			paragraphs: [
 				"I had always a strong impulse that I should some time recover my liberty, though it was impossible to conjecture by what means, or to form any project with the least hope of succeeding. The ship in which I sailed, was the first ever known to be driven within sight of that coast, and the king had given strict orders, that if at any time another appeared, it should be taken ashore, and with all its crew and passengers brought in a tumbril to Lorbrulgrud. He was strongly bent to get me a woman of my own size, by whom I might propagate the breed: but I think I should rather have died than undergone the disgrace of leaving a posterity to be kept in cages, like tame canary-birds, and perhaps, in time, sold about the kingdom, to persons of quality, for curiosities. I was indeed treated with much kindness: I was the favourite of a great king and queen, and the delight of the whole court; but it was upon such a foot as ill became the dignity of humankind. I could never forget those domestic pledges I had left behind me. I wanted to be among people, with whom I could converse upon even terms, and walk about the streets and fields without being afraid of being trod to death like a frog or a young puppy. But my deliverance came sooner than I expected, and in a manner not very common; the whole story and circumstances of which I shall faithfully relate.",
@@ -396,12 +412,13 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'illustration',
-			title: 'Voyage III \u2014 Laputa',
-			src: 'volumes/gullivers-travels/Laputa.jpg',
+			title: 'Plate III \u2014 Laputa',
+			src: 'volumes/gullivers-travels/laputa.jpg',
 		},
 		{
 			kind: 'prose',
-			title: "Voyage III \u2014 Laputa",
+			title: "Voyage III, Ch. 1 \u2014 Laputa",
+			unnumbered: true,
 			epigraph: "The author sets out on his third voyage. Is taken by pirates. The malice of a Dutchman. His arrival at an island. He is received into Laputa.",
 			paragraphs: [
 				"I had not been at home above ten days, when Captain William Robinson, a Cornish man, commander of the Hopewell, a stout ship of three hundred tons, came to my house. I had formerly been surgeon of another ship where he was master, and a fourth part owner, in a voyage to the Levant. He had always treated me more like a brother, than an inferior officer; and, hearing of my arrival, made me a visit, as I apprehended only out of friendship, for nothing passed more than what is usual after long absences. But repeating his visits often, expressing his joy to find me in good health, asking, “whether I were now settled for life?” adding, “that he intended a voyage to the East Indies in two months,” at last he plainly invited me, though with some apologies, to be surgeon of the ship; “that I should have another surgeon under me, beside our two mates; that my salary should be double to the usual pay; and that having experienced my knowledge in sea-affairs to be at least equal to his, he would enter into any engagement to follow my advice, as much as if I had shared in the command.”",
@@ -422,7 +439,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage III \u2014 Laputa",
+			title: "Voyage III, Ch. 2 \u2014 Laputa",
+			unnumbered: true,
 			epigraph: "The humours and dispositions of the Laputians described. An account of their learning. Of the king and his court. The author’s reception there. The inhabitants subject to fear and disquietudes. An account of the women.",
 			paragraphs: [
 				"At my alighting, I was surrounded with a crowd of people, but those who stood nearest seemed to be of better quality. They beheld me with all the marks and circumstances of wonder; neither indeed was I much in their debt, having never till then seen a race of mortals so singular in their shapes, habits, and countenances. Their heads were all reclined, either to the right, or the left; one of their eyes turned inward, and the other directly up to the zenith. Their outward garments were adorned with the figures of suns, moons, and stars; interwoven with those of fiddles, flutes, harps, trumpets, guitars, harpsichords, and many other instruments of music, unknown to us in Europe. I observed, here and there, many in the habit of servants, with a blown bladder, fastened like a flail to the end of a stick, which they carried in their hands. In each bladder was a small quantity of dried peas, or little pebbles, as I was afterwards informed. With these bladders, they now and then flapped the mouths and ears of those who stood near them, of which practice I could not then conceive the meaning. It seems the minds of these people are so taken up with intense speculations, that they neither can speak, nor attend to the discourses of others, without being roused by some external action upon the organs of speech and hearing; for which reason, those persons who are able to afford it always keep a flapper (the original is climenole) in their family, as one of their domestics; nor ever walk abroad, or make visits, without him. And the business of this officer is, when two, three, or more persons are in company, gently to strike with his bladder the mouth of him who is to speak, and the right ear of him or them to whom the speaker addresses himself. This flapper is likewise employed diligently to attend his master in his walks, and upon occasion to give him a soft flap on his eyes; because he is always so wrapped up in cogitation, that he is in manifest danger of falling down every precipice, and bouncing his head against every post; and in the streets, of justling others, or being justled himself into the kennel.",
@@ -447,7 +465,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage III \u2014 Laputa",
+			title: "Voyage III, Ch. 3 \u2014 Laputa",
+			unnumbered: true,
 			epigraph: "A phenomenon solved by modern philosophy and astronomy. The Laputians’ great improvements in the latter. The king’s method of suppressing insurrections.",
 			paragraphs: [
 				"I desired leave of this prince to see the curiosities of the island, which he was graciously pleased to grant, and ordered my tutor to attend me. I chiefly wanted to know, to what cause, in art or in nature, it owed its several motions, whereof I will now give a philosophical account to the reader.",
@@ -469,12 +488,13 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'illustration',
-			title: 'Voyage III \u2014 Balnibarbi',
-			src: 'volumes/gullivers-travels/Balnibarbi.jpg',
+			title: 'Plate IV \u2014 Balnibarbi',
+			src: 'volumes/gullivers-travels/balnibarbi.jpg',
 		},
 		{
 			kind: 'prose',
-			title: "Voyage III \u2014 Balnibarbi",
+			title: "Voyage III, Ch. 4 \u2014 Balnibarbi",
+			unnumbered: true,
 			epigraph: "The author leaves Laputa; is conveyed to Balnibarbi; arrives at the metropolis. A description of the metropolis, and the country adjoining. The author hospitably received by a great lord. His conversation with that lord.",
 			paragraphs: [
 				"Although I cannot say that I was ill treated in this island, yet I must confess I thought myself too much neglected, not without some degree of contempt; for neither prince nor people appeared to be curious in any part of knowledge, except mathematics and music, wherein I was far their inferior, and upon that account very little regarded.",
@@ -497,7 +517,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage III \u2014 Balnibarbi",
+			title: "Voyage III, Ch. 5 \u2014 Balnibarbi",
+			unnumbered: true,
 			epigraph: "The author permitted to see the grand academy of Lagado. The academy largely described. The arts wherein the professors employ themselves.",
 			paragraphs: [
 				"This academy is not an entire single building, but a continuation of several houses on both sides of a street, which growing waste, was purchased and applied to that use.",
@@ -529,7 +550,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage III \u2014 Balnibarbi",
+			title: "Voyage III, Ch. 6 \u2014 Balnibarbi",
+			unnumbered: true,
 			epigraph: "A further account of the academy. The author proposes some improvements, which are honourably received.",
 			paragraphs: [
 				"In the school of political projectors, I was but ill-entertained; the professors appearing, in my judgment, wholly out of their senses, which is a scene that never fails to make me melancholy. These unhappy people were proposing schemes for persuading monarchs to choose favourites upon the score of their wisdom, capacity, and virtue; of teaching ministers to consult the public good; of rewarding merit, great abilities, eminent services; of instructing princes to know their true interest, by placing it on the same foundation with that of their people; of choosing for employments persons qualified to exercise them, with many other wild, impossible chimeras, that never entered before into the heart of man to conceive; and confirmed in me the old observation, “that there is nothing so extravagant and irrational, which some philosophers have not maintained for truth.”",
@@ -552,12 +574,13 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'illustration',
-			title: 'Voyage III \u2014 Glubbdubdrib',
-			src: 'volumes/gullivers-travels/Glubbdubdrib.jpg',
+			title: 'Plate V \u2014 Glubbdubdrib',
+			src: 'volumes/gullivers-travels/glubbdubdrib.jpg',
 		},
 		{
 			kind: 'prose',
-			title: "Voyage III \u2014 Glubbdubdrib",
+			title: "Voyage III, Ch. 7 \u2014 Glubbdubdrib",
+			unnumbered: true,
 			epigraph: "The author leaves Lagado: arrives at Maldonada. No ship ready. He takes a short voyage to Glubbdubdrib. His reception by the governor.",
 			paragraphs: [
 				"The continent, of which this kingdom is a part, extends itself, as I have reason to believe, eastward, to that unknown tract of America westward of California; and north, to the Pacific Ocean, which is not above a hundred and fifty miles from Lagado; where there is a good port, and much commerce with the great island of Luggnagg, situated to the northwest about 29 degrees north latitude, and 140 longitude. This island of Luggnagg stands southeastward of Japan, about a hundred leagues distant. There is a strict alliance between the Japanese emperor and the king of Luggnagg; which affords frequent opportunities of sailing from one island to the other. I determined therefore to direct my course this way, in order to my return to Europe. I hired two mules, with a guide, to show me the way, and carry my small baggage. I took leave of my noble protector, who had shown me so much favour, and made me a generous present at my departure.",
@@ -576,7 +599,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage III \u2014 Glubbdubdrib",
+			title: "Voyage III, Ch. 8 \u2014 Glubbdubdrib",
+			unnumbered: true,
 			epigraph: "A further account of Glubbdubdrib. Ancient and modern history corrected.",
 			paragraphs: [
 				"Having a desire to see those ancients who were most renowned for wit and learning, I set apart one day on purpose. I proposed that Homer and Aristotle might appear at the head of all their commentators; but these were so numerous, that some hundreds were forced to attend in the court, and outward rooms of the palace. I knew, and could distinguish those two heroes, at first sight, not only from the crowd, but from each other. Homer was the taller and comelier person of the two, walked very erect for one of his age, and his eyes were the most quick and piercing I ever beheld. Aristotle stooped much, and made use of a staff. His visage was meagre, his hair lank and thin, and his voice hollow. I soon discovered that both of them were perfect strangers to the rest of the company, and had never seen or heard of them before; and I had a whisper from a ghost who shall be nameless, “that these commentators always kept in the most distant quarters from their principals, in the lower world, through a consciousness of shame and guilt, because they had so horribly misrepresented the meaning of those authors to posterity.” I introduced Didymus and Eustathius to Homer, and prevailed on him to treat them better than perhaps they deserved, for he soon found they wanted a genius to enter into the spirit of a poet. But Aristotle was out of all patience with the account I gave him of Scotus and Ramus, as I presented them to him; and he asked them, “whether the rest of the tribe were as great dunces as themselves?”",
@@ -596,12 +620,13 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'illustration',
-			title: 'Voyage III \u2014 Luggnagg',
-			src: 'volumes/gullivers-travels/STRULDBRUGGS.webp',
+			title: 'Plate VI \u2014 Luggnagg',
+			src: 'volumes/gullivers-travels/struldbrugs.webp',
 		},
 		{
 			kind: 'prose',
-			title: "Voyage III \u2014 Luggnagg",
+			title: "Voyage III, Ch. 9 \u2014 Luggnagg",
+			unnumbered: true,
 			epigraph: "The author returns to Maldonada. Sails to the kingdom of Luggnagg. The author confined. He is sent for to court. The manner of his admittance. The king’s great lenity to his subjects.",
 			paragraphs: [
 				"The day of our departure being come, I took leave of his highness, the Governor of Glubbdubdrib, and returned with my two companions to Maldonada, where, after a fortnight’s waiting, a ship was ready to sail for Luggnagg. The two gentlemen, and some others, were so generous and kind as to furnish me with provisions, and see me on board. I was a month in this voyage. We had one violent storm, and were under a necessity of steering westward to get into the trade wind, which holds for above sixty leagues. On the 21st of April, 1708, we sailed into the river of Clumegnig, which is a seaport town, at the southeast point of Luggnagg. We cast anchor within a league of the town, and made a signal for a pilot. Two of them came on board in less than half an hour, by whom we were guided between certain shoals and rocks, which are very dangerous in the passage, to a large basin, where a fleet may ride in safety within a cable’s length of the town-wall.",
@@ -616,7 +641,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage III \u2014 Luggnagg",
+			title: "Voyage III, Ch. 10 \u2014 Luggnagg",
+			unnumbered: true,
 			epigraph: "The Luggnaggians commended. A particular description of the Struldbrugs, with many conversations between the author and some eminent persons upon that subject.",
 			paragraphs: [
 				"The Luggnaggians are a polite and generous people; and although they are not without some share of that pride which is peculiar to all Eastern countries, yet they show themselves courteous to strangers, especially such who are countenanced by the court. I had many acquaintance, and among persons of the best fashion; and being always attended by my interpreter, the conversation we had was not disagreeable.",
@@ -646,7 +672,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage III \u2014 Japan",
+			title: "Voyage III, Ch. 11 \u2014 Japan",
+			unnumbered: true,
 			epigraph: "The author leaves Luggnagg, and sails to Japan. From thence he returns in a Dutch ship to Amsterdam, and from Amsterdam to England.",
 			paragraphs: [
 				"I thought this account of the struldbrugs might be some entertainment to the reader, because it seems to be a little out of the common way; at least I do not remember to have met the like in any book of travels that has come to my hands: and if I am deceived, my excuse must be, that it is necessary for travellers who describe the same country, very often to agree in dwelling on the same particulars, without deserving the censure of having borrowed or transcribed from those who wrote before them.",
@@ -661,12 +688,13 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'illustration',
-			title: 'Voyage IV \u2014 Houyhnhnms',
-			src: 'volumes/gullivers-travels/Houyhnhnms.jpg',
+			title: 'Plate VII \u2014 Houyhnhnms',
+			src: 'volumes/gullivers-travels/houyhnhnms.jpg',
 		},
 		{
 			kind: 'prose',
-			title: "Voyage IV \u2014 Houyhnhnms",
+			title: "Voyage IV, Ch. 1 \u2014 Houyhnhnms",
+			unnumbered: true,
 			epigraph: "The author sets out as captain of a ship. His men conspire against him, confine him a long time to his cabin, and set him on shore in an unknown land. He travels up into the country. The Yahoos, a strange sort of animal, described. The author meets two Houyhnhnms.",
 			paragraphs: [
 				"I continued at home with my wife and children about five months, in a very happy condition, if I could have learned the lesson of knowing when I was well. I left my poor wife big with child, and accepted an advantageous offer made me to be captain of the Adventurer, a stout merchantman of 350 tons: for I understood navigation well, and being grown weary of a surgeon’s employment at sea, which, however, I could exercise upon occasion, I took a skilful young man of that calling, one Robert Purefoy, into my ship. We set sail from Portsmouth upon the 7th day of September, 1710; on the 14th we met with Captain Pocock, of Bristol, at Teneriffe, who was going to the bay of Campechy to cut logwood. On the 16th, he was parted from us by a storm; I heard since my return, that his ship foundered, and none escaped but one cabin boy. He was an honest man, and a good sailor, but a little too positive in his own opinions, which was the cause of his destruction, as it has been with several others; for if he had followed my advice, he might have been safe at home with his family at this time, as well as myself.",
@@ -684,7 +712,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage IV \u2014 Houyhnhnms",
+			title: "Voyage IV, Ch. 2 \u2014 Houyhnhnms",
+			unnumbered: true,
 			epigraph: "The author conducted by a Houyhnhnm to his house. The house described. The author’s reception. The food of the Houyhnhnms. The author in distress for want of meat. Is at last relieved. His manner of feeding in this country.",
 			paragraphs: [
 				"Having travelled about three miles, we came to a long kind of building, made of timber stuck in the ground, and wattled across; the roof was low and covered with straw. I now began to be a little comforted; and took out some toys, which travellers usually carry for presents to the savage Indians of America, and other parts, in hopes the people of the house would be thereby encouraged to receive me kindly. The horse made me a sign to go in first; it was a large room with a smooth clay floor, and a rack and manger, extending the whole length on one side. There were three nags and two mares, not eating, but some of them sitting down upon their hams, which I very much wondered at; but wondered more to see the rest employed in domestic business; these seemed but ordinary cattle. However, this confirmed my first opinion, that a people who could so far civilise brute animals, must needs excel in wisdom all the nations of the world. The gray came in just after, and thereby prevented any ill treatment which the others might have given me. He neighed to them several times in a style of authority, and received answers.",
@@ -702,7 +731,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage IV \u2014 Houyhnhnms",
+			title: "Voyage IV, Ch. 3 \u2014 Houyhnhnms",
+			unnumbered: true,
 			epigraph: "The author studies to learn the language. The Houyhnhnm, his master, assists in teaching him. The language described. Several Houyhnhnms of quality come out of curiosity to see the author. He gives his master a short account of his voyage.",
 			paragraphs: [
 				"My principal endeavour was to learn the language, which my master (for so I shall henceforth call him), and his children, and every servant of his house, were desirous to teach me; for they looked upon it as a prodigy, that a brute animal should discover such marks of a rational creature. I pointed to everything, and inquired the name of it, which I wrote down in my journal-book when I was alone, and corrected my bad accent by desiring those of the family to pronounce it often. In this employment, a sorrel nag, one of the under-servants, was very ready to assist me.",
@@ -724,7 +754,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage IV \u2014 Houyhnhnms",
+			title: "Voyage IV, Ch. 4 \u2014 Houyhnhnms",
+			unnumbered: true,
 			epigraph: "The Houyhnhnm’s notion of truth and falsehood. The author’s discourse disapproved by his master. The author gives a more particular account of himself, and the accidents of his voyage.",
 			paragraphs: [
 				"My master heard me with great appearances of uneasiness in his countenance; because doubting, or not believing, are so little known in this country, that the inhabitants cannot tell how to behave themselves under such circumstances. And I remember, in frequent discourses with my master concerning the nature of manhood in other parts of the world, having occasion to talk of lying and false representation, it was with much difficulty that he comprehended what I meant, although he had otherwise a most acute judgment. For he argued thus: “that the use of speech was to make us understand one another, and to receive information of facts; now, if anyone said the thing which was not, these ends were defeated, because I cannot properly be said to understand him; and I am so far from receiving information, that he leaves me worse than in ignorance; for I am led to believe a thing black, when it is white, and short, when it is long.” And these were all the notions he had concerning that faculty of lying, so perfectly well understood, and so universally practised, among human creatures.",
@@ -739,7 +770,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage IV \u2014 Houyhnhnms",
+			title: "Voyage IV, Ch. 5 \u2014 Houyhnhnms",
+			unnumbered: true,
 			epigraph: "The author at his master’s command, informs him of the state of England. The causes of war among the princes of Europe. The author begins to explain the English constitution.",
 			paragraphs: [
 				"The reader may please to observe, that the following extract of many conversations I had with my master, contains a summary of the most material points which were discoursed at several times for above two years; his honour often desiring fuller satisfaction, as I farther improved in the Houyhnhnm tongue. I laid before him, as well as I could, the whole state of Europe; I discoursed of trade and manufactures, of arts and sciences; and the answers I gave to all the questions he made, as they arose upon several subjects, were a fund of conversation not to be exhausted. But I shall here only set down the substance of what passed between us concerning my own country, reducing it in order as well as I can, without any regard to time or other circumstances, while I strictly adhere to truth. My only concern is, that I shall hardly be able to do justice to my master’s arguments and expressions, which must needs suffer by my want of capacity, as well as by a translation into our barbarous English.",
@@ -763,7 +795,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage IV \u2014 Houyhnhnms",
+			title: "Voyage IV, Ch. 6 \u2014 Houyhnhnms",
+			unnumbered: true,
 			epigraph: "A continuation of the state of England under Queen Anne. The character of a first minister of state in European courts.",
 			paragraphs: [
 				"My master was yet wholly at a loss to understand what motives could incite this race of lawyers to perplex, disquiet, and weary themselves, and engage in a confederacy of injustice, merely for the sake of injuring their fellow-animals; neither could he comprehend what I meant in saying, they did it for hire. Whereupon I was at much pains to describe to him the use of money, the materials it was made of, and the value of the metals; “that when a Yahoo had got a great store of this precious substance, he was able to purchase whatever he had a mind to; the finest clothing, the noblest houses, great tracts of land, the most costly meats and drinks, and have his choice of the most beautiful females. Therefore since money alone was able to perform all these feats, our Yahoos thought they could never have enough of it to spend, or to save, as they found themselves inclined, from their natural bent either to profusion or avarice; that the rich man enjoyed the fruit of the poor man’s labour, and the latter were a thousand to one in proportion to the former; that the bulk of our people were forced to live miserably, by labouring every day for small wages, to make a few live plentifully.”",
@@ -790,7 +823,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage IV \u2014 Houyhnhnms",
+			title: "Voyage IV, Ch. 7 \u2014 Houyhnhnms",
+			unnumbered: true,
 			epigraph: "The author’s great love of his native country. His master’s observations upon the constitution and administration of England, as described by the author, with parallel cases and comparisons. His master’s observations upon human nature.",
 			paragraphs: [
 				"The reader may be disposed to wonder how I could prevail on myself to give so free a representation of my own species, among a race of mortals who are already too apt to conceive the vilest opinion of humankind, from that entire congruity between me and their Yahoos. But I must freely confess, that the many virtues of those excellent quadrupeds, placed in opposite view to human corruptions, had so far opened my eyes and enlarged my understanding, that I began to view the actions and passions of man in a very different light, and to think the honour of my own kind not worth managing; which, besides, it was impossible for me to do, before a person of so acute a judgment as my master, who daily convinced me of a thousand faults in myself, whereof I had not the least perception before, and which, with us, would never be numbered even among human infirmities. I had likewise learned, from his example, an utter detestation of all falsehood or disguise; and truth appeared so amiable to me, that I determined upon sacrificing everything to it.",
@@ -819,7 +853,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage IV \u2014 Houyhnhnms",
+			title: "Voyage IV, Ch. 8 \u2014 Houyhnhnms",
+			unnumbered: true,
 			epigraph: "The author relates several particulars of the Yahoos. The great virtues of the Houyhnhnms. The education and exercise of their youth. Their general assembly.",
 			paragraphs: [
 				"As I ought to have understood human nature much better than I supposed it possible for my master to do, so it was easy to apply the character he gave of the Yahoos to myself and my countrymen; and I believed I could yet make further discoveries, from my own observation. I therefore often begged his honour to let me go among the herds of Yahoos in the neighbourhood; to which he always very graciously consented, being perfectly convinced that the hatred I bore these brutes would never suffer me to be corrupted by them; and his honour ordered one of his servants, a strong sorrel nag, very honest and good-natured, to be my guard; without whose protection I durst not undertake such adventures. For I have already told the reader how much I was pestered by these odious animals, upon my first arrival; and I afterwards failed very narrowly, three or four times, of falling into their clutches, when I happened to stray at any distance without my hanger. And I have reason to believe they had some imagination that I was of their own species, which I often assisted myself by stripping up my sleeves, and showing my naked arms and breasts in their sight, when my protector was with me. At which times they would approach as near as they durst, and imitate my actions after the manner of monkeys, but ever with great signs of hatred; as a tame jackdaw with cap and stockings is always persecuted by the wild ones, when he happens to be got among them.",
@@ -844,7 +879,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage IV \u2014 Houyhnhnms",
+			title: "Voyage IV, Ch. 9 \u2014 Houyhnhnms",
+			unnumbered: true,
 			epigraph: "A grand debate at the general assembly of the Houyhnhnms, and how it was determined. The learning of the Houyhnhnms. Their buildings. Their manner of burials. The defectiveness of their language.",
 			paragraphs: [
 				"One of these grand assemblies was held in my time, about three months before my departure, whither my master went as the representative of our district. In this council was resumed their old debate, and indeed the only debate that ever happened in their country; whereof my master, after his return, give me a very particular account.",
@@ -864,7 +900,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage IV \u2014 Houyhnhnms",
+			title: "Voyage IV, Ch. 10 \u2014 Houyhnhnms",
+			unnumbered: true,
 			epigraph: "The author’s economy, and happy life, among the Houyhnhnms. His great improvement in virtue by conversing with them. Their conversations. The author has notice given him by his master, that he must depart from the country. He falls into a swoon for grief; but submits. He contrives and finishes a canoe by the help of a fellow-servant, and puts to sea at a venture.",
 			paragraphs: [
 				"I had settled my little economy to my own heart’s content. My master had ordered a room to be made for me, after their manner, about six yards from the house: the sides and floors of which I plastered with clay, and covered with rush-mats of my own contriving. I had beaten hemp, which there grows wild, and made of it a sort of ticking; this I filled with the feathers of several birds I had taken with springes made of Yahoos’ hairs, and were excellent food. I had worked two chairs with my knife, the sorrel nag helping me in the grosser and more laborious part. When my clothes were worn to rags, I made myself others with the skins of rabbits, and of a certain beautiful animal, about the same size, called nnuhnoh, the skin of which is covered with a fine down. Of these I also made very tolerable stockings. I soled my shoes with wood, which I cut from a tree, and fitted to the upper-leather; and when this was worn out, I supplied it with the skins of Yahoos dried in the sun. I often got honey out of hollow trees, which I mingled with water, or ate with my bread. No man could more verify the truth of these two maxims, “That nature is very easily satisfied;” and, “That necessity is the mother of invention.” I enjoyed perfect health of body, and tranquillity of mind; I did not feel the treachery or inconstancy of a friend, nor the injuries of a secret or open enemy. I had no occasion of bribing, flattering, or pimping, to procure the favour of any great man, or of his minion; I wanted no fence against fraud or oppression: here was neither physician to destroy my body, nor lawyer to ruin my fortune; no informer to watch my words and actions, or forge accusations against me for hire: here were no gibers, censurers, backbiters, pickpockets, highwaymen, housebreakers, attorneys, bawds, buffoons, gamesters, politicians, wits, splenetics, tedious talkers, controvertists, ravishers, murderers, robbers, virtuosos; no leaders, or followers, of party and faction; no encouragers to vice, by seducement or examples; no dungeon, axes, gibbets, whipping-posts, or pillories; no cheating shopkeepers or mechanics; no pride, vanity, or affectation; no fops, bullies, drunkards, strolling whores, or poxes; no ranting, lewd, expensive wives; no stupid, proud pedants; no importunate, overbearing, quarrelsome, noisy, roaring, empty, conceited, swearing companions; no scoundrels raised from the dust upon the merit of their vices, or nobility thrown into it on account of their virtues; no lords, fiddlers, judges, or dancing-masters.",
@@ -887,7 +924,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage IV \u2014 Houyhnhnms",
+			title: "Voyage IV, Ch. 11 \u2014 Houyhnhnms",
+			unnumbered: true,
 			epigraph: "The author’s dangerous voyage. He arrives at New Holland, hoping to settle there. Is wounded with an arrow by one of the natives. Is seized and carried by force into a Portuguese ship. The great civilities of the captain. The author arrives at England.",
 			paragraphs: [
 				"I began this desperate voyage on February 15, 1714﻿–﻿15, at nine o’clock in the morning. The wind was very favourable; however, I made use at first only of my paddles; but considering I should soon be weary, and that the wind might chop about, I ventured to set up my little sail; and thus, with the help of the tide, I went at the rate of a league and a half an hour, as near as I could guess. My master and his friends continued on the shore till I was almost out of sight; and I often heard the sorrel nag (who always loved me) crying out, “Hnuy illa nyha, majah Yahoo; Take care of thyself, gentle Yahoo.”",
@@ -913,7 +951,8 @@ export const content: VolumeContent = {
 
 		{
 			kind: 'prose',
-			title: "Voyage IV \u2014 Houyhnhnms",
+			title: "Voyage IV, Ch. 12 \u2014 Houyhnhnms",
+			unnumbered: true,
 			epigraph: "The author’s veracity. His design in publishing this work. His censure of those travellers who swerve from the truth. The author clears himself from any sinister ends in writing. An objection answered. The method of planting colonies. His native country commended. The right of the crown to those countries described by the author is justified. The difficulty of conquering them. The author takes his last leave of the reader; proposes his manner of living for the future; gives good advice, and concludes.",
 			paragraphs: [
 				"Thus, gentle reader, I have given thee a faithful history of my travels for sixteen years and above seven months: wherein I have not been so studious of ornament as of truth. I could, perhaps, like others, have astonished thee with strange improbable tales; but I rather chose to relate plain matter of fact, in the simplest manner and style; because my principal design was to inform, and not to amuse thee.",
