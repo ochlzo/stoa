@@ -66,7 +66,7 @@ export interface Page {
 export interface Chapter {
 	/** 0-based index in VolumeReadingModel.chapters. */
 	readonly index: number;
-	/** 1-based Chapter number, or null for unnumbered front matter and illustration plates. */
+	/** 1-based Chapter number, or null for unnumbered front/back matter. */
 	readonly number: number | null;
 	readonly romanNumeral: string | null;
 	readonly title: string;
@@ -94,7 +94,7 @@ export interface VolumeReadingModel {
 	readonly title: string;
 	readonly author: string;
 	readonly chapters: readonly Chapter[];
-	/** Count of numbered Chapters (excluding unnumbered front matter and illustration plates). */
+	/** Count of numbered Chapters (excluding unnumbered front/back matter). */
 	readonly numberedChapterCount: number;
 	readonly pages: readonly Page[];
 	readonly spreads: readonly Spread[];
@@ -399,7 +399,7 @@ export function buildVolumeReadingModel(
 					side: pageIndex % 2 === 0 ? 'left' : 'right',
 					kind: 'illustration',
 					contentMode: 'illustration',
-					chapterIndex,
+					chapterIndex: null,
 					chapterNumber: null,
 					chapterRomanNumeral: null,
 					chapterTitle: plateTitle,
@@ -412,15 +412,6 @@ export function buildVolumeReadingModel(
 					illustrationCaption: section.caption
 				});
 				folio += 1;
-				chapters.push({
-					index: chapterIndex,
-					number: null,
-					romanNumeral: null,
-					title: plateTitle,
-					startPageIndex,
-					endPageIndex: pageIndex,
-					startSpreadIndex: Math.floor(startPageIndex / 2)
-				});
 				continue;
 			}
 

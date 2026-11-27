@@ -73,7 +73,7 @@ describe('Deterministic Chapter / Page / Spread model (ADR 0004)', () => {
 		assert.equal(toRomanNumeral(24), 'XXIV');
 	});
 
-	it('excludes unnumbered sections and illustration plates from chapter numbering', async () => {
+	it('excludes unnumbered sections from chapter numbering and omits illustration plates from chapters', async () => {
 		const lifeOfPi = CATALOG.find((v) => v.id === 'life-of-pi')!;
 		const model = await loadVolumeReadingModel(lifeOfPi);
 
@@ -90,8 +90,23 @@ describe('Deterministic Chapter / Page / Spread model (ADR 0004)', () => {
 		assert.equal(chapter100.number, 100);
 		assert.equal(chapter100.romanNumeral, 'C');
 
-		const plate = model.chapters.find((c) => c.title === 'The Shipwreck')!;
-		assert.equal(plate.number, null);
-		assert.equal(plate.romanNumeral, null);
+		assert.equal(
+			model.chapters.find((c) => c.title === 'The Shipwreck'),
+			undefined
+		);
+		const platePage = model.pages.find(
+			(p) => p.kind === 'illustration' && p.chapterTitle === 'The Shipwreck'
+		);
+		assert.ok(platePage);
+		assert.equal(platePage.chapterIndex, null);
+
+		const sirGawain = CATALOG.find((v) => v.id === 'sir-gawain-and-the-green-knight')!;
+		const gawainModel = await loadVolumeReadingModel(sirGawain);
+		assert.equal(gawainModel.chapters.length, 14);
+		assert.equal(gawainModel.numberedChapterCount, 14);
+		assert.equal(
+			gawainModel.pages.filter((p) => p.kind === 'illustration').length,
+			14
+		);
 	});
 });
