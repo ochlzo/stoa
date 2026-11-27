@@ -3,6 +3,7 @@ import { design as theOdysseyDesign } from '#lib/catalog/readable/the-odyssey/de
 import { design as theRoadNotTakenDesign } from '#lib/catalog/readable/the-road-not-taken/design.ts';
 import { design as ilustradoDesign } from '#lib/catalog/readable/ilustrado/design.ts';
 import { design as theColorPurpleDesign } from '#lib/catalog/readable/the-color-purple/design.ts';
+import { design as theMerchantOfVeniceDesign } from '#lib/catalog/readable/the-merchant-of-venice/design.ts';
 import { design as donQuixoteDesign } from '#lib/catalog/readable/don-quixote/design.ts';
 import { design as gulliversTravelsDesign } from '#lib/catalog/readable/gullivers-travels/design.ts';
 import { design as sirGawainDesign } from '#lib/catalog/readable/sir-gawain-and-the-green-knight/design.ts';
@@ -34,6 +35,11 @@ export const READABLE_VOLUMES: Readonly<Record<string, ReadableVolumePackage>> =
 		design: theColorPurpleDesign,
 		loadContent: () =>
 			import('#lib/catalog/readable/the-color-purple/content.ts').then((m) => m.content)
+	},
+	'the-merchant-of-venice': {
+		design: theMerchantOfVeniceDesign,
+		loadContent: () =>
+			import('#lib/catalog/readable/the-merchant-of-venice/content.ts').then((m) => m.content)
 	},
 	'don-quixote': {
 		design: donQuixoteDesign,
