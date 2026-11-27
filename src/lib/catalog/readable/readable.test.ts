@@ -93,7 +93,7 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 		};
 
 		const model = buildVolumeReadingModel(sampleVolume, content);
-		assert.equal(model.chapters.length, 3);
+		assert.equal(model.chapters.length, 2);
 		assert.equal(model.pages.length % 2, 0);
 		assert.equal(model.spreads.length, model.pages.length / 2);
 
@@ -113,14 +113,15 @@ describe('Deterministic literary pagination (prose, verse, and illustration plat
 		assert.equal(versePage.epigraph, 'Beauty is truth, truth beauty.');
 		assert.ok(versePage.lines?.some((line) => line.stanzaGapBefore));
 
-		// Illustration plate page
-		const platePage = model.pages[model.chapters[1].startPageIndex];
+		// Illustration plate page (rendered as a Page, not a Chapter menu entry)
+		const platePage = model.pages.find((page) => page.kind === 'illustration')!;
 		assert.equal(platePage.kind, 'illustration');
+		assert.equal(platePage.chapterIndex, null);
 		assert.equal(platePage.illustrationSrc, 'volumes/ode-on-a-grecian-urn/urn.webp');
 		assert.equal(platePage.illustrationCaption, 'Attic red-figure amphora');
 
 		// An illustrated opener belongs to its prose Chapter; text starts on the next Page.
-		const openerPage = model.pages[model.chapters[2].startPageIndex];
+		const openerPage = model.pages[model.chapters[1].startPageIndex];
 		assert.equal(openerPage.kind, 'chapter-opener');
 		assert.equal(openerPage.illustrationSrc, 'volumes/ode-on-a-grecian-urn/commentary.webp');
 		const prosePage = model.pages[openerPage.index + 1];
