@@ -8,11 +8,12 @@ export const design: VolumeDesign = {
 	emblem: 'fleuron',
 	coverBorder: 'corner-ornaments',
 	editionLine: 'A BOOK OF LAUGHTER',
+	sourceNote: 'Translated by Stephen Tapscott · Babelmatrix (babelmatrix.org)',
 	endpaperStyle: 'botanical',
 	endpaperColors: ['oxblood', 'agedVellum', 'plumLeather'],
 	paperTint: '#fbf7f0',
 	inkColor: '#1f1419',
 	mutedInkColor: '#5a4650',
 	accentColor: '#8a3b52',
-	fontFamily: '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif',
+	fontFamily: '"Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif'
 };
