@@ -144,6 +144,7 @@ function paintWindmillEndpaperPattern(ctx: CanvasRenderingContext2D, width: numb
 }
 
 export const design: VolumeDesign = {
+	sourceNote: 'Translated by John Ormsby (1885) · Wikisource / Project Gutenberg',
 	bindingStyle: 'raised-band-leather',
 	spineProfile: 'rounded',
 	coverColor: 'ochreLinen',
