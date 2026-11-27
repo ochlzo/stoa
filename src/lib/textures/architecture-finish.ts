@@ -55,8 +55,8 @@ function relief(finish: Finish, u: number, v: number): number {
 }
 
 export function createFinishMaps(finish: Finish, color: string) {
-	const width = finish === 'floor' ? 1024 : 512;
-	const height = 512;
+	const width = finish === 'floor' ? 512 : 256;
+	const height = 256;
 	const albedo = new Uint8Array(width * height * 4);
 	// Three reads roughness from green and bump from red, so both share a data map.
 	const surface = new Uint8Array(albedo.length);

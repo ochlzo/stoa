@@ -16,8 +16,14 @@ export interface LookdevRendererConfig {
 	readonly clayExposure: number;
 	/** Strength of the procedural PMREM room environment map for IBL reflections. */
 	readonly environmentIntensity: number;
-	/** Square shadow-map resolution for the primary sunlit key light. */
+	/** Square shadow-map resolution for the primary sunlit key light on desktop viewports. */
 	readonly shadowMapSize: number;
+	/** Reduced shadow-map resolution on compact or coarse-pointer devices. */
+	readonly mobileShadowMapSize: number;
+	/** Viewport width breakpoint (px) below which mobile shadow-map sizing applies. */
+	readonly mobileViewportMaxWidth: number;
+	/** Upper devicePixelRatio cap to bound fragment shader fill rate on HiDPI/mobile screens. */
+	readonly maxDpr: number;
 	/** Depth bias to eliminate self-shadowing acne on Bookcase and Volume planes. */
 	readonly shadowBias: number;
 	/** Normal-offset bias to prevent detached shadows on thin cover boards and Shelves. */
@@ -94,6 +100,9 @@ export const LOOKDEV_RENDERER_CONFIG: LookdevRendererConfig = {
 	clayExposure: 1.0,
 	environmentIntensity: 0.34,
 	shadowMapSize: 2048,
+	mobileShadowMapSize: 1024,
+	mobileViewportMaxWidth: 900,
+	maxDpr: 1.5,
 	shadowBias: -0.00025,
 	shadowNormalBias: 0.012,
 	shadowFrustum: {

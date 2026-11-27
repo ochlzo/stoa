@@ -1,7 +1,11 @@
 <script lang="ts">
-	import { setStampFace, type VolumeStamps } from '#lib/components/scene/volume-stamp-geometry.ts';
+	import {
+		VOLUME_HIGHLIGHT_EMISSIVE,
+		VOLUME_HIGHLIGHT_INTENSITY,
+		setStampFace,
+		type VolumeStamps
+	} from '#lib/components/scene/volume-stamp-geometry.ts';
 	import type { StampFace } from '#lib/textures/volume-stamp.ts';
-	import type { VolumeFinishes } from '#lib/textures/volume-finishes.ts';
 	import { T, useTask, useThrelte } from '@threlte/core';
 	import type { IntersectionEvent } from '@threlte/extras';
 	import { Vector3, type Group, type Mesh, type MeshBasicMaterial, type PerspectiveCamera } from 'three';
@@ -49,13 +53,13 @@
 		setReadingUnfolding,
 		updatePeekAnchor
 	} from '#lib/state/library.svelte.ts';
-	import { LOOKDEV_BACKDROP, LOOKDEV_PALETTE } from '#lib/catalog/lookdev.ts';
+	import { LOOKDEV_BACKDROP } from '#lib/catalog/lookdev.ts';
 	import { stepBackdropOpacity } from '#lib/physics/study-lighting.ts';
 	import { isClayMode } from '#lib/state/lookdev.svelte.ts';
+	import { markShadowsDirty } from '#lib/components/scene/shadow-invalidation.ts';
 
 	interface Props {
 		stamps: VolumeStamps;
-		finishes: VolumeFinishes;
 		placed: PlacedVolume;
 		isPeeked?: boolean;
 		isInspected?: boolean;
@@ -64,7 +68,6 @@
 
 	let {
 		stamps,
-		finishes,
 		placed,
 		isPeeked = false,
 		isInspected = false,
@@ -86,13 +89,17 @@
 		const bundle = curvedSpine;
 		return () => bundle?.dispose();
 	});
-	const cover = $derived(finishes.cover(placed.volume, isClayMode()));
-	const bandFinish = $derived(finishes.cover(placed.volume, isClayMode(), 0.86));
-	const paper = $derived(finishes.paper(isClayMode()));
-	const headbandFinish = $derived(finishes.headband(isClayMode(), placed.volume));
 	const highlightReadable = $derived(isPeeked && !isInspected && placed.volume.kind === 'readable');
-	const coverEmissive = $derived(highlightReadable ? LOOKDEV_PALETTE.paperAndInk.goldFoil : '#000000');
-	const coverEmissiveIntensity = $derived(highlightReadable ? 0.065 : 0);
+	const coverEmissive = $derived(highlightReadable ? VOLUME_HIGHLIGHT_EMISSIVE : '#000000');
+	const coverEmissiveIntensity = $derived(highlightReadable ? VOLUME_HIGHLIGHT_INTENSITY : 0);
+	const coverMaterial = $derived(
+		stamps.coverMaterial(placed.volume, isClayMode(), highlightReadable)
+	);
+	const bandMaterial = $derived(
+		stamps.coverMaterial(placed.volume, isClayMode(), highlightReadable, 0.86)
+	);
+	const paperMaterial = $derived(stamps.paperMaterial(isClayMode()));
+	const headbandMaterial = $derived(stamps.headbandMaterial(isClayMode(), placed.volume));
 
 	// Exact world-space geometric center of this Volume when seated flush in its Shelf slot.
 	const shelfCenter = $derived(computeVolumeShelfCenter(placed, 0));
@@ -139,7 +146,9 @@
 		if (!group) return;
 		group.traverse((obj) => {
 			if ('isMesh' in obj && (obj as Mesh).isMesh) {
-				obj.castShadow = enabled;
+				const isTinyDetail =
+					obj.name.startsWith('spine-band') || obj.name.startsWith('headband');
+				obj.castShadow = enabled && !isTinyDetail;
 				obj.receiveShadow = enabled;
 			}
 		});
@@ -153,6 +162,48 @@
 	const hideClosedForReading = $derived(
 		isInspected && getSceneMode() === 'reading' && getReadingUnfolding()
 	);
+
+	// Re-render shadows when the closed Volume hides for Reading Mode or reappears on close.
+	$effect(() => {
+		void hideClosedForReading;
+		if (isInspected) {
+			markShadowsDirty();
+		}
+	});
+
+	let lastShadowX = Number.NaN;
+	let lastShadowY = Number.NaN;
+	let lastShadowZ = Number.NaN;
+	let lastShadowRx = Number.NaN;
+	let lastShadowRy = Number.NaN;
+	let lastShadowRz = Number.NaN;
+
+	function markShadowsIfMoved(
+		x: number,
+		y: number,
+		z: number,
+		rx: number,
+		ry: number,
+		rz: number
+	): void {
+		const eps = 1e-4;
+		if (
+			Math.abs(x - lastShadowX) > eps ||
+			Math.abs(y - lastShadowY) > eps ||
+			Math.abs(z - lastShadowZ) > eps ||
+			Math.abs(rx - lastShadowRx) > eps ||
+			Math.abs(ry - lastShadowRy) > eps ||
+			Math.abs(rz - lastShadowRz) > eps
+		) {
+			lastShadowX = x;
+			lastShadowY = y;
+			lastShadowZ = z;
+			lastShadowRx = rx;
+			lastShadowRy = ry;
+			lastShadowRz = rz;
+			markShadowsDirty();
+		}
+	}
 
 	function applyRestingTransform(): void {
 		if (!motionGroupRef) return;
@@ -320,6 +371,14 @@
 						);
 						motionGroupRef.rotation.order = 'XYZ';
 						motionGroupRef.rotation.set(inspectState.pitch, inspectState.yaw, 0);
+						markShadowsIfMoved(
+							alignedPose.center[0],
+							alignedPose.center[1],
+							alignedPose.center[2],
+							inspectState.pitch,
+							inspectState.yaw,
+							0
+						);
 					}
 					if (backdropMeshRef) {
 						backdropMeshRef.position.set(
@@ -390,6 +449,14 @@
 					transform.rotation[1],
 					transform.rotation[2]
 				);
+				markShadowsIfMoved(
+					transform.position[0],
+					transform.position[1],
+					transform.position[2],
+					transform.rotation[0],
+					transform.rotation[1],
+					transform.rotation[2]
+				);
 			}
 
 			if (backdropMeshRef) {
@@ -404,6 +471,7 @@
 
 			if (step.completedReturn) {
 				applyRestingTransform();
+				markShadowsDirty();
 				completeReturnToShelf();
 			}
 			return;
@@ -421,6 +489,7 @@
 		const moved = stepVolumePeek(peekState, isPeeked, dt);
 		if (moved && peekGroupRef) {
 			peekGroupRef.position.z = peekState.offset;
+			markShadowsDirty();
 		}
 		if (isPeeked) {
 			projectPeekAnchor();
@@ -494,7 +563,7 @@
 	{#if !isClayMode() && (face === 'spine' || placed.volume.kind === 'readable')}
 		<T is={stamps.get(placed.volume, face)} dispose={false} emissive={coverEmissive} emissiveIntensity={coverEmissiveIntensity} />
 	{:else}
-		<T.MeshStandardMaterial {...cover} emissive={coverEmissive} emissiveIntensity={coverEmissiveIntensity} />
+		<T is={coverMaterial} dispose={false} />
 	{/if}
 {/snippet}
 
@@ -575,11 +644,7 @@
 						position={[band.position[0], band.position[1], band.position[2]]}
 					>
 						<T.BoxGeometry args={[band.size[0], band.size[1], band.size[2]]} />
-						<T.MeshStandardMaterial
-							{...bandFinish}
-							emissive={coverEmissive}
-							emissiveIntensity={coverEmissiveIntensity}
-						/>
+						<T is={bandMaterial} dispose={false} />
 					</T.Mesh>
 				{:else if curvedSpine}
 					<T.Mesh
@@ -588,11 +653,7 @@
 						position={[...band.position]}
 						scale={[1, band.height, band.scaleZ / parts.spine.scaleZ]}
 					>
-						<T.MeshStandardMaterial
-							{...bandFinish}
-							emissive={coverEmissive}
-							emissiveIntensity={coverEmissiveIntensity}
-						/>
+						<T is={bandMaterial} dispose={false} />
 					</T.Mesh>
 				{/if}
 			{/each}
@@ -639,7 +700,7 @@
 				<T.BoxGeometry
 					args={[parts.pageBlock.size[0], parts.pageBlock.size[1], parts.pageBlock.size[2]]}
 				/>
-				<T.MeshStandardMaterial {...paper} />
+				<T is={paperMaterial} dispose={false} />
 			</T.Mesh>
 
 			{#if curvedSpine}
@@ -649,8 +710,8 @@
 					scale={[parts.pageBlock.size[0] / 2, parts.pageBlock.size[1],
 						parts.spine.depth - Math.min(parts.frontBoard.size[0], parts.spine.depth * 0.8)]}
 				>
-					<T.CylinderGeometry args={[1, 1, 1, 32, 1, false, -Math.PI / 2, Math.PI]} />
-					<T.MeshStandardMaterial {...paper} />
+					<T.CylinderGeometry args={[1, 1, 1, 12, 1, false, -Math.PI / 2, Math.PI]} />
+					<T is={paperMaterial} dispose={false} />
 				</T.Mesh>
 			{/if}
 
@@ -661,8 +722,8 @@
 					position={[headband.position[0], headband.position[1], headband.position[2]]}
 					rotation={[0, 0, Math.PI / 2]}
 				>
-					<T.CylinderGeometry args={[headband.radius, headband.radius, headband.width, 10]} />
-					<T.MeshStandardMaterial {...headbandFinish} />
+					<T.CylinderGeometry args={[headband.radius, headband.radius, headband.width, 8]} />
+					<T is={headbandMaterial} dispose={false} />
 				</T.Mesh>
 			{/each}
 		</T.Group>
