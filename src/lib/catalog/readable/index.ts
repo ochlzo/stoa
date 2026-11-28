@@ -12,6 +12,7 @@ import { design as yourLaughterDesign } from '#lib/catalog/readable/your-laughte
 import { design as lifeOfPiDesign } from '#lib/catalog/readable/life-of-pi/design.ts';
 import { design as odeOnAGrecianUrnDesign } from '#lib/catalog/readable/ode-on-a-grecian-urn/design.ts';
 import { design as oedipusRexDesign } from '#lib/catalog/readable/oedipus-rex/design.ts';
+import { design as theGodStealerDesign } from '#lib/catalog/readable/the-god-stealer/design.ts';
 
 /**
  * Isolated per-Readable-Volume packages. Each entry owns its own `design.ts`
@@ -80,6 +81,11 @@ export const READABLE_VOLUMES: Readonly<Record<string, ReadableVolumePackage>> =
 	'oedipus-rex': {
 		design: oedipusRexDesign,
 		loadContent: () => import('#lib/catalog/readable/oedipus-rex/content.ts').then((m) => m.content)
+	},
+	'the-god-stealer': {
+		design: theGodStealerDesign,
+		loadContent: () =>
+			import('#lib/catalog/readable/the-god-stealer/content.ts').then((m) => m.content)
 	}
 };
 

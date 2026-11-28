@@ -18,7 +18,7 @@ const validCoverColors = new Set(Object.keys(LOOKDEV_PALETTE.volumes));
 describe('Readable Volume packages & registry', () => {
 	it('registers an isolated readable package for every Readable Volume in CATALOG', () => {
 		const readable = CATALOG.filter((v) => v.kind === 'readable');
-		assert.equal(readable.length, 13);
+		assert.equal(readable.length, 14);
 		for (const volume of readable) {
 			const pkg = READABLE_VOLUMES[volume.id];
 			assert.ok(pkg, `Missing readable volume package for ${volume.id}`);
