@@ -1,7 +1,7 @@
 import type { EndpaperPaintInfo, VolumeDesign } from '#lib/catalog/readable/types.ts';
 
-export const SOURCE_NOTE =
-	'F. Sionil Jos\u00e9 \u00b7 Philippine Literatures (UST Publishing House)';
+const SOURCE_NOTE =
+	'F. Sionil Jos\u00e9, \u201cThe God Stealer,\u201d in Philippine Literatures: Texts, Themes, Approaches (UST Publishing House). Reproduced from the actual source. No copyright infringement intended.';
 
 function paintTerraceContours(
 	ctx: CanvasRenderingContext2D,

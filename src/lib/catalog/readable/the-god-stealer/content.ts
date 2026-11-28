@@ -1,7 +1,7 @@
 import type { VolumeContent } from '#lib/catalog/readable/types.ts';
 
 const fullSourceNote =
-	'F. Sionil Jos\u00e9, \u201cThe God Stealer,\u201d in Philippine Literatures: Texts, Themes, Approaches, edited by Augusto Antonio A. Aguila, Joyce L. Arriola, and John Jack Wigley (Manila: University of Santo Tomas Publishing House).';
+	'F. Sionil Jos\u00e9, \u201cThe God Stealer,\u201d in Philippine Literatures: Texts, Themes, Approaches (UST Publishing House). Reproduced from the actual source. No copyright infringement intended.';
 
 // Transcribed from the supplied anthology manuscript. Paragraph wording and order are preserved.
 const storyParagraphs = [
@@ -215,7 +215,7 @@ export const content: VolumeContent = {
 			title: 'Cordillera Highlands',
 			src: 'volumes/the-god-stealer/cordillera-range.webp',
 			caption:
-				'Cordillera mountain landscape. Photograph by Maurice Yeo (Kok Leng), Wikimedia Commons; resized. CC BY 2.0. https://commons.wikimedia.org/wiki/File:Cordillera_Mountain_Ranges.jpg ? https://creativecommons.org/licenses/by/2.0/'
+				'Cordillera mountain landscape. Photograph by Maurice Yeo (Kok Leng), Wikimedia Commons (CC BY 2.0).'
 		},
 		{
 			kind: 'prose',
@@ -228,7 +228,7 @@ export const content: VolumeContent = {
 			title: 'Rice Terraces',
 			src: 'volumes/the-god-stealer/batad-terraces.webp',
 			caption:
-				'Batad Rice Terraces, Ifugao. Photograph by Seventide, Wikimedia Commons; resized. CC BY-SA 4.0. https://commons.wikimedia.org/wiki/File:Batad_Rice_Terraces,_Ifugao_Province,_Philippines.jpg ? https://creativecommons.org/licenses/by-sa/4.0/'
+				'Batad Rice Terraces, Ifugao. Photograph by Seventide, Wikimedia Commons (CC BY-SA 4.0).'
 		},
 		{
 			kind: 'prose',
@@ -241,7 +241,7 @@ export const content: VolumeContent = {
 			title: 'Bulul',
 			src: 'volumes/the-god-stealer/bulul-plate.webp',
 			caption:
-				'Pair of seated bulul, Ifugao, narra wood (Honolulu Museum of Art, accessions 9213.1?.2). Photogravure adapted from Hiart, Wikimedia Commons (CC0 1.0): https://commons.wikimedia.org/wiki/File:Seated_Bulul_from_Ifugao,_narra_wood,_Honolulu_Museum_of_Art.jpg; license: https://creativecommons.org/publicdomain/zero/1.0/. Bulul have ritual significance in Ifugao rice culture; National Museum of the Philippines: https://www.nationalmuseum.gov.ph/our-collections/ethnology/ritual-objects/'
+				'Pair of seated bulul, Ifugao, narra wood (Honolulu Museum of Art, accessions 9213.1\u2013.2). Adapted from Hiart, Wikimedia Commons (CC0 1.0).'
 		},
 		{
 			kind: 'prose',
@@ -254,7 +254,7 @@ export const content: VolumeContent = {
 			title: 'House and Granary',
 			src: 'volumes/the-god-stealer/ifugao-house-plate.webp',
 			caption:
-				'Interpretive line illustration based on the story?s description of an Ifugao house and the National Museum Cordillera account of the traditional house; not a measured reconstruction. https://www.nationalmuseum.gov.ph/exhibitions/nm-cordillera-rice-terraces-regional-museum/ifugao-ethnographic/'
+				'Interpretive line illustration based on the story\u2019s description of an Ifugao house and the National Museum Cordillera ethnographic account.'
 		},
 		{
 			kind: 'prose',

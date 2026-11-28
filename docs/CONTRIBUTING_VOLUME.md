@@ -19,6 +19,7 @@ Each teammate owns one isolated `Readable Volume` slot in Stoa's 3D `Bookcase`. 
 | **Lutaro** | *Life of Pi* | Yann Martel | `life-of-pi` | Shelf 3 (Left) |
 | **Bone** | *Ode on a Grecian Urn* | John Keats | `ode-on-a-grecian-urn` | Shelf 3 (Right, leaning) |
 | **Nedia** | *Oedipus Rex* | Sophocles | `oedipus-rex` | Shelf 4 (Right) |
+| **Eri (`pyrororoo`)** | *The God Stealer* | F. Sionil José | `the-god-stealer` | Shelf 4 (Right) |
 
 ## 2. Your Owned Files
 
